@@ -1,0 +1,81 @@
+# Enterprise Applied Data Science & Decision Intelligence Platform
+
+A Python-first, locally reproducible, cloud-neutral platform demonstrating transferable statistical,
+causal, experimentation, personalisation, optimisation and decision-science methods — the evidence
+behind business decisions, not an industry-specific application.
+
+> From evidence to prediction, from prediction to causal understanding, and from causal understanding
+> to optimised business decisions.
+
+**Status: Foundation only (Milestone 1). No analytical capability is implemented yet.** See
+[docs/evidence/capability-status.md](docs/evidence/capability-status.md) for the authoritative,
+per-pillar status table — treat any claim elsewhere that contradicts it as an error.
+
+## Six permanent pillars
+
+| # | Pillar                                | Central question                                                                  |
+| - | ---------------------------------------- | -------------------------------------------------------------------------------------- |
+| 1 | Statistics & Causal Inference           | What would have happened if the intervention had not occurred?                        |
+| 2 | A/B Testing & Experimentation            | Did the intervention cause an improvement, and is the evidence strong enough to act on?|
+| 3 | Recommender Systems                      | Which items should be presented to which users, and does that create real value?       |
+| 4 | Mathematical Optimisation / Gurobi      | Given limited resources, what allocation or schedule best achieves the objective?      |
+| 5 | Customer Lifetime Value                  | What is a customer economically worth over time, and how should that guide investment? |
+| 6 | Product Sense & Decision Science         | What should the organisation do, given the evidence and the cost of being wrong?        |
+
+Time-series forecasting is a supporting capability used by several pillars; it is **not** a seventh
+pillar.
+
+Full pillar scope, architecture and sequencing: [docs/architecture/overview.md](docs/architecture/overview.md)
+and [docs/milestones/roadmap.md](docs/milestones/roadmap.md).
+
+## Integrated scenario
+
+A fictional digital marketplace/subscription platform (provisional internal name: *NexaMarket*) is
+the flagship integrated case study, composing selected pillar outputs into one evidence-to-decision
+workflow. It is introduced at Milestone 17, alongside independent cross-industry case studies that
+demonstrate methods that do not naturally fit that scenario. Neither exists yet.
+
+## Development
+
+```bash
+pip install -e ".[dev]" --config-settings editable_mode=compat
+ruff check .
+mypy src
+pytest
+```
+
+The `editable_mode=compat` setting works around a known interaction where hatchling's editable-install
+`.pth` file can be marked OS-hidden (observed on macOS) and silently skipped by CPython's `site.py`;
+`tests/conftest.py` also inserts `src/` directly so test collection never depends on that install path
+working. Requires Python 3.11 or 3.12. The package currently has zero runtime dependencies beyond the standard
+library; pillar milestones will introduce dependencies only as each method requires them.
+
+## Repository layout
+
+```
+src/decision_intelligence/   Python package (common/ only, at Milestone 1)
+tests/                        Automated tests
+docs/architecture/            Architecture-of-record
+docs/milestones/               Agreed roadmap
+docs/evidence/                 Capability-status registry and future evidence artefacts
+.github/workflows/             CI (lint, type-check, test on Python 3.11 and 3.12)
+```
+
+Pillar packages (`statistics/`, `causal_inference/`, `experimentation/`, `recommendations/`,
+`optimisation/`, `customer_value/`, `product_analytics/`, `decision_science/`, `forecasting/`) and
+`case_studies/` are intentionally not scaffolded yet — each is created by the milestone that first
+needs it, to avoid placeholder directories with no content.
+
+## Relationship to other repositories
+
+This repository is one of a small set of substantial portfolio repositories. Others demonstrate
+industry-specific end-to-end platforms (healthcare, aviation, banking/fintech, manufacturing, energy,
+product growth); this one demonstrates the cross-industry scientific and mathematical methods those
+platforms draw on. It reuses validated *patterns* from
+[`azure-product-growth-intelligence-platform`](https://github.com/Ibraheemolasupogit/azure-product-growth-intelligence-platform)
+(e.g. experimentation and recommendation pipeline shape, evidence-doc conventions) but is not a
+dependency of, or a duplicate of, that repository.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
