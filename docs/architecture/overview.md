@@ -89,7 +89,7 @@ To avoid duplicated statistical primitives across pillars (explicitly prohibited
 | ------------------------------------------ | -------------------------------------- | -------------------------------------------- |
 | Deterministic seeding                      | `decision_intelligence.common.seeding` | all pillars                                  |
 | Bootstrap / confidence-interval helpers    | `decision_intelligence.common` (future)| statistics, experimentation, decision_science|
-| Point-in-time / temporal-leakage utilities | `decision_intelligence.data` (future)  | forecasting, recommendations, customer_value |
+| Point-in-time / temporal-leakage utilities | `decision_intelligence.data.point_in_time` (M2) | forecasting, recommendations, customer_value |
 
 A pillar module must depend on the owning module above. It must not reimplement an owned primitive
 locally, even approximately.

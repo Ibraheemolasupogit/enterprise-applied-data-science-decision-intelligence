@@ -1,0 +1,66 @@
+{
+  "experiment": {
+    "experiment_name": "recommendation_feature_experiment",
+    "assignment_probability": 0.5,
+    "true_absolute_effect": 0.04,
+    "primary_metric": "converted"
+  },
+  "marketing": {
+    "campaign_name": "retention_offer_q1",
+    "true_absolute_effect": 0.08,
+    "confounding_covariate": "latent_value",
+    "primary_metric": "retained_90d"
+  },
+  "retention": {
+    "segment_shape": {
+      "casual": 0.75,
+      "regular": 0.85,
+      "power": 0.95
+    },
+    "segment_scale": {
+      "casual": 161.698057133363,
+      "regular": 216.5692429432072,
+      "power": 305.3981640877423
+    }
+  },
+  "optimisation_reference": {
+    "campaign_names": [
+      "ref_campaign_1",
+      "ref_campaign_2",
+      "ref_campaign_3",
+      "ref_campaign_4",
+      "ref_campaign_5",
+      "ref_campaign_6",
+      "ref_campaign_7",
+      "ref_campaign_8"
+    ],
+    "costs": [
+      7419.73,
+      8205.16,
+      1691.4,
+      5141.52,
+      7378.09,
+      6413.18,
+      2854.79,
+      8531.28
+    ],
+    "values": [
+      12785.79,
+      15982.33,
+      2472.54,
+      9344.34,
+      10007.48,
+      11228.32,
+      3889.93,
+      14258.47
+    ],
+    "budget": 26199.33,
+    "optimal_selection": [
+      "ref_campaign_1",
+      "ref_campaign_2",
+      "ref_campaign_3",
+      "ref_campaign_8"
+    ],
+    "optimal_objective_value": 45499.130000000005
+  }
+}

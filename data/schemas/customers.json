@@ -1,0 +1,25 @@
+{
+  "name": "customers",
+  "columns": {
+    "customer_id": "int",
+    "segment": "str",
+    "signup_date": "datetime",
+    "acquisition_channel": "str",
+    "region": "str",
+    "latent_value": "float",
+    "price_sensitivity": "float",
+    "household_income_proxy": "float"
+  },
+  "primary_key": [
+    "customer_id"
+  ],
+  "foreign_keys": {},
+  "not_null": [
+    "customer_id",
+    "segment",
+    "signup_date",
+    "acquisition_channel",
+    "latent_value",
+    "price_sensitivity"
+  ]
+}

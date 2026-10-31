@@ -1,0 +1,61 @@
+customer_id,tenure_days,churn_date,churned,retained_90d
+1,44,,False,True
+2,67,,False,True
+3,109,,False,True
+4,19,,False,True
+5,6,,False,True
+6,22,2024-06-05 02:20:27.334303560,True,False
+7,117,2024-06-11 00:01:58.340385419,True,True
+8,32,,False,True
+9,91,,False,True
+10,52,2024-04-10 15:54:23.630705069,True,False
+11,24,2024-05-19 20:13:28.383123149,True,False
+12,109,,False,True
+13,85,,False,True
+14,90,2024-06-21 03:45:52.464043422,True,True
+15,113,2024-05-01 14:07:58.324380528,True,True
+16,78,,False,True
+17,145,,False,True
+18,29,2024-06-15 09:40:32.320307553,True,False
+19,77,,False,True
+20,56,,False,True
+21,9,2024-02-16 13:26:42.725607993,True,False
+22,54,,False,True
+23,34,,False,True
+24,148,,False,True
+25,64,,False,True
+26,89,,False,True
+27,125,,False,True
+28,27,,False,True
+29,135,,False,True
+30,67,,False,True
+31,33,2024-02-13 10:59:17.535674094,True,False
+32,121,,False,True
+33,103,,False,True
+34,99,,False,True
+35,97,,False,True
+36,120,,False,True
+37,32,,False,True
+38,26,2024-05-16 11:02:23.815671190,True,False
+39,25,2024-05-14 20:22:32.199744887,True,False
+40,20,2024-03-06 23:11:21.051804733,True,False
+41,20,,False,False
+42,8,2024-06-08 00:25:34.456402485,True,False
+43,59,2024-03-18 22:03:19.523958318,True,False
+44,55,2024-06-04 10:42:58.320900881,True,False
+45,109,,False,True
+46,61,,False,True
+47,168,2024-06-25 03:56:47.330241288,True,True
+48,47,2024-06-01 10:13:26.589122947,True,False
+49,72,2024-03-25 15:16:52.727634641,True,False
+50,164,,False,True
+51,90,,False,True
+52,17,,False,False
+53,7,2024-01-19 03:24:36.937337448,True,False
+54,102,2024-04-28 21:10:32.217596670,True,True
+55,29,,False,True
+56,94,2024-06-26 06:48:38.231303336,True,True
+57,126,2024-06-11 16:26:16.535351221,True,True
+58,87,2024-04-08 19:41:30.454828719,True,False
+59,133,,False,True
+60,103,,False,True

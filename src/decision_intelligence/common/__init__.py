@@ -6,6 +6,6 @@ modules must depend on this package rather than reimplementing shared
 logic locally — see docs/architecture/overview.md.
 """
 
-from decision_intelligence.common.seeding import seeded_random
+from decision_intelligence.common.seeding import seeded_generator, seeded_random, spawn_generators
 
-__all__ = ["seeded_random"]
+__all__ = ["seeded_generator", "seeded_random", "spawn_generators"]

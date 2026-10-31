@@ -1,0 +1,21 @@
+{
+  "name": "products",
+  "columns": {
+    "product_id": "int",
+    "category": "str",
+    "monthly_price": "float",
+    "margin_rate": "float",
+    "launch_date": "datetime"
+  },
+  "primary_key": [
+    "product_id"
+  ],
+  "foreign_keys": {},
+  "not_null": [
+    "product_id",
+    "category",
+    "monthly_price",
+    "margin_rate",
+    "launch_date"
+  ]
+}

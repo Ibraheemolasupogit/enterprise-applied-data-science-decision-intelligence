@@ -1,0 +1,17 @@
+{
+  "name": "marketing_campaigns",
+  "columns": {
+    "campaign_id": "int",
+    "campaign_name": "str",
+    "start_date": "datetime"
+  },
+  "primary_key": [
+    "campaign_id"
+  ],
+  "foreign_keys": {},
+  "not_null": [
+    "campaign_id",
+    "campaign_name",
+    "start_date"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "subscriptions",
+  "columns": {
+    "subscription_id": "int",
+    "customer_id": "int",
+    "product_id": "int",
+    "start_date": "datetime",
+    "end_date": "datetime",
+    "status": "str",
+    "monthly_price": "float"
+  },
+  "primary_key": [
+    "subscription_id"
+  ],
+  "foreign_keys": {
+    "customer_id": [
+      "customers",
+      "customer_id"
+    ],
+    "product_id": [
+      "products",
+      "product_id"
+    ]
+  },
+  "not_null": [
+    "subscription_id",
+    "customer_id",
+    "product_id",
+    "start_date",
+    "status",
+    "monthly_price"
+  ]
+}

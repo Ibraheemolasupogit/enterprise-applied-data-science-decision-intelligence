@@ -30,11 +30,15 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Information Analysis",
 ]
-dependencies = []
+dependencies = [
+  "numpy>=1.26,<3",
+  "pandas>=2.2,<3",
+]
 
 [project.optional-dependencies]
 dev = [
   "mypy>=1.10",
+  "pandas-stubs>=2.2",
   "pytest>=8.2",
   "ruff>=0.5",
 ]

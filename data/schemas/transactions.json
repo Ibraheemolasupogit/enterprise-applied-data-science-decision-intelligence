@@ -1,0 +1,32 @@
+{
+  "name": "transactions",
+  "columns": {
+    "transaction_id": "int",
+    "customer_id": "int",
+    "product_id": "int",
+    "transaction_date": "datetime",
+    "amount": "float",
+    "margin": "float"
+  },
+  "primary_key": [
+    "transaction_id"
+  ],
+  "foreign_keys": {
+    "customer_id": [
+      "customers",
+      "customer_id"
+    ],
+    "product_id": [
+      "products",
+      "product_id"
+    ]
+  },
+  "not_null": [
+    "transaction_id",
+    "customer_id",
+    "product_id",
+    "transaction_date",
+    "amount",
+    "margin"
+  ]
+}

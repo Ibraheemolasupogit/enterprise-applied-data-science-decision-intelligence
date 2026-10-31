@@ -1,0 +1,29 @@
+{
+  "name": "customer_treatments",
+  "columns": {
+    "customer_id": "int",
+    "campaign_id": "int",
+    "treated": "bool",
+    "assignment_propensity": "float"
+  },
+  "primary_key": [
+    "customer_id",
+    "campaign_id"
+  ],
+  "foreign_keys": {
+    "customer_id": [
+      "customers",
+      "customer_id"
+    ],
+    "campaign_id": [
+      "marketing_campaigns",
+      "campaign_id"
+    ]
+  },
+  "not_null": [
+    "customer_id",
+    "campaign_id",
+    "treated",
+    "assignment_propensity"
+  ]
+}

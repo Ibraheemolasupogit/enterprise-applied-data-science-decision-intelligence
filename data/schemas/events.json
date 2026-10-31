@@ -1,0 +1,26 @@
+{
+  "name": "events",
+  "columns": {
+    "event_id": "int",
+    "exposure_id": "int",
+    "event_type": "str",
+    "event_timestamp": "datetime",
+    "recorded_at": "datetime"
+  },
+  "primary_key": [
+    "event_id"
+  ],
+  "foreign_keys": {
+    "exposure_id": [
+      "recommendation_exposures",
+      "exposure_id"
+    ]
+  },
+  "not_null": [
+    "event_id",
+    "exposure_id",
+    "event_type",
+    "event_timestamp",
+    "recorded_at"
+  ]
+}

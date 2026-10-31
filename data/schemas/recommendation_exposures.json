@@ -1,0 +1,36 @@
+{
+  "name": "recommendation_exposures",
+  "columns": {
+    "exposure_id": "int",
+    "session_id": "int",
+    "customer_id": "int",
+    "product_id": "int",
+    "position": "int",
+    "exposure_mechanism": "str"
+  },
+  "primary_key": [
+    "exposure_id"
+  ],
+  "foreign_keys": {
+    "session_id": [
+      "sessions",
+      "session_id"
+    ],
+    "customer_id": [
+      "customers",
+      "customer_id"
+    ],
+    "product_id": [
+      "products",
+      "product_id"
+    ]
+  },
+  "not_null": [
+    "exposure_id",
+    "session_id",
+    "customer_id",
+    "product_id",
+    "position",
+    "exposure_mechanism"
+  ]
+}

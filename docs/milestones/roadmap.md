@@ -1,16 +1,16 @@
 # Milestone roadmap
 
-Status: agreed planning roadmap as of Milestone 1. This is a sequence of controlled engineering
-steps, not permission to implement multiple milestones in one pass. Each milestone requires explicit
-approval before implementation begins (see Milestone execution methodology below).
+Status: agreed planning roadmap, updated through Milestone 2. This is a sequence of controlled
+engineering steps, not permission to implement multiple milestones in one pass. Each milestone
+requires explicit approval before implementation begins (see Milestone execution methodology below).
 
 ## Phase A — Foundation
 
-| Milestone | Scope                                           | Acceptance evidence                                          |
-| --------- | ------------------------------------------------ | -------------------------------------------------------------- |
-| M1        | Repository foundation, charter and architecture | README, standards, CI, baseline tests                        |
-| M2        | Synthetic data contracts and generation          | Reproducible datasets, schemas, quality tests                |
-| M3        | Statistical foundations                          | Tested estimators, simulations, methodological documentation |
+| Milestone | Scope                                           | Acceptance evidence                                          | Status |
+| --------- | ------------------------------------------------ | -------------------------------------------------------------- | ------ |
+| M1        | Repository foundation, charter and architecture | README, standards, CI, baseline tests                        | DONE |
+| M2        | Synthetic data contracts and generation          | Reproducible datasets, schemas, quality tests                | DONE — see [../evidence/capability-status.md](../evidence/capability-status.md) and [../methodology/synthetic-data.md](../methodology/synthetic-data.md) |
+| M3        | Statistical foundations                          | Tested estimators, simulations, methodological documentation | Not started |
 
 ## Phase B — Causal inference and experimentation
 
@@ -55,13 +55,15 @@ This plan can be refined after each milestone's assessment. If a later capabilit
 needs infrastructure from an earlier pillar that is not yet built, that prerequisite must be
 completed first — milestone numbering must never be preserved at the expense of validity.
 
-## Open items carried from M1
+## Open items carried forward
 
 - **Gurobi licensing** — not yet confirmed. M12/M13 must not assume a specific licence tier until this
   is resolved; HiGHS/SciPy is the CI-safe default regardless of outcome.
-- **Shared-primitive interfaces** — ownership fixed at M1 (see
-  [../architecture/overview.md](../architecture/overview.md)); M3/M4 must consume them rather than
-  reimplementing.
+- **Shared-primitive interfaces** — seeding (M1) and point-in-time utilities (M2) are implemented and
+  tested (see [../architecture/overview.md](../architecture/overview.md)); the bootstrap/confidence-
+  interval helper is still only planned and should land with M3, which is its first real consumer.
+- **M3 prerequisite check** — M3 (statistical foundations) consumes the customer, transaction and
+  retention tables built in M2; no additional data-foundation work is expected before M3 can start.
 
 ## Milestone execution methodology
 

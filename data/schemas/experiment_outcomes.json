@@ -1,0 +1,25 @@
+{
+  "name": "experiment_outcomes",
+  "columns": {
+    "customer_id": "int",
+    "experiment_name": "str",
+    "converted": "bool",
+    "observation_date": "datetime"
+  },
+  "primary_key": [
+    "customer_id",
+    "experiment_name"
+  ],
+  "foreign_keys": {
+    "customer_id": [
+      "customers",
+      "customer_id"
+    ]
+  },
+  "not_null": [
+    "customer_id",
+    "experiment_name",
+    "converted",
+    "observation_date"
+  ]
+}

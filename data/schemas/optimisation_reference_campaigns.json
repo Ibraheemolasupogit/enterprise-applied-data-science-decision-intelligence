@@ -1,0 +1,17 @@
+{
+  "name": "optimisation_reference_campaigns",
+  "columns": {
+    "campaign_name": "str",
+    "cost": "float",
+    "value": "float"
+  },
+  "primary_key": [
+    "campaign_name"
+  ],
+  "foreign_keys": {},
+  "not_null": [
+    "campaign_name",
+    "cost",
+    "value"
+  ]
+}
