@@ -27,7 +27,7 @@ _PROPENSITY_INTERCEPT = -2.0
 _PROPENSITY_SLOPE = 4.0
 
 
-def _sigmoid(x: np.ndarray) -> np.ndarray:
+def _sigmoid(x: np.ndarray | float) -> np.ndarray | float:
     return 1.0 / (1.0 + np.exp(-x))
 
 
