@@ -15,9 +15,20 @@ Modules:
   (mediator and collider adjustment, positivity, misspecification, interference).
 * :mod:`.campaign` — the M2 retention-offer case study and its repeated-sampling study.
 
+Milestone 5 adds observational designs that exploit time or thresholds:
+
+* :mod:`.did` — two-period and panel difference-in-differences, staggered
+  adoption (Callaway & Sant'Anna), TWFE with an exact negative-weight
+  diagnostic, event studies and windowed finite-cluster pre-trend tests.
+* :mod:`.cluster_inference` — wild cluster restricted bootstrap for few clusters.
+* :mod:`.synthetic_control` — synthetic control with fit diagnostics, placebo
+  ranks, in-time placebos and leave-one-out sensitivity.
+* :mod:`.rdd` — sharp regression discontinuity with robust bias-corrected
+  inference and density, covariate, placebo-cutoff and donut checks.
+* :mod:`.observational_cases` — the M5 case studies and repeated-sampling studies.
+
 Statistical primitives (logistic/linear regression, bootstrap, validation)
 come from M3 (``decision_intelligence.statistics`` and ``.common``).
-Observational designs that exploit time or thresholds (difference-in-
-differences, event studies, synthetic control, regression discontinuity)
-are Milestone 5 and deliberately absent.
+Interrupted time series, fuzzy RDD and propensity-score matching are not
+implemented.
 """

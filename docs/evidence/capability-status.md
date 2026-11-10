@@ -18,11 +18,11 @@ The README and any other document must not claim a status more advanced than wha
 
 `PRODUCTION-READY` must never be used for this repository's synthetic, local-first demonstrations.
 
-## Pillar status — as of Milestone 4
+## Pillar status — as of Milestone 5
 
 | Pillar                                   | Status  | Notes                                              |
 | ------------------------------------------ | ------- | ---------------------------------------------------- |
-| 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal foundations and backdoor adjustment: TESTED, SIMULATED (M4). Observational designs: PLANNED (M5) | Per-capability detail in the Milestone 3 and 4 tables below |
+| 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal foundations and backdoor adjustment: TESTED, SIMULATED (M4). Observational designs (DiD, event study, synthetic control, sharp RDD): TESTED, SIMULATED (M5). ITS, fuzzy RDD, matching: PLANNED | Per-capability detail in the Milestone 3, 4 and 5 tables below |
 | 2. A/B Testing & Experimentation          | PLANNED | Scheduled M6–M7; synthetic data foundation ready     |
 | 3. Recommender Systems                    | PLANNED | Scheduled M8–M9; synthetic data foundation ready     |
 | 4. Mathematical Optimisation / Gurobi     | PLANNED | Scheduled M12–M13; Gurobi licensing not yet verified |
@@ -30,9 +30,10 @@ The README and any other document must not claim a status more advanced than wha
 | 6. Product Sense & Decision Science       | PLANNED | Scheduled M14–M15                                    |
 | Forecasting (supporting capability)       | PLANNED | Scheduled M16; not a seventh pillar                  |
 
-Pillar 1's statistical foundations (M3) and causal foundations with backdoor adjustment (M4) exist.
-Pillar 1's observational designs (DiD, event studies, synthetic control, RDD), every other pillar's
-analytical methods, case studies and the dashboard do not exist yet. Any statement to the
+Pillar 1's statistical foundations (M3), causal foundations with backdoor adjustment (M4) and
+observational designs — difference-in-differences, event studies, synthetic control and sharp
+regression discontinuity (M5) — exist. Interrupted time series, fuzzy RDD and propensity-score
+matching, every other pillar's analytical methods, case studies and the dashboard do not exist yet. Any statement to the
 contrary in the README or elsewhere is an error and should be corrected to match this table.
 
 Pillar 1 spans three milestones, so its row states a status per sub-scope rather than one label.
@@ -104,7 +105,27 @@ Evidence: [m4-causal-foundations.md](m4-causal-foundations.md) and the generated
 | Failure cases (unmeasured confounding, post-treatment adjustment/selection, M-bias, mediator, positivity, misspecification, interference) | SIMULATED | `causal_inference/scenarios.py`, `campaign.py`; `tests/statistical/test_m4_causal_properties.py` |
 | M2 retention-offer case study | DEMONSTRATED | `causal_inference/campaign.py`, `scripts/generate_m4_evidence.py`, `tests/integration/test_campaign_analysis.py` |
 | Propensity-score matching | PLANNED | Deferred: needs Abadie–Imbens variance (roadmap open item) |
-| Observational designs (DiD, event study, ITS, synthetic control, RDD) | PLANNED | M5 |
+| Observational designs (DiD, event study, synthetic control, sharp RDD) | See Milestone 5 table | M5 |
 
 All M4 results are on synthetic data and simulations; none is `PRODUCTION-READY`. Known synthetic
 ground truth validates the code and the identification logic, not real-world external validity.
+
+## Pillar 1 status — Milestone 5 (observational causal inference)
+
+Methodology: [../methodology/observational-causal-inference.md](../methodology/observational-causal-inference.md).
+Evidence: [m5-observational-causal-inference.md](m5-observational-causal-inference.md) and the
+generated [m5-observational-causal-inference-results.md](m5-observational-causal-inference-results.md).
+
+| Capability | Status | Evidence |
+| --- | --- | --- |
+| Additive time-indexed and threshold synthetic datasets with known effects | TESTED | `data/rollout_panel.py`, `data/synthetic_control_panel.py`, `data/threshold_assignment.py`; `tests/unit/data/test_m5_generators.py` |
+| Two-period and panel DiD; static TWFE with exact negative-weight diagnostic | TESTED, SIMULATED, BENCHMARKED | `causal_inference/did.py`; statsmodels reference; results §1–2 |
+| Staggered adoption (Callaway–Sant'Anna) and event studies with pre-trend tests and nominal 95% sup-t simultaneous bands (observed joint coverage 0.920 — undercoverage) | TESTED, SIMULATED | `did.staggered_did`, `event_study_twfe`; independent reference implementation; results §1–2b |
+| Few-cluster inference (CR1, wild cluster restricted bootstrap; unreliable with ≤ 2 treated clusters, warned) | TESTED, SIMULATED | `causal_inference/cluster_inference.py`; brute-force reference; results §3 |
+| Synthetic control with placebo and sensitivity analyses | TESTED, SIMULATED, BENCHMARKED | `causal_inference/synthetic_control.py`; vs naive DiD; results §4–5 |
+| Sharp RDD with robust bias-corrected inference and validity checks | TESTED, SIMULATED | `causal_inference/rdd.py`; statsmodels reference; results §6–7 |
+| Deliberately invalid designs for each method | SIMULATED | `causal_inference/observational_cases.py`; `tests/statistical/test_m5_observational_properties.py` |
+| M5 case studies (rollout, regional policy, loyalty tier) | DEMONSTRATED | `observational_cases.py`, `scripts/generate_m5_evidence.py`, `tests/integration/test_m5_case_studies.py` |
+| Interrupted time series, fuzzy RDD, synthetic DiD, conformal SC inference, honest-DiD bounds | PLANNED | Not scheduled; see roadmap |
+
+All M5 results are on synthetic data and simulations; none is `PRODUCTION-READY`.

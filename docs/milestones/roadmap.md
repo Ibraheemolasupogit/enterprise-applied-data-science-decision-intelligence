@@ -1,6 +1,6 @@
 # Milestone roadmap
 
-Status: agreed planning roadmap, updated through Milestone 4. This is a sequence of controlled
+Status: agreed planning roadmap, updated through Milestone 5. This is a sequence of controlled
 engineering steps, not permission to implement multiple milestones in one pass. Each milestone
 requires explicit approval before implementation begins (see Milestone execution methodology below).
 
@@ -16,8 +16,8 @@ requires explicit approval before implementation begins (see Milestone execution
 
 | Milestone | Scope                                     | Acceptance evidence                                       | Status |
 | --------- | ------------------------------------------- | ------------------------------------------------------------ | ------ |
-| M4        | Causal foundations, DAGs and adjustment    | Identification examples, known-effect recovery            | IMPLEMENTED — awaiting review; see [../evidence/m4-causal-foundations.md](../evidence/m4-causal-foundations.md) and [../methodology/causal-foundations.md](../methodology/causal-foundations.md) |
-| M5        | Observational causal inference             | DiD, event study, synthetic control, RDD and diagnostics  | Not started |
+| M4        | Causal foundations, DAGs and adjustment    | Identification examples, known-effect recovery            | DONE — see [../evidence/m4-causal-foundations.md](../evidence/m4-causal-foundations.md) and [../methodology/causal-foundations.md](../methodology/causal-foundations.md) |
+| M5        | Observational causal inference             | DiD, event study, synthetic control, RDD and diagnostics  | IMPLEMENTED — awaiting review; see [../evidence/m5-observational-causal-inference.md](../evidence/m5-observational-causal-inference.md) and [../methodology/observational-causal-inference.md](../methodology/observational-causal-inference.md) |
 | M6        | Experimentation fundamentals               | Randomisation, power, SRM, ITT, hypothesis tests           | Not started |
 | M7        | Advanced experimentation                   | CUPED, sequential/Bayesian methods and selected designs    | Not started |
 
@@ -63,21 +63,22 @@ completed first — milestone numbering must never be preserved at the expense o
   the bootstrap/confidence-interval helper (M3, `decision_intelligence.common`) are implemented and
   tested (see [../architecture/overview.md](../architecture/overview.md)).
 - **Carried from M3 to later milestones** — multiple-testing corrections (needed by M6), proper
-  multiple imputation / IPW for missingness and MNAR sensitivity analysis (M4/M5 as needed), wild-
-  cluster bootstrap for few-cluster designs, exact binomial power, and penalised (Firth) logistic
-  regression. See the limitations in
+  multiple imputation / IPW for missingness and MNAR sensitivity analysis, exact binomial power, and
+  penalised (Firth) logistic regression. (The wild cluster bootstrap was delivered in M5.) See the limitations in
   [../methodology/statistical-foundations.md](../methodology/statistical-foundations.md).
-- **Carried from M4** — propensity-score matching (Brief §6.4) was deliberately not shipped in M4:
-  honest inference needs the Abadie–Imbens variance (the bootstrap is invalid for matching). It
-  needs an explicit home — proposed alongside M5's observational methods. Machine-learning nuisance
+- **Carried from M4** — propensity-score matching (Brief §6.4) was deliberately not shipped in M4
+  and was not in the agreed M5 scope: honest inference needs the Abadie–Imbens variance (the
+  bootstrap is invalid for matching). It still needs an explicit home. Machine-learning nuisance
   models with cross-fitting (double machine learning) and richer heterogeneous-effect methods remain
   unscheduled. See [../methodology/causal-foundations.md](../methodology/causal-foundations.md).
-- **M5 prerequisite check** — M5 needs panel/time-indexed outcomes around an intervention date
-  (for DiD, event studies, ITS, synthetic control) and a running variable with a threshold (for RDD).
-  The current M2 campaign has a `start_date`, but its generated effect is not tied to it (treatment is
-  a time-invariant customer attribute) and no assignment threshold exists, so M5 will need a documented, additive extension of the synthetic data (a new
-  generator/table, not a change to existing M2 contracts) before its methods can be validated
-  against known truth.
+- **Carried from M5** — interrupted time series (Brief §6.4) was not in the agreed M5 scope and is not
+  implemented; neither are fuzzy RDD, regression kink designs, synthetic DiD or augmented synthetic
+  control, conformal inference for synthetic control, or honest-DiD sensitivity bounds for
+  parallel-trends violations. M5's datasets are additive generators in `data/` (no M2 contract
+  changed). See [../methodology/observational-causal-inference.md](../methodology/observational-causal-inference.md).
+- **M6 prerequisite check** — M6 (experimentation fundamentals) can build on M2's randomised
+  experiment, M3's tests/power primitives and M4/M5's estimators; multiple-testing corrections
+  (carried from M3) are needed there.
 
 ## Milestone execution methodology
 

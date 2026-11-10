@@ -93,6 +93,8 @@ To avoid duplicated statistical primitives across pillars (explicitly prohibited
 | Statistical input validation               | `decision_intelligence.common.validation` (M3) | all pillars                                  |
 | Hypothesis tests, effect sizes, power, regression | `decision_intelligence.statistics` (M3) | causal_inference, experimentation, customer_value, decision_science |
 | Causal estimands, DAG logic, backdoor-adjustment estimators, causal diagnostics | `decision_intelligence.causal_inference` (M4) | experimentation (M6+), customer_value (incremental LTV), decision_science |
+| DiD/event studies, synthetic control, RDD, wild cluster bootstrap | `decision_intelligence.causal_inference` (M5: `did`, `synthetic_control`, `rdd`, `cluster_inference`) | experimentation (M6+), forecasting (M16), decision_science |
+| Time-indexed and threshold synthetic datasets | `decision_intelligence.data` (M5: `rollout_panel`, `synthetic_control_panel`, `threshold_assignment`; additive, independent of the M2 pipeline) | causal_inference, experimentation, forecasting |
 | Point-in-time / temporal-leakage utilities | `decision_intelligence.data.point_in_time` (M2) | forecasting, recommendations, customer_value |
 
 A pillar module must depend on the owning module above. It must not reimplement an owned primitive
