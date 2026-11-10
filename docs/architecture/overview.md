@@ -92,6 +92,7 @@ To avoid duplicated statistical primitives across pillars (explicitly prohibited
 | Bootstrap / confidence-interval helpers    | `decision_intelligence.common.bootstrap` (M3) | statistics, experimentation, decision_science|
 | Statistical input validation               | `decision_intelligence.common.validation` (M3) | all pillars                                  |
 | Hypothesis tests, effect sizes, power, regression | `decision_intelligence.statistics` (M3) | causal_inference, experimentation, customer_value, decision_science |
+| Causal estimands, DAG logic, backdoor-adjustment estimators, causal diagnostics | `decision_intelligence.causal_inference` (M4) | experimentation (M6+), customer_value (incremental LTV), decision_science |
 | Point-in-time / temporal-leakage utilities | `decision_intelligence.data.point_in_time` (M2) | forecasting, recommendations, customer_value |
 
 A pillar module must depend on the owning module above. It must not reimplement an owned primitive

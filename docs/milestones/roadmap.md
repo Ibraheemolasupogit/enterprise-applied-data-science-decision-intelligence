@@ -1,6 +1,6 @@
 # Milestone roadmap
 
-Status: agreed planning roadmap, updated through Milestone 3. This is a sequence of controlled
+Status: agreed planning roadmap, updated through Milestone 4. This is a sequence of controlled
 engineering steps, not permission to implement multiple milestones in one pass. Each milestone
 requires explicit approval before implementation begins (see Milestone execution methodology below).
 
@@ -10,16 +10,16 @@ requires explicit approval before implementation begins (see Milestone execution
 | --------- | ------------------------------------------------ | -------------------------------------------------------------- | ------ |
 | M1        | Repository foundation, charter and architecture | README, standards, CI, baseline tests                        | DONE |
 | M2        | Synthetic data contracts and generation          | Reproducible datasets, schemas, quality tests                | DONE — see [../evidence/capability-status.md](../evidence/capability-status.md) and [../methodology/synthetic-data.md](../methodology/synthetic-data.md) |
-| M3        | Statistical foundations                          | Tested estimators, simulations, methodological documentation | IMPLEMENTED — awaiting review; see [../evidence/m3-statistical-foundations.md](../evidence/m3-statistical-foundations.md) and [../methodology/statistical-foundations.md](../methodology/statistical-foundations.md) |
+| M3        | Statistical foundations                          | Tested estimators, simulations, methodological documentation | DONE — see [../evidence/m3-statistical-foundations.md](../evidence/m3-statistical-foundations.md) and [../methodology/statistical-foundations.md](../methodology/statistical-foundations.md) |
 
 ## Phase B — Causal inference and experimentation
 
-| Milestone | Scope                                     | Acceptance evidence                                       |
-| --------- | ------------------------------------------- | ------------------------------------------------------------ |
-| M4        | Causal foundations, DAGs and adjustment    | Identification examples, known-effect recovery            |
-| M5        | Observational causal inference             | DiD, event study, synthetic control, RDD and diagnostics  |
-| M6        | Experimentation fundamentals               | Randomisation, power, SRM, ITT, hypothesis tests           |
-| M7        | Advanced experimentation                   | CUPED, sequential/Bayesian methods and selected designs    |
+| Milestone | Scope                                     | Acceptance evidence                                       | Status |
+| --------- | ------------------------------------------- | ------------------------------------------------------------ | ------ |
+| M4        | Causal foundations, DAGs and adjustment    | Identification examples, known-effect recovery            | IMPLEMENTED — awaiting review; see [../evidence/m4-causal-foundations.md](../evidence/m4-causal-foundations.md) and [../methodology/causal-foundations.md](../methodology/causal-foundations.md) |
+| M5        | Observational causal inference             | DiD, event study, synthetic control, RDD and diagnostics  | Not started |
+| M6        | Experimentation fundamentals               | Randomisation, power, SRM, ITT, hypothesis tests           | Not started |
+| M7        | Advanced experimentation                   | CUPED, sequential/Bayesian methods and selected designs    | Not started |
 
 ## Phase C — Personalisation and customer economics
 
@@ -67,9 +67,17 @@ completed first — milestone numbering must never be preserved at the expense o
   cluster bootstrap for few-cluster designs, exact binomial power, and penalised (Firth) logistic
   regression. See the limitations in
   [../methodology/statistical-foundations.md](../methodology/statistical-foundations.md).
-- **M4 prerequisite check** — M4 (causal foundations) consumes M3's regression, bootstrap and
-  simulation primitives and the confounded marketing campaign from M2; no further foundation work is
-  expected before M4 can start.
+- **Carried from M4** — propensity-score matching (Brief §6.4) was deliberately not shipped in M4:
+  honest inference needs the Abadie–Imbens variance (the bootstrap is invalid for matching). It
+  needs an explicit home — proposed alongside M5's observational methods. Machine-learning nuisance
+  models with cross-fitting (double machine learning) and richer heterogeneous-effect methods remain
+  unscheduled. See [../methodology/causal-foundations.md](../methodology/causal-foundations.md).
+- **M5 prerequisite check** — M5 needs panel/time-indexed outcomes around an intervention date
+  (for DiD, event studies, ITS, synthetic control) and a running variable with a threshold (for RDD).
+  The current M2 campaign has a `start_date`, but its generated effect is not tied to it (treatment is
+  a time-invariant customer attribute) and no assignment threshold exists, so M5 will need a documented, additive extension of the synthetic data (a new
+  generator/table, not a change to existing M2 contracts) before its methods can be validated
+  against known truth.
 
 ## Milestone execution methodology
 

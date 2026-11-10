@@ -18,11 +18,11 @@ The README and any other document must not claim a status more advanced than wha
 
 `PRODUCTION-READY` must never be used for this repository's synthetic, local-first demonstrations.
 
-## Pillar status — as of Milestone 3
+## Pillar status — as of Milestone 4
 
 | Pillar                                   | Status  | Notes                                              |
 | ------------------------------------------ | ------- | ---------------------------------------------------- |
-| 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal inference: PLANNED (M4–M5) | Per-capability detail in the Milestone 3 table below |
+| 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal foundations and backdoor adjustment: TESTED, SIMULATED (M4). Observational designs: PLANNED (M5) | Per-capability detail in the Milestone 3 and 4 tables below |
 | 2. A/B Testing & Experimentation          | PLANNED | Scheduled M6–M7; synthetic data foundation ready     |
 | 3. Recommender Systems                    | PLANNED | Scheduled M8–M9; synthetic data foundation ready     |
 | 4. Mathematical Optimisation / Gurobi     | PLANNED | Scheduled M12–M13; Gurobi licensing not yet verified |
@@ -30,8 +30,9 @@ The README and any other document must not claim a status more advanced than wha
 | 6. Product Sense & Decision Science       | PLANNED | Scheduled M14–M15                                    |
 | Forecasting (supporting capability)       | PLANNED | Scheduled M16; not a seventh pillar                  |
 
-Only the statistical-foundations part of Pillar 1 exists (Milestone 3). No causal-inference method,
-no other pillar's analytical methods, no case study and no dashboard exist yet. Any statement to the
+Pillar 1's statistical foundations (M3) and causal foundations with backdoor adjustment (M4) exist.
+Pillar 1's observational designs (DiD, event studies, synthetic control, RDD), every other pillar's
+analytical methods, case studies and the dashboard do not exist yet. Any statement to the
 contrary in the README or elsewhere is an error and should be corrected to match this table.
 
 Pillar 1 spans three milestones, so its row states a status per sub-scope rather than one label.
@@ -81,6 +82,29 @@ Evidence: [m3-statistical-foundations.md](m3-statistical-foundations.md) and the
 | Missing-data mechanisms and simple strategies           | TESTED, SIMULATED      | `statistics/missing_data.py`; results §5 and §11                                             |
 | Monte Carlo engine (rates, coverage, MC error)          | TESTED                 | `statistics/simulation.py`, `tests/unit/stats/test_estimators_and_simulation.py`             |
 | Applied analyses on M2 data                             | DEMONSTRATED           | `statistics/applied_analyses.py`, `scripts/generate_m3_evidence.py`, `tests/integration/test_applied_analyses.py` |
-| Causal inference (potential outcomes, DAGs, adjustment, observational designs) | PLANNED | M4–M5                                                                          |
+| Causal inference | See Milestone 4 table | M4 implemented; observational designs M5 |
 
 All M3 results are on synthetic data and simulations; none is `PRODUCTION-READY`.
+
+## Pillar 1 status — Milestone 4 (causal foundations, DAGs and adjustment)
+
+Methodology: [../methodology/causal-foundations.md](../methodology/causal-foundations.md).
+Evidence: [m4-causal-foundations.md](m4-causal-foundations.md) and the generated
+[m4-causal-foundations-results.md](m4-causal-foundations-results.md).
+
+| Capability | Status | Evidence |
+| --- | --- | --- |
+| Potential outcomes and estimands (ATE, ATT, ATC, CATE; naive = ATT + selection bias) | TESTED | `causal_inference/estimands.py`, `tests/unit/causal/test_estimators.py` |
+| Causal DAGs: d-separation, paths, backdoor criterion, adjustment sets, roles | TESTED | `causal_inference/dag.py`; networkx-verified (`tests/unit/causal/test_dag.py`) |
+| Regression adjustment, IPW (HT, Hájek), AIPW for ATE and ATT | TESTED, SIMULATED, BENCHMARKED | `causal_inference/estimators.py`; estimates and SEs checked against statsmodels `TreatmentEffect`; 200 M2 draws vs known truth and vs the naive baseline (results §7) |
+| Subgroup (conditional) effects and heterogeneity test | TESTED, SIMULATED | `subgroup_effects`, `heterogeneity_test`; results §5 |
+| Overlap, balance, weight and propensity diagnostics; trimming | TESTED, SIMULATED | `causal_inference/diagnostics.py`; results §3, §9 |
+| Sensitivity: E-value, Ding–VanderWeele bounding factor, bias-formula grid | TESTED | `causal_inference/sensitivity.py`; results §6 |
+| Negative-control outcome and DAG falsification test | DEMONSTRATED | `causal_inference/campaign.py`; results §3–4, §7 |
+| Failure cases (unmeasured confounding, post-treatment adjustment/selection, M-bias, mediator, positivity, misspecification, interference) | SIMULATED | `causal_inference/scenarios.py`, `campaign.py`; `tests/statistical/test_m4_causal_properties.py` |
+| M2 retention-offer case study | DEMONSTRATED | `causal_inference/campaign.py`, `scripts/generate_m4_evidence.py`, `tests/integration/test_campaign_analysis.py` |
+| Propensity-score matching | PLANNED | Deferred: needs Abadie–Imbens variance (roadmap open item) |
+| Observational designs (DiD, event study, ITS, synthetic control, RDD) | PLANNED | M5 |
+
+All M4 results are on synthetic data and simulations; none is `PRODUCTION-READY`. Known synthetic
+ground truth validates the code and the identification logic, not real-world external validity.
