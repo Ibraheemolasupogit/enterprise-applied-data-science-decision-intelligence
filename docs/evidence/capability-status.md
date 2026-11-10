@@ -18,11 +18,11 @@ The README and any other document must not claim a status more advanced than wha
 
 `PRODUCTION-READY` must never be used for this repository's synthetic, local-first demonstrations.
 
-## Pillar status — as of Milestone 2
+## Pillar status — as of Milestone 3
 
 | Pillar                                   | Status  | Notes                                              |
 | ------------------------------------------ | ------- | ---------------------------------------------------- |
-| 1. Statistics & Causal Inference          | PLANNED | Scheduled M3–M5; synthetic data foundation ready     |
+| 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal inference: PLANNED (M4–M5) | Per-capability detail in the Milestone 3 table below |
 | 2. A/B Testing & Experimentation          | PLANNED | Scheduled M6–M7; synthetic data foundation ready     |
 | 3. Recommender Systems                    | PLANNED | Scheduled M8–M9; synthetic data foundation ready     |
 | 4. Mathematical Optimisation / Gurobi     | PLANNED | Scheduled M12–M13; Gurobi licensing not yet verified |
@@ -30,9 +30,11 @@ The README and any other document must not claim a status more advanced than wha
 | 6. Product Sense & Decision Science       | PLANNED | Scheduled M14–M15                                    |
 | Forecasting (supporting capability)       | PLANNED | Scheduled M16; not a seventh pillar                  |
 
-No pillar's own analytical methods, case studies or dashboard exist yet — only the data foundation
-they will consume (below). Any statement to the contrary in the README or elsewhere is an error and
-should be corrected to match this table.
+Only the statistical-foundations part of Pillar 1 exists (Milestone 3). No causal-inference method,
+no other pillar's analytical methods, no case study and no dashboard exist yet. Any statement to the
+contrary in the README or elsewhere is an error and should be corrected to match this table.
+
+Pillar 1 spans three milestones, so its row states a status per sub-scope rather than one label.
 
 ## Foundation status — Milestone 1
 
@@ -57,4 +59,28 @@ should be corrected to match this table.
 | Bounded, committed sample dataset                  | DEMONSTRATED | `data/samples/`, `data/schemas/`, `scripts/generate_synthetic_dataset.py`        |
 | Methodology documentation                          | DESIGN ONLY | `docs/methodology/synthetic-data.md`                                             |
 
-No pillar's own analytical methods, case studies or dashboard exist yet.
+## Pillar 1 status — Milestone 3 (statistical foundations)
+
+Methodology: [../methodology/statistical-foundations.md](../methodology/statistical-foundations.md).
+Evidence: [m3-statistical-foundations.md](m3-statistical-foundations.md) and the generated
+[m3-statistical-foundations-results.md](m3-statistical-foundations-results.md).
+
+| Capability                                              | Status                 | Evidence                                                                                   |
+| -------------------------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------- |
+| Shared input validation                                 | TESTED                 | `common/validation.py`, `tests/unit/common/test_validation.py`                              |
+| Bootstrap CIs (percentile, basic, BCa; 1- and 2-sample)  | TESTED, SIMULATED      | `common/bootstrap.py`, `tests/unit/common/test_bootstrap.py`; coverage in results §7         |
+| Distributions and sampling (inverse transform, rejection, SRS, stratified) | TESTED | `statistics/distributions.py`, `tests/unit/stats/test_distributions.py`                    |
+| Descriptive statistics and stable moments               | TESTED                 | `statistics/descriptive.py`, `tests/unit/stats/test_descriptive.py`                          |
+| Estimator properties, sampling distributions, CLT       | TESTED, SIMULATED      | `statistics/estimators.py`; results §9                                                       |
+| Parametric and non-parametric hypothesis tests          | TESTED, SIMULATED      | `statistics/hypothesis_tests.py`; type I error in results §6                                  |
+| Effect sizes with intervals                             | TESTED                 | `statistics/effect_sizes.py`, `tests/unit/stats/test_effect_sizes.py`                        |
+| Power, sample size, minimum detectable effect           | TESTED, SIMULATED      | `statistics/power.py`; analytic vs simulated power in results §8                              |
+| OLS with classical / HC0–HC3 / cluster-robust SEs, diagnostics | TESTED, SIMULATED | `statistics/linear_regression.py`; dependence coverage in results §12                      |
+| Logistic regression, separation detection, calibration  | TESTED, BENCHMARKED    | `statistics/logistic_regression.py`; benchmarked only against a base-rate baseline on held-out customers (results §3) |
+| Bias–variance decomposition                             | TESTED, SIMULATED      | `statistics/bias_variance.py`; results §10                                                   |
+| Missing-data mechanisms and simple strategies           | TESTED, SIMULATED      | `statistics/missing_data.py`; results §5 and §11                                             |
+| Monte Carlo engine (rates, coverage, MC error)          | TESTED                 | `statistics/simulation.py`, `tests/unit/stats/test_estimators_and_simulation.py`             |
+| Applied analyses on M2 data                             | DEMONSTRATED           | `statistics/applied_analyses.py`, `scripts/generate_m3_evidence.py`, `tests/integration/test_applied_analyses.py` |
+| Causal inference (potential outcomes, DAGs, adjustment, observational designs) | PLANNED | M4–M5                                                                          |
+
+All M3 results are on synthetic data and simulations; none is `PRODUCTION-READY`.

@@ -1,6 +1,7 @@
 # Architecture overview
 
-Status: architecture-of-record as agreed at Milestone 1. No pillar code exists yet — see
+Status: architecture-of-record as agreed at Milestone 1, with shared-utility ownership updated at
+Milestone 3. Implemented capabilities are tracked only in
 [../evidence/capability-status.md](../evidence/capability-status.md).
 
 ## Purpose
@@ -88,7 +89,9 @@ To avoid duplicated statistical primitives across pillars (explicitly prohibited
 | Concern                                   | Owning module                         | Consumers                                   |
 | ------------------------------------------ | -------------------------------------- | -------------------------------------------- |
 | Deterministic seeding                      | `decision_intelligence.common.seeding` | all pillars                                  |
-| Bootstrap / confidence-interval helpers    | `decision_intelligence.common` (future)| statistics, experimentation, decision_science|
+| Bootstrap / confidence-interval helpers    | `decision_intelligence.common.bootstrap` (M3) | statistics, experimentation, decision_science|
+| Statistical input validation               | `decision_intelligence.common.validation` (M3) | all pillars                                  |
+| Hypothesis tests, effect sizes, power, regression | `decision_intelligence.statistics` (M3) | causal_inference, experimentation, customer_value, decision_science |
 | Point-in-time / temporal-leakage utilities | `decision_intelligence.data.point_in_time` (M2) | forecasting, recommendations, customer_value |
 
 A pillar module must depend on the owning module above. It must not reimplement an owned primitive

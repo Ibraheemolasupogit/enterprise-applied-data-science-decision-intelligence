@@ -33,6 +33,7 @@ classifiers = [
 dependencies = [
   "numpy>=2.0,<3",
   "pandas>=2.2,<3",
+  "scipy>=1.13,<2",
 ]
 
 [project.optional-dependencies]
@@ -41,6 +42,7 @@ dev = [
   "pandas-stubs>=2.2",
   "pytest>=8.2",
   "ruff>=0.5",
+  "statsmodels>=0.14.2,<1",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -64,3 +66,10 @@ python_version = "3.11"
 mypy_path = "src"
 explicit_package_bases = true
 strict = true
+
+# SciPy and statsmodels ship without inline type information. Every call into
+# them from src/ is wrapped so values are converted to concrete float/ndarray
+# types at the boundary; statsmodels is a test-only reference oracle.
+[[tool.mypy.overrides]]
+module = ["scipy", "scipy.*", "statsmodels", "statsmodels.*"]
+ignore_missing_imports = true

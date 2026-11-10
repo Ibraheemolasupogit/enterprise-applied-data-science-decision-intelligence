@@ -1,6 +1,6 @@
 # Milestone roadmap
 
-Status: agreed planning roadmap, updated through Milestone 2. This is a sequence of controlled
+Status: agreed planning roadmap, updated through Milestone 3. This is a sequence of controlled
 engineering steps, not permission to implement multiple milestones in one pass. Each milestone
 requires explicit approval before implementation begins (see Milestone execution methodology below).
 
@@ -10,7 +10,7 @@ requires explicit approval before implementation begins (see Milestone execution
 | --------- | ------------------------------------------------ | -------------------------------------------------------------- | ------ |
 | M1        | Repository foundation, charter and architecture | README, standards, CI, baseline tests                        | DONE |
 | M2        | Synthetic data contracts and generation          | Reproducible datasets, schemas, quality tests                | DONE — see [../evidence/capability-status.md](../evidence/capability-status.md) and [../methodology/synthetic-data.md](../methodology/synthetic-data.md) |
-| M3        | Statistical foundations                          | Tested estimators, simulations, methodological documentation | Not started |
+| M3        | Statistical foundations                          | Tested estimators, simulations, methodological documentation | IMPLEMENTED — awaiting review; see [../evidence/m3-statistical-foundations.md](../evidence/m3-statistical-foundations.md) and [../methodology/statistical-foundations.md](../methodology/statistical-foundations.md) |
 
 ## Phase B — Causal inference and experimentation
 
@@ -59,11 +59,17 @@ completed first — milestone numbering must never be preserved at the expense o
 
 - **Gurobi licensing** — not yet confirmed. M12/M13 must not assume a specific licence tier until this
   is resolved; HiGHS/SciPy is the CI-safe default regardless of outcome.
-- **Shared-primitive interfaces** — seeding (M1) and point-in-time utilities (M2) are implemented and
-  tested (see [../architecture/overview.md](../architecture/overview.md)); the bootstrap/confidence-
-  interval helper is still only planned and should land with M3, which is its first real consumer.
-- **M3 prerequisite check** — M3 (statistical foundations) consumes the customer, transaction and
-  retention tables built in M2; no additional data-foundation work is expected before M3 can start.
+- **Shared-primitive interfaces** — seeding (M1), point-in-time utilities (M2), input validation and
+  the bootstrap/confidence-interval helper (M3, `decision_intelligence.common`) are implemented and
+  tested (see [../architecture/overview.md](../architecture/overview.md)).
+- **Carried from M3 to later milestones** — multiple-testing corrections (needed by M6), proper
+  multiple imputation / IPW for missingness and MNAR sensitivity analysis (M4/M5 as needed), wild-
+  cluster bootstrap for few-cluster designs, exact binomial power, and penalised (Firth) logistic
+  regression. See the limitations in
+  [../methodology/statistical-foundations.md](../methodology/statistical-foundations.md).
+- **M4 prerequisite check** — M4 (causal foundations) consumes M3's regression, bootstrap and
+  simulation primitives and the confounded marketing campaign from M2; no further foundation work is
+  expected before M4 can start.
 
 ## Milestone execution methodology
 
