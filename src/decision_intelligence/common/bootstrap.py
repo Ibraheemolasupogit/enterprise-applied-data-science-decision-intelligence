@@ -235,7 +235,7 @@ def bca_acceleration(
             reduced[index] = np.delete(sample, i)
             values[i] = _evaluate(statistic, reduced)
         n = sample.size
-        influence = (n - 1) * (values.mean() - values)
+        influence = (n - 1) * (float(values.mean()) - values)
         numerator += float(np.sum(influence**3)) / n**3
         denominator += float(np.sum(influence**2)) / n**2
     if denominator <= 0.0:

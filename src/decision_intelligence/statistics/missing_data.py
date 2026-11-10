@@ -77,7 +77,7 @@ def _standardise(values: FloatArray) -> FloatArray:
     sd = float(values.std())
     if sd == 0:
         raise ValueError("missingness driver is constant; cannot induce MAR/MNAR from it")
-    return (values - values.mean()) / sd
+    return (values - float(values.mean())) / sd
 
 
 def missingness_mask(

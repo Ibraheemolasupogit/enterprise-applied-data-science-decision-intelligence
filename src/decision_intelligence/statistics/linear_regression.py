@@ -353,7 +353,7 @@ def ols_diagnostics(result: LinearRegressionResult) -> OLSDiagnostics:
         bp_statistic = n * auxiliary.r_squared
         bp_p_value = float(stats.chi2.sf(bp_statistic, k - 1))
 
-    centred = residuals - residuals.mean()
+    centred = residuals - float(residuals.mean())
     m2 = float(np.mean(centred**2))
     skew = float(np.mean(centred**3)) / m2**1.5 if m2 > 0 else 0.0
     kurt = float(np.mean(centred**4)) / m2**2 if m2 > 0 else 3.0

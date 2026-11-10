@@ -117,7 +117,7 @@ def skewness(values: ArrayLike) -> float:
     """Adjusted Fisher–Pearson sample skewness ``G1`` (NaN for constant data)."""
     x = as_float_array(values, name="values", min_size=3)
     n = x.size
-    centred = x - x.mean()
+    centred = x - float(x.mean())
     m2 = float(np.mean(centred**2))
     if m2 == 0.0:
         return math.nan
@@ -130,7 +130,7 @@ def excess_kurtosis(values: ArrayLike) -> float:
     """Bias-adjusted sample excess kurtosis ``G2`` (NaN for constant data)."""
     x = as_float_array(values, name="values", min_size=4)
     n = x.size
-    centred = x - x.mean()
+    centred = x - float(x.mean())
     m2 = float(np.mean(centred**2))
     if m2 == 0.0:
         return math.nan
@@ -224,4 +224,4 @@ def standardise(values: ArrayLike) -> FloatArray:
     std = float(np.std(x, ddof=1))
     if std == 0.0:
         raise ValueError("cannot standardise constant data (standard deviation is zero)")
-    return (x - x.mean()) / std
+    return (x - float(x.mean())) / std

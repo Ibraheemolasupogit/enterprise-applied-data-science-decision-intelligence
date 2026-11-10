@@ -255,7 +255,7 @@ def stratified_sample(
         raise ValueError("every stratum must contain at least two population units")
 
     if allocation == "proportional":
-        ideal = sample_size * counts / counts.sum()
+        ideal = sample_size * counts / int(counts.sum())
     elif allocation == "equal":
         ideal = np.full(unique.size, sample_size / unique.size)
     else:
