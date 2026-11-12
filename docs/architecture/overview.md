@@ -94,6 +94,9 @@ To avoid duplicated statistical primitives across pillars (explicitly prohibited
 | Hypothesis tests, effect sizes, power, regression | `decision_intelligence.statistics` (M3) | causal_inference, experimentation, customer_value, decision_science |
 | Causal estimands, DAG logic, backdoor-adjustment estimators, causal diagnostics | `decision_intelligence.causal_inference` (M4) | experimentation (M6+), customer_value (incremental LTV), decision_science |
 | DiD/event studies, synthetic control, RDD, wild cluster bootstrap | `decision_intelligence.causal_inference` (M5: `did`, `synthetic_control`, `rdd`, `cluster_inference`) | experimentation (M6+), forecasting (M16), decision_science |
+| Experiment design, assignment, SRM, planning, ITT analysis, compliance, validity checks, decision rules | `decision_intelligence.experimentation` (M6) | experimentation (M7), recommendations (M9 online evaluation), decision_science |
+| Multiple-testing corrections | `decision_intelligence.statistics.multiple_testing` (M6) | experimentation, recommendations, product_analytics |
+| Experiment populations with known potential outcomes | `decision_intelligence.data.experiment_scenarios` (M6; additive, independent of the M2 pipeline) | experimentation |
 | Time-indexed and threshold synthetic datasets | `decision_intelligence.data` (M5: `rollout_panel`, `synthetic_control_panel`, `threshold_assignment`; additive, independent of the M2 pipeline) | causal_inference, experimentation, forecasting |
 | Point-in-time / temporal-leakage utilities | `decision_intelligence.data.point_in_time` (M2) | forecasting, recommendations, customer_value |
 

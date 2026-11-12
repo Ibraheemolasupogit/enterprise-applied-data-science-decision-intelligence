@@ -1,6 +1,6 @@
 # Milestone roadmap
 
-Status: agreed planning roadmap, updated through Milestone 5. This is a sequence of controlled
+Status: agreed planning roadmap, updated through Milestone 6. This is a sequence of controlled
 engineering steps, not permission to implement multiple milestones in one pass. Each milestone
 requires explicit approval before implementation begins (see Milestone execution methodology below).
 
@@ -17,8 +17,8 @@ requires explicit approval before implementation begins (see Milestone execution
 | Milestone | Scope                                     | Acceptance evidence                                       | Status |
 | --------- | ------------------------------------------- | ------------------------------------------------------------ | ------ |
 | M4        | Causal foundations, DAGs and adjustment    | Identification examples, known-effect recovery            | DONE — see [../evidence/m4-causal-foundations.md](../evidence/m4-causal-foundations.md) and [../methodology/causal-foundations.md](../methodology/causal-foundations.md) |
-| M5        | Observational causal inference             | DiD, event study, synthetic control, RDD and diagnostics  | IMPLEMENTED — awaiting review; see [../evidence/m5-observational-causal-inference.md](../evidence/m5-observational-causal-inference.md) and [../methodology/observational-causal-inference.md](../methodology/observational-causal-inference.md) |
-| M6        | Experimentation fundamentals               | Randomisation, power, SRM, ITT, hypothesis tests           | Not started |
+| M5        | Observational causal inference             | DiD, event study, synthetic control, RDD and diagnostics  | DONE — see [../evidence/m5-observational-causal-inference.md](../evidence/m5-observational-causal-inference.md) and [../methodology/observational-causal-inference.md](../methodology/observational-causal-inference.md) |
+| M6        | Experimentation fundamentals               | Randomisation, power, SRM, ITT, hypothesis tests           | IMPLEMENTED — awaiting review; see [../evidence/m6-experimentation-fundamentals.md](../evidence/m6-experimentation-fundamentals.md) and [../methodology/experimentation-fundamentals.md](../methodology/experimentation-fundamentals.md) |
 | M7        | Advanced experimentation                   | CUPED, sequential/Bayesian methods and selected designs    | Not started |
 
 ## Phase C — Personalisation and customer economics
@@ -62,8 +62,7 @@ completed first — milestone numbering must never be preserved at the expense o
 - **Shared-primitive interfaces** — seeding (M1), point-in-time utilities (M2), input validation and
   the bootstrap/confidence-interval helper (M3, `decision_intelligence.common`) are implemented and
   tested (see [../architecture/overview.md](../architecture/overview.md)).
-- **Carried from M3 to later milestones** — multiple-testing corrections (needed by M6), proper
-  multiple imputation / IPW for missingness and MNAR sensitivity analysis, exact binomial power, and
+- **Carried from M3 to later milestones** — proper multiple imputation / IPW for missingness and MNAR sensitivity analysis, exact binomial power, and
   penalised (Firth) logistic regression. (The wild cluster bootstrap was delivered in M5.) See the limitations in
   [../methodology/statistical-foundations.md](../methodology/statistical-foundations.md).
 - **Carried from M4** — propensity-score matching (Brief §6.4) was deliberately not shipped in M4
@@ -76,9 +75,13 @@ completed first — milestone numbering must never be preserved at the expense o
   control, conformal inference for synthetic control, or honest-DiD sensitivity bounds for
   parallel-trends violations. M5's datasets are additive generators in `data/` (no M2 contract
   changed). See [../methodology/observational-causal-inference.md](../methodology/observational-causal-inference.md).
-- **M6 prerequisite check** — M6 (experimentation fundamentals) can build on M2's randomised
-  experiment, M3's tests/power primitives and M4/M5's estimators; multiple-testing corrections
-  (carried from M3) are needed there.
+- **Delivered in M6** — multiple-testing corrections (carried from M3) now live in
+  `statistics/multiple_testing.py`; an M3 defect (NaN noncentral-t power at large noncentrality
+  under SciPy 1.18) was fixed with a regression test.
+- **Carried from M6 to M7** — CUPED and pre-specified covariate adjustment, sequential testing and
+  peeking, Bayesian experimentation, cluster-randomised power with estimated ICCs, switchback and geo
+  designs, interference, heterogeneous effects, winner's-curse correction for A/B/n, and exact
+  binomial planning. See [../methodology/experimentation-fundamentals.md](../methodology/experimentation-fundamentals.md).
 
 ## Milestone execution methodology
 

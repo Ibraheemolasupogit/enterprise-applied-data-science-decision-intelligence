@@ -35,15 +35,41 @@ from decision_intelligence.common.validation import (
 _MAX_SAMPLE_SIZE = 100_000_000
 
 
+def _upper_tail(critical: float, df: float, ncp: float) -> float:
+    """``P(T > critical)`` for ``T ~ nct(df, ncp)``, ``critical > 0``.
+
+    SciPy's noncentral t can return NaN deep in a tail (e.g. SciPy 1.18:
+    ``nct.cdf(-1.98, 98, 9)``). Such a tail is bounded by ``P(T > 0) =
+    Phi(ncp)``; when that bound is negligible the tail is returned as 0,
+    otherwise the failure is raised rather than propagated as NaN.
+    """
+    value = float(stats.nct.sf(critical, df, ncp))
+    if math.isfinite(value):
+        return value
+    if float(stats.norm.cdf(ncp)) < 1e-12:
+        return 0.0
+    raise FloatingPointError(f"noncentral t upper tail is not finite (df={df}, ncp={ncp})")
+
+
+def _lower_tail(critical: float, df: float, ncp: float) -> float:
+    """``P(T < -critical)``; bounded by ``P(T < 0) = Phi(-ncp)`` (see :func:`_upper_tail`)."""
+    value = float(stats.nct.cdf(-critical, df, ncp))
+    if math.isfinite(value):
+        return value
+    if float(stats.norm.cdf(-ncp)) < 1e-12:
+        return 0.0
+    raise FloatingPointError(f"noncentral t lower tail is not finite (df={df}, ncp={ncp})")
+
+
 def _t_power(ncp: float, df: float, alpha: float, alternative: str) -> float:
     alt = require_alternative(alternative)
     if alt == "two-sided":
         critical = float(stats.t.ppf(1 - alpha / 2, df))
-        return float(stats.nct.sf(critical, df, ncp) + stats.nct.cdf(-critical, df, ncp))
+        return _upper_tail(critical, df, ncp) + _lower_tail(critical, df, ncp)
     critical = float(stats.t.ppf(1 - alpha, df))
     if alt == "greater":
-        return float(stats.nct.sf(critical, df, ncp))
-    return float(stats.nct.cdf(-critical, df, ncp))
+        return _upper_tail(critical, df, ncp)
+    return _lower_tail(critical, df, ncp)
 
 
 def power_two_sample_t(

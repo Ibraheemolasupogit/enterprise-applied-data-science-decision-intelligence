@@ -19,6 +19,8 @@ Modules:
   detection; discrimination and calibration diagnostics.
 * :mod:`.bias_variance` — simulated bias–variance decomposition.
 * :mod:`.missing_data` — MCAR/MAR/MNAR mechanisms and simple strategies.
+* :mod:`.multiple_testing` — Bonferroni, Holm, Benjamini–Hochberg and
+  Benjamini–Yekutieli corrections (added in M6, where first needed).
 * :mod:`.applied_analyses` — the above applied to the M2 synthetic data.
 
 Bootstrap intervals live in :mod:`decision_intelligence.common.bootstrap`
@@ -26,5 +28,6 @@ Bootstrap intervals live in :mod:`decision_intelligence.common.bootstrap`
 :mod:`decision_intelligence.common.validation`.
 
 Causal identification (M4), observational causal methods (M5) and
-experimentation infrastructure (M6+) are deliberately not here.
+experimentation infrastructure (M6, ``decision_intelligence.experimentation``)
+are deliberately not here.
 """

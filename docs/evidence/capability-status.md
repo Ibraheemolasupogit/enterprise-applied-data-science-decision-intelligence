@@ -18,12 +18,12 @@ The README and any other document must not claim a status more advanced than wha
 
 `PRODUCTION-READY` must never be used for this repository's synthetic, local-first demonstrations.
 
-## Pillar status — as of Milestone 5
+## Pillar status — as of Milestone 6
 
 | Pillar                                   | Status  | Notes                                              |
 | ------------------------------------------ | ------- | ---------------------------------------------------- |
 | 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal foundations and backdoor adjustment: TESTED, SIMULATED (M4). Observational designs (DiD, event study, synthetic control, sharp RDD): TESTED, SIMULATED (M5). ITS, fuzzy RDD, matching: PLANNED | Per-capability detail in the Milestone 3, 4 and 5 tables below |
-| 2. A/B Testing & Experimentation          | PLANNED | Scheduled M6–M7; synthetic data foundation ready     |
+| 2. A/B Testing & Experimentation          | Experimentation fundamentals (assignment, SRM, planning, ITT analysis, noncompliance/attrition, validity checks, decision rules): TESTED, SIMULATED (M6). Advanced experimentation: PLANNED (M7) | Per-capability detail in the Milestone 6 table below |
 | 3. Recommender Systems                    | PLANNED | Scheduled M8–M9; synthetic data foundation ready     |
 | 4. Mathematical Optimisation / Gurobi     | PLANNED | Scheduled M12–M13; Gurobi licensing not yet verified |
 | 5. Customer Lifetime Value                | PLANNED | Scheduled M10–M11; synthetic data foundation ready   |
@@ -32,8 +32,9 @@ The README and any other document must not claim a status more advanced than wha
 
 Pillar 1's statistical foundations (M3), causal foundations with backdoor adjustment (M4) and
 observational designs — difference-in-differences, event studies, synthetic control and sharp
-regression discontinuity (M5) — exist. Interrupted time series, fuzzy RDD and propensity-score
-matching, every other pillar's analytical methods, case studies and the dashboard do not exist yet. Any statement to the
+regression discontinuity (M5) — exist, as do Pillar 2's experimentation fundamentals (M6).
+Interrupted time series, fuzzy RDD and propensity-score matching, advanced experimentation (M7),
+every other pillar's analytical methods, case studies and the dashboard do not exist yet. Any statement to the
 contrary in the README or elsewhere is an error and should be corrected to match this table.
 
 Pillar 1 spans three milestones, so its row states a status per sub-scope rather than one label.
@@ -129,3 +130,26 @@ generated [m5-observational-causal-inference-results.md](m5-observational-causal
 | Interrupted time series, fuzzy RDD, synthetic DiD, conformal SC inference, honest-DiD bounds | PLANNED | Not scheduled; see roadmap |
 
 All M5 results are on synthetic data and simulations; none is `PRODUCTION-READY`.
+
+## Pillar 2 status — Milestone 6 (experimentation fundamentals)
+
+Methodology: [../methodology/experimentation-fundamentals.md](../methodology/experimentation-fundamentals.md).
+Evidence: [m6-experimentation-fundamentals.md](m6-experimentation-fundamentals.md) and the
+generated [m6-experimentation-fundamentals-results.md](m6-experimentation-fundamentals-results.md).
+
+| Capability | Status | Evidence |
+| --- | --- | --- |
+| Pre-specified design (units, estimand, metrics, worthwhile effect, guardrail margins) | TESTED | `experimentation/design.py` |
+| Deterministic hash, complete, stratified and cluster randomisation | TESTED, SIMULATED | `experimentation/assignment.py`; `tests/unit/experimentation/test_assignment_and_srm.py` |
+| Sample ratio mismatch detection and localisation (not diagnosis) | TESTED, SIMULATED | `experimentation/srm.py`; SciPy reference; results §3, §5 |
+| Planning: sample size, MDE, duration, design effect | TESTED, SIMULATED | `experimentation/planning.py` (M3 power); closed-form and statsmodels references; results §6 |
+| ITT analysis of binary and continuous metrics; stratified, clustered and A/B/n analyses | TESTED, SIMULATED, BENCHMARKED | `experimentation/analysis.py`; statsmodels/SciPy references; results §4, §8 |
+| Noncompliance (ITT, CACE) and attrition (Lee, Manski bounds) | TESTED, SIMULATED, BENCHMARKED | `experimentation/compliance.py`; 2SLS reference; results §7 |
+| Validity checks (duplicates, leakage, balance, exclusions, metric integrity, post-randomisation selection) | TESTED, SIMULATED | `experimentation/validity.py`; results §1, §3, §10 |
+| Multiple-testing corrections (Bonferroni, Holm, BH, BY) | TESTED, SIMULATED | `statistics/multiple_testing.py`; statsmodels reference; results §9 |
+| Decision rules (LAUNCH/HOLD/ITERATE/STOP) with guardrails and business value | TESTED, SIMULATED | `experimentation/decision.py`; operating characteristics in results §9 |
+| Additive experiment scenario generator with known potential outcomes | TESTED | `data/experiment_scenarios.py`; `tests/unit/data/test_experiment_scenarios.py` |
+| M2 experiment and scenario case studies | DEMONSTRATED | `experimentation/cases.py`, `scripts/generate_m6_evidence.py`, `tests/integration/test_m6_case_studies.py` |
+| CUPED/covariate adjustment, sequential and Bayesian testing, switchback/geo, interference, bandits | PLANNED | M7 |
+
+All M6 results are on synthetic data and simulations; none is `PRODUCTION-READY`.

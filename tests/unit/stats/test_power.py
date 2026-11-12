@@ -100,3 +100,58 @@ def test_power_increases_with_sample_size_and_effect() -> None:
 def test_invalid_designs_raise(call: object, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         call()  # type: ignore[operator]
+
+
+def test_t_power_is_finite_for_large_noncentrality() -> None:
+    """Regression test (found in M6): SciPy's nct.cdf returns NaN deep in the lower tail
+    (e.g. df = 98, ncp ~ 9-20), which made power NaN and the MDE solver fail at
+    experiment-scale sample sizes."""
+    from statsmodels.stats.power import TTestIndPower
+
+    from decision_intelligence.statistics.power import (
+        minimum_detectable_effect_two_sample_t,
+        power_two_sample_t,
+    )
+
+    for n, d in ((50, 2.0), (50, 3.0), (2000, 0.5), (50, -2.0)):
+        value = power_two_sample_t(d, n)
+        assert math.isfinite(value) and value == pytest.approx(1.0, abs=1e-9)
+    for n in (1000, 2000, 6000):
+        mde = minimum_detectable_effect_two_sample_t(n, n)
+        reference = TTestIndPower().solve_power(nobs1=n, power=0.8, alpha=0.05, ratio=1.0)
+        assert mde == pytest.approx(reference, rel=1e-4)  # statsmodels solver tolerance
+
+
+def _nan(*_args: object, **_kwargs: object) -> float:
+    return math.nan
+
+
+def test_t_power_nan_tail_fallback_is_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The NaN fallback (M6 fix) replaces a non-finite tail by 0 only when the tail is provably
+    below 1e-12 (``P(T < -c) <= P(T < 0) = Phi(-ncp)``), so power changes by at most 1e-12.
+    NaN is injected so the branch is exercised on every SciPy version."""
+    ncp = 2.0 * math.sqrt(50 * 50 / 100)  # d = 2, 50 per arm -> ncp = 10
+    critical = float(stats.t.ppf(0.975, 98))
+    dominant = float(stats.nct.sf(critical, 98, ncp))  # P(T > c); the other tail < Phi(-10)
+    assert math.isfinite(dominant) and stats.norm.cdf(-ncp) < 1e-12
+    with monkeypatch.context() as patch:
+        patch.setattr(stats.nct, "cdf", _nan)  # lower tail fails
+        value = pw.power_two_sample_t(2.0, 50)
+        assert math.isfinite(value) and abs(value - dominant) <= 1e-12
+    with monkeypatch.context() as patch:
+        patch.setattr(stats.nct, "sf", _nan)  # upper tail fails (negative effect, mirror image)
+        value = pw.power_two_sample_t(-2.0, 50)
+        assert math.isfinite(value) and abs(value - dominant) <= 1e-12
+
+
+def test_t_power_nan_tail_is_raised_when_not_negligible(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-finite tail that could be material is an error, never silently 0 or NaN: the fix
+    does not weaken the M3 contract (finite, accurate power or an exception)."""
+    with monkeypatch.context() as patch:
+        patch.setattr(stats.nct, "cdf", _nan)
+        with pytest.raises(FloatingPointError, match="lower tail"):
+            pw.power_two_sample_t(0.1, 50)  # ncp = 0.5: Phi(-0.5) = 0.31
+    with monkeypatch.context() as patch:
+        patch.setattr(stats.nct, "sf", _nan)
+        with pytest.raises(FloatingPointError, match="upper tail"):
+            pw.power_two_sample_t(0.1, 50, alternative="greater")
