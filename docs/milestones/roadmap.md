@@ -1,6 +1,6 @@
 # Milestone roadmap
 
-Status: agreed planning roadmap, updated through Milestone 8. This is a sequence of controlled
+Status: agreed planning roadmap, updated through Milestone 9. This is a sequence of controlled
 engineering steps, not permission to implement multiple milestones in one pass. Each milestone
 requires explicit approval before implementation begins (see Milestone execution methodology below).
 
@@ -25,8 +25,8 @@ requires explicit approval before implementation begins (see Milestone execution
 
 | Milestone | Scope                                 | Acceptance evidence                                        | Status |
 | --------- | --------------------------------------- | ------------------------------------------------------------ | ------ |
-| M8        | Recommendation baselines                | Relevance, coverage and leakage-controlled benchmarks      | IMPLEMENTED — awaiting review; see [../evidence/m8-recommendation-baselines.md](../evidence/m8-recommendation-baselines.md) and [../methodology/recommender-baselines.md](../methodology/recommender-baselines.md) |
-| M9        | Advanced recommendation and ranking     | Model comparisons, cold-start and operational evaluation   | PLANNED |
+| M8        | Recommendation baselines                | Relevance, coverage and leakage-controlled benchmarks      | DONE — approved after scientific assurance review, committed (`2d6b8e7`), CI passing on Python 3.11 and 3.12; see [../evidence/m8-recommendation-baselines.md](../evidence/m8-recommendation-baselines.md) and [../methodology/recommender-baselines.md](../methodology/recommender-baselines.md) |
+| M9        | Advanced recommendation and ranking     | Model comparisons, cold-start and operational evaluation   | IMPLEMENTED — awaiting review; see [../evidence/m9-advanced-recommendation.md](../evidence/m9-advanced-recommendation.md) and [../methodology/advanced-recommendation.md](../methodology/advanced-recommendation.md) |
 | M10       | LTV foundations                         | Historical/heuristic LTV and customer economics            | PLANNED |
 | M11       | Predictive and incremental LTV          | Temporal validation, survival/probabilistic models, uplift | PLANNED |
 
@@ -101,6 +101,17 @@ completed first — milestone numbering must never be preserved at the expense o
   scale, self-normalised and doubly robust off-policy estimators, and online A/B evaluation of a
   recommender with the M6/M7 machinery. See
   [../methodology/recommender-baselines.md](../methodology/recommender-baselines.md).
+- **Delivered in M9** — implicit ALS, BPR (uniform and exposure-aware negatives), EASE, a shallow
+  two-tower model with exact and approximate retrieval, two-stage pointwise and LambdaRank-style
+  ranking (naive and propensity-weighted), a score-blend hybrid, cold-start strategies, SNIPS and
+  doubly robust off-policy estimation with studentised cluster-bootstrap intervals, operational
+  benchmarks with preflight memory checks, and a SIMULATED user-randomised A/B evaluation analysed
+  with the M6/M7 components — under a protocol frozen in `recommendations/protocol.py`. Additive:
+  no M1–M8 implementation, contract or evidence was changed.
+- **Carried from M9** (deferred, not scheduled) — LambdaMART / gradient-boosted ranking, deep
+  neural ranking, session-based and context-aware models, long-term retention, interference and
+  feedback-loop simulation. See
+  [../methodology/advanced-recommendation.md](../methodology/advanced-recommendation.md).
 
 ## Milestone execution methodology
 

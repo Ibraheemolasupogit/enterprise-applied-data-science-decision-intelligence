@@ -103,6 +103,8 @@ To avoid duplicated statistical primitives across pillars (explicitly prohibited
 | Point-in-time / temporal-leakage utilities | `decision_intelligence.data.point_in_time` (M2) | forecasting, recommendations, customer_value |
 | Recommendation logs with known preferences, propensities and position bias | `decision_intelligence.data.recommendation_scenarios` (M8; additive, independent of the M2 pipeline) | recommendations |
 | Interaction matrices, chronological splits, recommender baselines, ranking/exposure metrics, IPS and oracle evaluation | `decision_intelligence.recommendations` (M8: `interactions`, `splits`, `baselines`, `explicit`, `metrics`, `evaluation`, `off_policy`, `oracle`) | recommendations (M9), optimisation (as plain value arrays), customer_value, decision_science |
+| Factorisation, two-tower retrieval, two-stage ranking, hybrid, cold start, SNIPS/DR, operational benchmarks, simulated online evaluation | `decision_intelligence.recommendations` (M9: `protocol`, `factorisation`, `two_tower`, `retrieval`, `candidates`, `features`, `ranking`, `hybrid`, `cold_start`, `off_policy_advanced`, `operational`, `online`, `advanced_cases`) | optimisation (as plain value arrays), customer_value, decision_science |
+| Simulated online period under chosen policies (SIMULATED outcomes with exact expected values) | `decision_intelligence.data.recommendation_experiments` (M9; additive) | recommendations |
 
 A pillar module must depend on the owning module above. It must not reimplement an owned primitive
 locally, even approximately.

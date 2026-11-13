@@ -18,6 +18,19 @@
   the one module that reads ground truth).
 * :mod:`.cases` — the case studies behind the M8 evidence.
 
-Training, tuning and model selection accept logged data only; ground truth enters only
-through :mod:`.oracle`, after the fact.
+Milestone 9 (advanced recommendation and ranking), additive:
+
+* :mod:`.protocol` — the frozen evaluation protocol (seeds, windows, grids, A/B design).
+* :mod:`.factorisation` — implicit ALS, BPR and EASE; :mod:`.two_tower` and :mod:`.retrieval` —
+  a shallow two-tower model with exact and approximate search.
+* :mod:`.candidates`, :mod:`.features`, :mod:`.ranking` — two-stage learning-to-rank (pointwise,
+  LambdaRank-style, propensity-weighted); :mod:`.hybrid` — score blend; :mod:`.cold_start`.
+* :mod:`.off_policy_advanced` — SNIPS, doubly robust estimation, bootstrap intervals.
+* :mod:`.operational` — latency, throughput, size and memory benchmarks with preflight checks.
+* :mod:`.online` — SIMULATED user-randomised A/B evaluation with the M6/M7 components.
+* :mod:`.advanced_cases` — the case studies behind the M9 evidence.
+
+Training, tuning and model selection accept logged data only; ground truth enters only through
+the evaluation layer (:mod:`.oracle`, and in M9 :mod:`.online` and :mod:`.advanced_cases`), after
+the fact.
 """

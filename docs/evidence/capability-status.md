@@ -18,13 +18,13 @@ The README and any other document must not claim a status more advanced than wha
 
 `PRODUCTION-READY` must never be used for this repository's synthetic, local-first demonstrations.
 
-## Pillar status — as of Milestone 8
+## Pillar status — as of Milestone 9
 
 | Pillar                                   | Status  | Notes                                              |
 | ------------------------------------------ | ------- | ---------------------------------------------------- |
 | 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal foundations and backdoor adjustment: TESTED, SIMULATED (M4). Observational designs (DiD, event study, synthetic control, sharp RDD): TESTED, SIMULATED (M5). ITS, fuzzy RDD, matching: PLANNED | Per-capability detail in the Milestone 3, 4 and 5 tables below |
 | 2. A/B Testing & Experimentation          | Experimentation fundamentals (assignment, SRM, planning, ITT analysis, noncompliance/attrition, validity checks, decision rules): TESTED, SIMULATED (M6). Advanced experimentation (CUPED/regression adjustment, group-sequential and always-valid inference, Bayesian analysis, cluster-randomised planning, switchback): TESTED, SIMULATED, BENCHMARKED (M7). Geo, interference, bandits, heterogeneous and long-term effects: PLANNED | Per-capability detail in the Milestone 6 and 7 tables below |
-| 3. Recommender Systems                    | Recommendation baselines (popularity, segment popularity, item/user kNN, content-based, PureSVD, explicit-ratings bias model), chronological evaluation, ranking/exposure/fairness metrics, IPS and simulated online value: IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M8, awaiting review). Advanced retrieval/ranking, cold-start strategies, operational and online evaluation: PLANNED (M9) | Per-capability detail in the Milestone 8 table below |
+| 3. Recommender Systems                    | Recommendation baselines (popularity, segment popularity, item/user kNN, content-based, PureSVD, explicit-ratings bias model), chronological evaluation, ranking/exposure/fairness metrics, IPS and simulated online value: IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M8). Advanced recommendation and ranking (ALS, BPR, EASE, two-tower retrieval, learning-to-rank, hybrid, cold-start strategies, SNIPS/DR, operational benchmarks, SIMULATED A/B evaluation): IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M9, awaiting review). LambdaMART, deep neural, session-based and context-aware models, long-term retention: PLANNED (not scheduled) | Per-capability detail in the Milestone 8 and 9 tables below |
 | 4. Mathematical Optimisation / Gurobi     | PLANNED | Scheduled M12–M13; Gurobi licensing not yet verified |
 | 5. Customer Lifetime Value                | PLANNED | Scheduled M10–M11; synthetic data foundation ready   |
 | 6. Product Sense & Decision Science       | PLANNED | Scheduled M14–M15                                    |
@@ -33,10 +33,11 @@ The README and any other document must not claim a status more advanced than wha
 Pillar 1's statistical foundations (M3), causal foundations with backdoor adjustment (M4) and
 observational designs — difference-in-differences, event studies, synthetic control and sharp
 regression discontinuity (M5) — exist, as do Pillar 2's experimentation fundamentals (M6) and
-advanced experimentation (M7), and Pillar 3's recommendation baselines (M8). Interrupted time
-series, fuzzy RDD and propensity-score matching, geo/interference experiments and bandits, advanced
-recommenders (M9), every other pillar's analytical methods, case studies and the dashboard do not
-exist yet. Any statement to the
+advanced experimentation (M7), and Pillar 3's recommendation baselines (M8) and advanced
+recommendation and ranking (M9). Interrupted time series, fuzzy RDD and propensity-score matching,
+geo/interference experiments and bandits, the deferred recommender methods (LambdaMART, deep
+neural, session-based and context-aware models), every other pillar's analytical methods, case
+studies and the dashboard do not exist yet. Any statement to the
 contrary in the README or elsewhere is an error and should be corrected to match this table.
 
 Pillar 1 spans three milestones, so its row states a status per sub-scope rather than one label.
@@ -177,7 +178,7 @@ Evidence: [m7-advanced-experimentation.md](m7-advanced-experimentation.md) and t
 
 All M7 results are on synthetic data and simulations; none is `PRODUCTION-READY`.
 
-## Pillar 3 status — Milestone 8 (recommendation baselines) — IMPLEMENTED, awaiting review
+## Pillar 3 status — Milestone 8 (recommendation baselines) — DONE
 
 Methodology: [../methodology/recommender-baselines.md](../methodology/recommender-baselines.md).
 Evidence: [m8-recommendation-baselines.md](m8-recommendation-baselines.md) and the generated
@@ -195,7 +196,29 @@ Evidence: [m8-recommendation-baselines.md](m8-recommendation-baselines.md) and t
 | Position-aware IPS with examination estimated from logs, clipping, ESS and positivity diagnostics | TESTED, SIMULATED | `recommendations/off_policy.py`; loop reference; repeated sampling; results §11 |
 | Exposure fairness (category) and segment/region performance | TESTED, SIMULATED | `recommendations/cases.py`; results §9 |
 | M8 case studies | DEMONSTRATED | `recommendations/cases.py`, `scripts/generate_m8_evidence.py`, `tests/integration/test_m8_case_studies.py` |
-| Implicit ALS, BPR, two-tower/embedding retrieval, learning-to-rank, session-based and hybrid models; cold-start strategy comparison; operational evaluation; online A/B evaluation | PLANNED | M9 |
+| Implicit ALS, BPR, two-tower/embedding retrieval, learning-to-rank, hybrid models; cold-start strategy comparison; operational evaluation; online A/B evaluation | see Milestone 9 table | M9 |
 
-All M8 results are on synthetic data and simulations; none is `PRODUCTION-READY`. Status is
-**IMPLEMENTED — awaiting scientific assurance review**, not DONE.
+All M8 results are on synthetic data and simulations; none is `PRODUCTION-READY`. M8 passed its
+scientific assurance review and was committed (`2d6b8e7`) with CI passing on Python 3.11 and 3.12.
+
+## Pillar 3 status — Milestone 9 (advanced recommendation and ranking) — IMPLEMENTED, awaiting review
+
+Methodology: [../methodology/advanced-recommendation.md](../methodology/advanced-recommendation.md).
+Evidence: [m9-advanced-recommendation.md](m9-advanced-recommendation.md) and the generated
+[m9-advanced-recommendation-results.md](m9-advanced-recommendation-results.md). Protocol frozen in
+`recommendations/protocol.py`.
+
+| Capability | Status | Evidence |
+| --- | --- | --- |
+| Implicit ALS (with fold-in), BPR (uniform / exposure-aware negatives), EASE | TESTED, SIMULATED, BENCHMARKED | `recommendations/factorisation.py`; dense ridge solves, finite differences, column-wise constrained solves; vs M8 baselines |
+| Shallow two-tower retrieval; exact and k-means approximate search | TESTED, SIMULATED, BENCHMARKED | `recommendations/two_tower.py`, `retrieval.py`; gradient checks, brute-force search |
+| Candidate generation, point-in-time features, pointwise and LambdaRank-style rankers, propensity weighting | TESTED, SIMULATED, BENCHMARKED | `recommendations/candidates.py`, `features.py`, `ranking.py`; M3 logistic regression, brute-force ΔNDCG; candidate recall reported separately |
+| Score-blend hybrid; cold-start strategies | TESTED, SIMULATED, BENCHMARKED | `recommendations/hybrid.py`, `cold_start.py` |
+| SNIPS, doubly robust estimation, studentised cluster-bootstrap intervals | TESTED, SIMULATED | `recommendations/off_policy_advanced.py`; loop references; repeated-sampling calibration |
+| Operational benchmarks with preflight memory checks | IMPLEMENTED (timings indicative) | `recommendations/operational.py` |
+| SIMULATED user-randomised A/B evaluation with M6/M7 components | TESTED, SIMULATED | `data/recommendation_experiments.py`, `recommendations/online.py`; A/A and coverage studies |
+| M9 case studies | DEMONSTRATED | `recommendations/advanced_cases.py`, `scripts/generate_m9_evidence.py`, `tests/integration/test_m9_case_studies.py` |
+| LambdaMART, deep neural ranking, session-based and context-aware models, long-term retention | PLANNED | Not scheduled |
+
+All M9 results are on synthetic data and simulations; online results are SIMULATED; none is
+`PRODUCTION-READY`. Status is **IMPLEMENTED — awaiting scientific assurance review**, not DONE.
