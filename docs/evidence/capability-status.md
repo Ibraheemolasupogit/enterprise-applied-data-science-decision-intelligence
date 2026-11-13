@@ -18,12 +18,12 @@ The README and any other document must not claim a status more advanced than wha
 
 `PRODUCTION-READY` must never be used for this repository's synthetic, local-first demonstrations.
 
-## Pillar status — as of Milestone 6
+## Pillar status — as of Milestone 7
 
 | Pillar                                   | Status  | Notes                                              |
 | ------------------------------------------ | ------- | ---------------------------------------------------- |
 | 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal foundations and backdoor adjustment: TESTED, SIMULATED (M4). Observational designs (DiD, event study, synthetic control, sharp RDD): TESTED, SIMULATED (M5). ITS, fuzzy RDD, matching: PLANNED | Per-capability detail in the Milestone 3, 4 and 5 tables below |
-| 2. A/B Testing & Experimentation          | Experimentation fundamentals (assignment, SRM, planning, ITT analysis, noncompliance/attrition, validity checks, decision rules): TESTED, SIMULATED (M6). Advanced experimentation: PLANNED (M7) | Per-capability detail in the Milestone 6 table below |
+| 2. A/B Testing & Experimentation          | Experimentation fundamentals (assignment, SRM, planning, ITT analysis, noncompliance/attrition, validity checks, decision rules): TESTED, SIMULATED (M6). Advanced experimentation (CUPED/regression adjustment, group-sequential and always-valid inference, Bayesian analysis, cluster-randomised planning, switchback): TESTED, SIMULATED, BENCHMARKED (M7). Geo, interference, bandits, heterogeneous and long-term effects: PLANNED | Per-capability detail in the Milestone 6 and 7 tables below |
 | 3. Recommender Systems                    | PLANNED | Scheduled M8–M9; synthetic data foundation ready     |
 | 4. Mathematical Optimisation / Gurobi     | PLANNED | Scheduled M12–M13; Gurobi licensing not yet verified |
 | 5. Customer Lifetime Value                | PLANNED | Scheduled M10–M11; synthetic data foundation ready   |
@@ -32,9 +32,10 @@ The README and any other document must not claim a status more advanced than wha
 
 Pillar 1's statistical foundations (M3), causal foundations with backdoor adjustment (M4) and
 observational designs — difference-in-differences, event studies, synthetic control and sharp
-regression discontinuity (M5) — exist, as do Pillar 2's experimentation fundamentals (M6).
-Interrupted time series, fuzzy RDD and propensity-score matching, advanced experimentation (M7),
-every other pillar's analytical methods, case studies and the dashboard do not exist yet. Any statement to the
+regression discontinuity (M5) — exist, as do Pillar 2's experimentation fundamentals (M6) and
+advanced experimentation (M7). Interrupted time series, fuzzy RDD and propensity-score matching,
+geo/interference experiments and bandits, every other pillar's analytical methods, case studies and
+the dashboard do not exist yet. Any statement to the
 contrary in the README or elsewhere is an error and should be corrected to match this table.
 
 Pillar 1 spans three milestones, so its row states a status per sub-scope rather than one label.
@@ -150,6 +151,27 @@ generated [m6-experimentation-fundamentals-results.md](m6-experimentation-fundam
 | Decision rules (LAUNCH/HOLD/ITERATE/STOP) with guardrails and business value | TESTED, SIMULATED | `experimentation/decision.py`; operating characteristics in results §9 |
 | Additive experiment scenario generator with known potential outcomes | TESTED | `data/experiment_scenarios.py`; `tests/unit/data/test_experiment_scenarios.py` |
 | M2 experiment and scenario case studies | DEMONSTRATED | `experimentation/cases.py`, `scripts/generate_m6_evidence.py`, `tests/integration/test_m6_case_studies.py` |
-| CUPED/covariate adjustment, sequential and Bayesian testing, switchback/geo, interference, bandits | PLANNED | M7 |
+| CUPED/covariate adjustment, sequential and Bayesian testing, switchback | see Milestone 7 table | M7 |
+| Geo experiments, interference, bandits | PLANNED | Not scheduled |
 
 All M6 results are on synthetic data and simulations; none is `PRODUCTION-READY`.
+
+## Pillar 2 status — Milestone 7 (advanced experimentation)
+
+Methodology: [../methodology/advanced-experimentation.md](../methodology/advanced-experimentation.md).
+Evidence: [m7-advanced-experimentation.md](m7-advanced-experimentation.md) and the generated
+[m7-advanced-experimentation-results.md](m7-advanced-experimentation-results.md).
+
+| Capability | Status | Evidence |
+| --- | --- | --- |
+| CUPED and Lin regression adjustment; covariate timing check; planning with historical R² | TESTED, SIMULATED, BENCHMARKED | `experimentation/variance_reduction.py`; statsmodels HC2 reference; vs M6 unadjusted; results §1–2 |
+| Group-sequential boundaries (Lan–DeMets spending, Pocock, O'Brien–Fleming), operating characteristics, monitoring, repeated CIs | TESTED, SIMULATED, BENCHMARKED | `experimentation/sequential.py`; published constants, SciPy multivariate normal, simulation; vs fixed horizon and naive peeking; results §3–5 |
+| Always-valid inference (mixture SPRT, always-valid p-values, confidence sequences) | TESTED, SIMULATED, BENCHMARKED | `experimentation/sequential.py`; quadrature reference; results §4–5 |
+| Bayesian A/B analysis (Beta-binomial, normal-normal), credible intervals, expected-loss decisions | TESTED, SIMULATED, BENCHMARKED | `experimentation/bayesian.py`; closed form and Monte Carlo references; vs M6 rule; results §6–7 |
+| ICC estimation and cluster-randomised planning | TESTED, SIMULATED, BENCHMARKED | `experimentation/designs.py`; ANOVA F identity; simulated CR1 power vs naive plan; results §8 |
+| Switchback design and analysis (burn-in, blocking, randomisation inference) | TESTED, SIMULATED, BENCHMARKED | `experimentation/designs.py`; enumeration and M3 permutation references; vs naive hourly analysis; results §9 |
+| Additive scenario generators (pre-period metrics, switchback market) with known truth | TESTED | `data/advanced_experiment_scenarios.py`; `tests/unit/data/test_advanced_experiment_scenarios.py` |
+| M7 case studies (CUPED, sequential, Bayesian, cluster, switchback) | DEMONSTRATED | `experimentation/advanced_cases.py`, `scripts/generate_m7_evidence.py`, `tests/integration/test_m7_case_studies.py` |
+| Geo experiments, interference/network designs, heterogeneous effects, bandits, long-term effects, futility boundaries, bias-adjusted estimation after stopping | PLANNED | Not scheduled |
+
+All M7 results are on synthetic data and simulations; none is `PRODUCTION-READY`.

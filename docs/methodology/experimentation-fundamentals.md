@@ -22,10 +22,12 @@ A/B/n analysis of binary and continuous metrics with absolute and relative effec
 noncompliance (complier effect) and attrition bounds; validity checks; multiple-testing corrections;
 pre-specified decision rules with guardrails; the M2 experiment and an additive scenario generator.
 
-Out of scope (M7, not implemented): CUPED and covariate adjustment, sequential testing and
-always-valid inference, Bayesian experimentation, switchback/geo designs, interference and network
-experiments, bandits, heterogeneous-effect analyses and long-term effect estimation. Peeking and
-optional stopping are not demonstrated here: every analysis is fixed-horizon.
+Out of scope for M6: CUPED and covariate adjustment, sequential testing and always-valid
+inference, Bayesian experimentation and switchback designs (delivered in M7 — see
+[advanced-experimentation.md](advanced-experimentation.md)); geo designs, interference and network
+experiments, bandits, heterogeneous-effect analyses and long-term effect estimation (not
+implemented). Peeking and optional stopping are not demonstrated here: every M6 analysis is
+fixed-horizon.
 
 ## Definitions fixed before the data are seen
 

@@ -1,6 +1,6 @@
 # Milestone roadmap
 
-Status: agreed planning roadmap, updated through Milestone 6. This is a sequence of controlled
+Status: agreed planning roadmap, updated through Milestone 7. This is a sequence of controlled
 engineering steps, not permission to implement multiple milestones in one pass. Each milestone
 requires explicit approval before implementation begins (see Milestone execution methodology below).
 
@@ -18,8 +18,8 @@ requires explicit approval before implementation begins (see Milestone execution
 | --------- | ------------------------------------------- | ------------------------------------------------------------ | ------ |
 | M4        | Causal foundations, DAGs and adjustment    | Identification examples, known-effect recovery            | DONE — see [../evidence/m4-causal-foundations.md](../evidence/m4-causal-foundations.md) and [../methodology/causal-foundations.md](../methodology/causal-foundations.md) |
 | M5        | Observational causal inference             | DiD, event study, synthetic control, RDD and diagnostics  | DONE — see [../evidence/m5-observational-causal-inference.md](../evidence/m5-observational-causal-inference.md) and [../methodology/observational-causal-inference.md](../methodology/observational-causal-inference.md) |
-| M6        | Experimentation fundamentals               | Randomisation, power, SRM, ITT, hypothesis tests           | IMPLEMENTED — awaiting review; see [../evidence/m6-experimentation-fundamentals.md](../evidence/m6-experimentation-fundamentals.md) and [../methodology/experimentation-fundamentals.md](../methodology/experimentation-fundamentals.md) |
-| M7        | Advanced experimentation                   | CUPED, sequential/Bayesian methods and selected designs    | Not started |
+| M6        | Experimentation fundamentals               | Randomisation, power, SRM, ITT, hypothesis tests           | DONE — see [../evidence/m6-experimentation-fundamentals.md](../evidence/m6-experimentation-fundamentals.md) and [../methodology/experimentation-fundamentals.md](../methodology/experimentation-fundamentals.md) |
+| M7        | Advanced experimentation                   | CUPED, sequential/Bayesian methods and selected designs    | IMPLEMENTED — awaiting review; see [../evidence/m7-advanced-experimentation.md](../evidence/m7-advanced-experimentation.md) and [../methodology/advanced-experimentation.md](../methodology/advanced-experimentation.md) |
 
 ## Phase C — Personalisation and customer economics
 
@@ -82,6 +82,14 @@ completed first — milestone numbering must never be preserved at the expense o
   peeking, Bayesian experimentation, cluster-randomised power with estimated ICCs, switchback and geo
   designs, interference, heterogeneous effects, winner's-curse correction for A/B/n, and exact
   binomial planning. See [../methodology/experimentation-fundamentals.md](../methodology/experimentation-fundamentals.md).
+- **Delivered in M7** — CUPED and pre-specified covariate adjustment, sequential testing and peeking
+  (group-sequential and always-valid), Bayesian experimentation, cluster-randomised planning with
+  estimated ICCs and switchback designs. No M2–M6 implementation, contract or evidence was changed.
+- **Carried from M7** — geo experiments, interference/network designs, heterogeneous effects,
+  bandits, long-term/surrogate effects, futility boundaries and bias-adjusted estimation after
+  group-sequential stopping (not scheduled), plus winner's-curse correction for A/B/n (from M6) and
+  exact binomial planning (from M3). See
+  [../methodology/advanced-experimentation.md](../methodology/advanced-experimentation.md).
 
 ## Milestone execution methodology
 
