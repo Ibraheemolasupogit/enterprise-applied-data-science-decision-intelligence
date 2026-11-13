@@ -18,13 +18,13 @@ The README and any other document must not claim a status more advanced than wha
 
 `PRODUCTION-READY` must never be used for this repository's synthetic, local-first demonstrations.
 
-## Pillar status — as of Milestone 7
+## Pillar status — as of Milestone 8
 
 | Pillar                                   | Status  | Notes                                              |
 | ------------------------------------------ | ------- | ---------------------------------------------------- |
 | 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal foundations and backdoor adjustment: TESTED, SIMULATED (M4). Observational designs (DiD, event study, synthetic control, sharp RDD): TESTED, SIMULATED (M5). ITS, fuzzy RDD, matching: PLANNED | Per-capability detail in the Milestone 3, 4 and 5 tables below |
 | 2. A/B Testing & Experimentation          | Experimentation fundamentals (assignment, SRM, planning, ITT analysis, noncompliance/attrition, validity checks, decision rules): TESTED, SIMULATED (M6). Advanced experimentation (CUPED/regression adjustment, group-sequential and always-valid inference, Bayesian analysis, cluster-randomised planning, switchback): TESTED, SIMULATED, BENCHMARKED (M7). Geo, interference, bandits, heterogeneous and long-term effects: PLANNED | Per-capability detail in the Milestone 6 and 7 tables below |
-| 3. Recommender Systems                    | PLANNED | Scheduled M8–M9; synthetic data foundation ready     |
+| 3. Recommender Systems                    | Recommendation baselines (popularity, segment popularity, item/user kNN, content-based, PureSVD, explicit-ratings bias model), chronological evaluation, ranking/exposure/fairness metrics, IPS and simulated online value: IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M8, awaiting review). Advanced retrieval/ranking, cold-start strategies, operational and online evaluation: PLANNED (M9) | Per-capability detail in the Milestone 8 table below |
 | 4. Mathematical Optimisation / Gurobi     | PLANNED | Scheduled M12–M13; Gurobi licensing not yet verified |
 | 5. Customer Lifetime Value                | PLANNED | Scheduled M10–M11; synthetic data foundation ready   |
 | 6. Product Sense & Decision Science       | PLANNED | Scheduled M14–M15                                    |
@@ -33,9 +33,10 @@ The README and any other document must not claim a status more advanced than wha
 Pillar 1's statistical foundations (M3), causal foundations with backdoor adjustment (M4) and
 observational designs — difference-in-differences, event studies, synthetic control and sharp
 regression discontinuity (M5) — exist, as do Pillar 2's experimentation fundamentals (M6) and
-advanced experimentation (M7). Interrupted time series, fuzzy RDD and propensity-score matching,
-geo/interference experiments and bandits, every other pillar's analytical methods, case studies and
-the dashboard do not exist yet. Any statement to the
+advanced experimentation (M7), and Pillar 3's recommendation baselines (M8). Interrupted time
+series, fuzzy RDD and propensity-score matching, geo/interference experiments and bandits, advanced
+recommenders (M9), every other pillar's analytical methods, case studies and the dashboard do not
+exist yet. Any statement to the
 contrary in the README or elsewhere is an error and should be corrected to match this table.
 
 Pillar 1 spans three milestones, so its row states a status per sub-scope rather than one label.
@@ -175,3 +176,26 @@ Evidence: [m7-advanced-experimentation.md](m7-advanced-experimentation.md) and t
 | Geo experiments, interference/network designs, heterogeneous effects, bandits, long-term effects, futility boundaries, bias-adjusted estimation after stopping | PLANNED | Not scheduled |
 
 All M7 results are on synthetic data and simulations; none is `PRODUCTION-READY`.
+
+## Pillar 3 status — Milestone 8 (recommendation baselines) — IMPLEMENTED, awaiting review
+
+Methodology: [../methodology/recommender-baselines.md](../methodology/recommender-baselines.md).
+Evidence: [m8-recommendation-baselines.md](m8-recommendation-baselines.md) and the generated
+[m8-recommendation-baselines-results.md](m8-recommendation-baselines-results.md).
+
+| Capability | Status | Evidence |
+| --- | --- | --- |
+| Synthetic recommendation scenario (item-level preferences, position bias, logged propensities, cold start, MNAR ratings) with separate ground truth | TESTED | `data/recommendation_scenarios.py`; `tests/unit/data/test_recommendation_scenarios.py` |
+| Point-in-time interaction data and chronological train/validation/test protocol; leakage perturbation tests | TESTED, SIMULATED | `recommendations/interactions.py`, `recommendations/splits.py`; results §2 |
+| Baselines: random, global and segment popularity, item-kNN, user-kNN, content-based, PureSVD; cold-start fallback | TESTED, SIMULATED, BENCHMARKED | `recommendations/baselines.py`; brute-force and closed-form references; results §3–5, §10 |
+| Explicit-ratings bias model | TESTED, SIMULATED | `recommendations/explicit.py`; least-squares reference; results §12 |
+| Ranking, coverage, novelty, diversity, personalisation and exposure metrics | TESTED | `recommendations/metrics.py`; hand-worked and brute-force references; results §4, §8 |
+| Bootstrap intervals, Holm-adjusted paired comparisons, validation-window tuning | TESTED, SIMULATED | `recommendations/evaluation.py` (M3 bootstrap and paired t, M6 Holm); results §3–5 |
+| Synthetic-oracle metrics and simulated online value (evaluation only) | TESTED, SIMULATED | `recommendations/oracle.py`; loop references; results §5–7 |
+| Position-aware IPS with examination estimated from logs, clipping, ESS and positivity diagnostics | TESTED, SIMULATED | `recommendations/off_policy.py`; loop reference; repeated sampling; results §11 |
+| Exposure fairness (category) and segment/region performance | TESTED, SIMULATED | `recommendations/cases.py`; results §9 |
+| M8 case studies | DEMONSTRATED | `recommendations/cases.py`, `scripts/generate_m8_evidence.py`, `tests/integration/test_m8_case_studies.py` |
+| Implicit ALS, BPR, two-tower/embedding retrieval, learning-to-rank, session-based and hybrid models; cold-start strategy comparison; operational evaluation; online A/B evaluation | PLANNED | M9 |
+
+All M8 results are on synthetic data and simulations; none is `PRODUCTION-READY`. Status is
+**IMPLEMENTED — awaiting scientific assurance review**, not DONE.

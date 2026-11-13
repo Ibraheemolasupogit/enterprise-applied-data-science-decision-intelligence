@@ -1,6 +1,6 @@
 # Milestone roadmap
 
-Status: agreed planning roadmap, updated through Milestone 7. This is a sequence of controlled
+Status: agreed planning roadmap, updated through Milestone 8. This is a sequence of controlled
 engineering steps, not permission to implement multiple milestones in one pass. Each milestone
 requires explicit approval before implementation begins (see Milestone execution methodology below).
 
@@ -23,12 +23,12 @@ requires explicit approval before implementation begins (see Milestone execution
 
 ## Phase C — Personalisation and customer economics
 
-| Milestone | Scope                                 | Acceptance evidence                                        |
-| --------- | --------------------------------------- | ------------------------------------------------------------ |
-| M8        | Recommendation baselines                | Relevance, coverage and leakage-controlled benchmarks      |
-| M9        | Advanced recommendation and ranking     | Model comparisons, cold-start and operational evaluation   |
-| M10       | LTV foundations                         | Historical/heuristic LTV and customer economics            |
-| M11       | Predictive and incremental LTV          | Temporal validation, survival/probabilistic models, uplift |
+| Milestone | Scope                                 | Acceptance evidence                                        | Status |
+| --------- | --------------------------------------- | ------------------------------------------------------------ | ------ |
+| M8        | Recommendation baselines                | Relevance, coverage and leakage-controlled benchmarks      | IMPLEMENTED — awaiting review; see [../evidence/m8-recommendation-baselines.md](../evidence/m8-recommendation-baselines.md) and [../methodology/recommender-baselines.md](../methodology/recommender-baselines.md) |
+| M9        | Advanced recommendation and ranking     | Model comparisons, cold-start and operational evaluation   | PLANNED |
+| M10       | LTV foundations                         | Historical/heuristic LTV and customer economics            | PLANNED |
+| M11       | Predictive and incremental LTV          | Temporal validation, survival/probabilistic models, uplift | PLANNED |
 
 ## Phase D — Optimisation and decision science
 
@@ -90,6 +90,17 @@ completed first — milestone numbering must never be preserved at the expense o
   group-sequential stopping (not scheduled), plus winner's-curse correction for A/B/n (from M6) and
   exact binomial planning (from M3). See
   [../methodology/advanced-experimentation.md](../methodology/advanced-experimentation.md).
+- **Delivered in M8** — recommendation baselines (popularity, segment popularity, item/user kNN,
+  content-based, PureSVD, explicit-ratings bias model), a chronological leakage-controlled
+  protocol, ranking and beyond-accuracy metrics, exposure/segment fairness diagnostics,
+  position-aware IPS with positivity and clipping diagnostics, and simulated online value, on an
+  additive synthetic scenario (`data/recommendation_scenarios.py`). No M1–M7 implementation,
+  contract or evidence was changed.
+- **Carried from M8 to M9** — implicit ALS, BPR, embedding/two-tower retrieval, learning-to-rank,
+  session-based and hybrid models, comparison of cold-start strategies, operational evaluation at
+  scale, self-normalised and doubly robust off-policy estimators, and online A/B evaluation of a
+  recommender with the M6/M7 machinery. See
+  [../methodology/recommender-baselines.md](../methodology/recommender-baselines.md).
 
 ## Milestone execution methodology
 

@@ -101,6 +101,8 @@ To avoid duplicated statistical primitives across pillars (explicitly prohibited
 | Pre-period-metric and switchback-market scenarios | `decision_intelligence.data.advanced_experiment_scenarios` (M7; additive) | experimentation |
 | Time-indexed and threshold synthetic datasets | `decision_intelligence.data` (M5: `rollout_panel`, `synthetic_control_panel`, `threshold_assignment`; additive, independent of the M2 pipeline) | causal_inference, experimentation, forecasting |
 | Point-in-time / temporal-leakage utilities | `decision_intelligence.data.point_in_time` (M2) | forecasting, recommendations, customer_value |
+| Recommendation logs with known preferences, propensities and position bias | `decision_intelligence.data.recommendation_scenarios` (M8; additive, independent of the M2 pipeline) | recommendations |
+| Interaction matrices, chronological splits, recommender baselines, ranking/exposure metrics, IPS and oracle evaluation | `decision_intelligence.recommendations` (M8: `interactions`, `splits`, `baselines`, `explicit`, `metrics`, `evaluation`, `off_policy`, `oracle`) | recommendations (M9), optimisation (as plain value arrays), customer_value, decision_science |
 
 A pillar module must depend on the owning module above. It must not reimplement an owned primitive
 locally, even approximately.

@@ -47,7 +47,12 @@ same `seed`) always reproduces byte-identical tables — enforced by
 `latent_affinities` (per-customer affinity over product categories) is
 generated alongside these but is **evaluation-only ground truth** — it must
 never be used as a model feature; it exists so recommender evaluation
-(M8/M9) has a known right answer to score against.
+(M8/M9) has a known right answer to score against. M8 found the M2
+catalogue (25 products, category-level affinity) too small and too coarse to
+distinguish item-level recommenders, so it adds an independent scenario,
+`data/recommendation_scenarios.py` (item-level preferences, position bias,
+logged propensities); the M2 tables are used read-only in a compatibility
+case. See [recommender-baselines.md](recommender-baselines.md).
 
 ## Ground-truth design (Master Brief §16.3)
 
