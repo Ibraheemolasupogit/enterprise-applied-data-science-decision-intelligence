@@ -388,7 +388,7 @@ def peeking_study(
         # Fixed horizon (M6 baseline): one test at n_max.
         e_f, s_f = estimate[:, -1], np.sqrt(var[:, -1])
         record("fixed horizon (M6 baseline)", np.full(n_replications, sub_looks - 1),
-               np.abs(z[:, -1]) >= z_crit, e_f - z_crit * s_f, e_f + z_crit * s_f,
+               np.asarray(np.abs(z[:, -1]) >= z_crit), e_f - z_crit * s_f, e_f + z_crit * s_f,
                "95% CI", np.ones(n_replications), e_f)
         # Group-sequential procedures at the 10 looks.
         z_looks, e_looks, s_looks = (z[:, look_index], estimate[:, look_index],
@@ -396,7 +396,7 @@ def peeking_study(
         for name, design in designs.items():
             c = np.asarray(design.boundaries)
             crossed = np.abs(z_looks) >= c
-            any_cross = crossed.any(axis=1)
+            any_cross = np.asarray(crossed.any(axis=1))
             stop = np.where(any_cross, crossed.argmax(axis=1), n_looks - 1)
             est_stop, se_stop = e_looks[rows, stop], s_looks[rows, stop]
             if name.startswith("naive"):
@@ -409,7 +409,7 @@ def peeking_study(
         # mSPRT: always-valid p-value checked at every sub-look.
         log_lr = sq.msprt_log_likelihood_ratio(estimate, var, mixture_sd=effect_size)
         crossed = log_lr >= math.log(1 / ALPHA)
-        any_cross = crossed.any(axis=1)
+        any_cross = np.asarray(crossed.any(axis=1))
         stop = np.where(any_cross, crossed.argmax(axis=1), sub_looks - 1)
         est_stop, var_stop = estimate[rows, stop], var[rows, stop]
         bounds = np.array([sq.confidence_sequence(float(a), float(b), mixture_sd=effect_size)
@@ -604,11 +604,13 @@ def bayesian_fixed_truth_study(
                 prob[r, k] = ba.probability_above(post, 0.0)
         for threshold in thresholds:
             rule = f"launch if P(better) > {threshold}"
+            # np.asarray narrows NumPy 2.4 stubs' ``bool | ndarray`` to an array; values unchanged.
+            at_end = np.asarray(prob[:, -1] > threshold)
+            at_any_look = np.asarray((prob > threshold).any(axis=1))
             out.append(BayesianRuleRate(rule, effect, "fixed horizon",
-                                        rejection_rate(rule, (prob[:, -1] > threshold).tolist())))
+                                        rejection_rate(rule, at_end.tolist())))
             out.append(BayesianRuleRate(rule, effect, f"checked at {n_looks} looks",
-                                        rejection_rate(rule,
-                                                       (prob > threshold).any(axis=1).tolist())))
+                                        rejection_rate(rule, at_any_look.tolist())))
     return out
 
 

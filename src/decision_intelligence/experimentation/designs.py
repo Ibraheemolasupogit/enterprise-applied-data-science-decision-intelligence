@@ -131,8 +131,9 @@ def estimate_icc(
     if y.size <= unique.size:
         raise ValueError("within-cluster variance undefined: every cluster has a single unit")
     sizes = np.bincount(inverse).astype(float)
-    sums = np.bincount(inverse, weights=y)
-    sums_sq = np.bincount(inverse, weights=y * y)
+    # Explicit float64: NumPy 2.4 stubs type a weighted bincount as integer (it is float64).
+    sums = np.asarray(np.bincount(inverse, weights=y), dtype=np.float64)
+    sums_sq = np.asarray(np.bincount(inverse, weights=y * y), dtype=np.float64)
     icc = _icc_from_sums(sizes, sums, sums_sq)
     lo = hi = None
     if rng is not None:
