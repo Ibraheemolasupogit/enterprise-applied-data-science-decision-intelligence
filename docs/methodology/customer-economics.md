@@ -7,8 +7,9 @@ uncertainty, time-respecting backtests and comparison with synthetic ground trut
 `src/decision_intelligence/data/customer_economics_scenarios.py`. Evidence:
 [../evidence/m10-ltv-foundations.md](../evidence/m10-ltv-foundations.md).
 
-Predictive, probabilistic (BG/NBD, Gamma-Gamma), survival-model, machine-learning and causal
-(incremental) LTV are **Milestone 11** and are not implemented here.
+Predictive, probabilistic (BG/NBD, Gamma-Gamma), survival-model and machine-learning LTV are
+**Milestone 11**; causal (incremental) LTV is deferred to a future milestone and is not part of
+M11. None of them is implemented here.
 
 ## 1. Three quantities that must not be confused
 
@@ -19,7 +20,7 @@ Predictive, probabilistic (BG/NBD, Gamma-Gamma), survival-model, machine-learnin
 | **Expected lifetime** contribution | A heuristic's expectation to an infinite horizon, defined only when the sum converges | `heuristic.py` |
 
 None of them is the *incremental* value of an intervention: a customer with high LTV may have
-stayed without any offer (M11).
+stayed without any offer (incremental LTV is deferred to a future milestone; not part of M11).
 
 ## 2. Economic conventions (`economics.py`)
 

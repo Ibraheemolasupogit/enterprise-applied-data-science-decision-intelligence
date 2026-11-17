@@ -279,7 +279,8 @@ The Kaplan–Meier projection is accurate over 24–36 months (mean absolute bia
 constant-churn heuristics over-project by 7–19% and every heuristic misjudges expected lifetime
 value when customers differ in churn; LTV/CAC intervals under-cover the true LTV/CPA (0.79–0.85)
 because they treat acquisition spend as known; the cheapest acquisition channel is not the most
-valuable (a designed-in mechanism). Nothing here is incremental value — that is Milestone 11.
+valuable (a designed-in mechanism). Nothing here is incremental value — incremental (causal) LTV
+is deferred to a future milestone and is not part of Milestone 11.
 
 ```bash
 python scripts/generate_m10_evidence.py   # regenerates docs/evidence/m10-ltv-foundations-results.md

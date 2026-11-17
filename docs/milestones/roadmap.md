@@ -28,7 +28,7 @@ requires explicit approval before implementation begins (see Milestone execution
 | M8        | Recommendation baselines                | Relevance, coverage and leakage-controlled benchmarks      | DONE — approved after scientific assurance review, committed (`2d6b8e7`), CI passing on Python 3.11 and 3.12; see [../evidence/m8-recommendation-baselines.md](../evidence/m8-recommendation-baselines.md) and [../methodology/recommender-baselines.md](../methodology/recommender-baselines.md) |
 | M9        | Advanced recommendation and ranking     | Model comparisons, cold-start and operational evaluation   | DONE — approved, committed (`9f738df`), CI passing on Python 3.11 and 3.12; see [../evidence/m9-advanced-recommendation.md](../evidence/m9-advanced-recommendation.md) and [../methodology/advanced-recommendation.md](../methodology/advanced-recommendation.md) |
 | M10       | LTV foundations                         | Historical/heuristic LTV and customer economics            | DONE — approved, committed (`4459d89`), CI passing on Python 3.11 and 3.12; see [../evidence/m10-ltv-foundations.md](../evidence/m10-ltv-foundations.md) and [../methodology/customer-economics.md](../methodology/customer-economics.md) |
-| M11       | Predictive and incremental LTV          | Temporal validation, survival/probabilistic models, uplift | PLANNED |
+| M11       | Predictive LTV                          | Temporal validation, survival/probabilistic models, calibrated uncertainty | PLANNED — incremental (causal) LTV and uplift DEFERRED to a future milestone; not part of M11 |
 
 ## Phase D — Optimisation and decision science
 
@@ -122,7 +122,9 @@ completed first — milestone numbering must never be preserved at the expense o
 - **Carried from M10 to M11** — probabilistic (BG/NBD, Gamma-Gamma) and survival-model LTV,
   predictive ML LTV with customer-level intervals, non-contractual purchasing, and incremental
   (causal) LTV with treatment targeting. See
-  [../methodology/customer-economics.md](../methodology/customer-economics.md).
+  [../methodology/customer-economics.md](../methodology/customer-economics.md). *Scope decision
+  at M11 planning:* incremental (causal) LTV with treatment targeting is DEFERRED — future
+  milestone; not part of M11.
 
 ## Milestone execution methodology
 
