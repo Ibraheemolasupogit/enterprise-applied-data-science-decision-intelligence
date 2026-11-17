@@ -18,7 +18,7 @@ The README and any other document must not claim a status more advanced than wha
 
 `PRODUCTION-READY` must never be used for this repository's synthetic, local-first demonstrations.
 
-## Pillar status — as of Milestone 9
+## Pillar status — as of Milestone 10
 
 | Pillar                                   | Status  | Notes                                              |
 | ------------------------------------------ | ------- | ---------------------------------------------------- |
@@ -26,15 +26,16 @@ The README and any other document must not claim a status more advanced than wha
 | 2. A/B Testing & Experimentation          | Experimentation fundamentals (assignment, SRM, planning, ITT analysis, noncompliance/attrition, validity checks, decision rules): TESTED, SIMULATED (M6). Advanced experimentation (CUPED/regression adjustment, group-sequential and always-valid inference, Bayesian analysis, cluster-randomised planning, switchback): TESTED, SIMULATED, BENCHMARKED (M7). Geo, interference, bandits, heterogeneous and long-term effects: PLANNED | Per-capability detail in the Milestone 6 and 7 tables below |
 | 3. Recommender Systems                    | Recommendation baselines (popularity, segment popularity, item/user kNN, content-based, PureSVD, explicit-ratings bias model), chronological evaluation, ranking/exposure/fairness metrics, IPS and simulated online value: IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M8). Advanced recommendation and ranking (ALS, BPR, EASE, two-tower retrieval, learning-to-rank, hybrid, cold-start strategies, SNIPS/DR, operational benchmarks, SIMULATED A/B evaluation): IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M9, awaiting review). LambdaMART, deep neural, session-based and context-aware models, long-term retention: PLANNED (not scheduled) | Per-capability detail in the Milestone 8 and 9 tables below |
 | 4. Mathematical Optimisation / Gurobi     | PLANNED | Scheduled M12–M13; Gurobi licensing not yet verified |
-| 5. Customer Lifetime Value                | PLANNED | Scheduled M10–M11; synthetic data foundation ready   |
+| 5. Customer Lifetime Value                | LTV foundations and customer economics (contribution basis, Kaplan–Meier retention, realised and heuristic LTV, CAC, payback, LTV/CAC, backtests): IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M10, awaiting review). Probabilistic, survival-model, predictive and incremental LTV: PLANNED (M11) | Per-capability detail in the Milestone 10 table below |
 | 6. Product Sense & Decision Science       | PLANNED | Scheduled M14–M15                                    |
 | Forecasting (supporting capability)       | PLANNED | Scheduled M16; not a seventh pillar                  |
 
 Pillar 1's statistical foundations (M3), causal foundations with backdoor adjustment (M4) and
 observational designs — difference-in-differences, event studies, synthetic control and sharp
 regression discontinuity (M5) — exist, as do Pillar 2's experimentation fundamentals (M6) and
-advanced experimentation (M7), and Pillar 3's recommendation baselines (M8) and advanced
-recommendation and ranking (M9). Interrupted time series, fuzzy RDD and propensity-score matching,
+advanced experimentation (M7), Pillar 3's recommendation baselines (M8) and advanced
+recommendation and ranking (M9), and Pillar 5's LTV foundations (M10). Predictive and incremental
+LTV (M11), interrupted time series, fuzzy RDD and propensity-score matching,
 geo/interference experiments and bandits, the deferred recommender methods (LambdaMART, deep
 neural, session-based and context-aware models), every other pillar's analytical methods, case
 studies and the dashboard do not exist yet. Any statement to the
@@ -222,3 +223,27 @@ Evidence: [m9-advanced-recommendation.md](m9-advanced-recommendation.md) and the
 
 All M9 results are on synthetic data and simulations; online results are SIMULATED; none is
 `PRODUCTION-READY`. Status is **IMPLEMENTED — awaiting scientific assurance review**, not DONE.
+
+## Pillar 5 status — Milestone 10 (LTV foundations and customer economics) — IMPLEMENTED, awaiting review
+
+Methodology: [../methodology/customer-economics.md](../methodology/customer-economics.md).
+Evidence: [m10-ltv-foundations.md](m10-ltv-foundations.md) and the generated
+[m10-ltv-foundations-results.md](m10-ltv-foundations-results.md). Protocol frozen in
+`customer_value/protocol.py`.
+
+| Capability | Status | Evidence |
+| --- | --- | --- |
+| Synthetic subscription economics with known truth (additive) | TESTED | `data/customer_economics_scenarios.py`; Monte Carlo and Gamma Laplace-transform references |
+| Economic conventions: discounting, contribution, geometric value, CAC, payback | TESTED | `customer_value/economics.py`; brute-force references |
+| Point-in-time panel, censoring, recording lags, duplicates | TESTED | `customer_value/panel.py`; perturbation invariance |
+| Kaplan–Meier (discrete-time censoring) with Greenwood intervals; cohort retention; constant churn | TESTED, SIMULATED | `customer_value/retention.py`; published 6-MP example; results §4 |
+| Realised (cohort-matched) LTV and naive counterexamples | TESTED, SIMULATED | `customer_value/historical.py`; results §5 |
+| Heuristic projected and expected-lifetime LTV (H0–H4) with undefined/unstable states | TESTED, SIMULATED, BENCHMARKED | `customer_value/heuristic.py`; vs truth and the legacy H0 baseline; results §6, §10 |
+| Unit and segment economics (CAC, LTV/CAC, payback, precision) | TESTED, SIMULATED | `customer_value/cases.py`; results §7–8 |
+| Uncertainty: bootstrap, delta method, repeated-sampling coverage; sensitivity | TESTED, SIMULATED | results §9, §12 |
+| Complete-window backtests (existing customers as a baseline; new cohorts) | TESTED, SIMULATED | `customer_value/backtest.py`; results §11 |
+| M10 case studies | DEMONSTRATED | `customer_value/cases.py`, `scripts/generate_m10_evidence.py`, `tests/integration/test_m10_case_studies.py` |
+| Probabilistic, survival-model, predictive ML and incremental LTV; non-contractual purchasing | PLANNED | M11 |
+
+All M10 results are on synthetic data; none is `PRODUCTION-READY`. Status is **IMPLEMENTED —
+awaiting scientific assurance review**, not DONE.

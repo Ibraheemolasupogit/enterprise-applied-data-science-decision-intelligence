@@ -105,6 +105,8 @@ To avoid duplicated statistical primitives across pillars (explicitly prohibited
 | Interaction matrices, chronological splits, recommender baselines, ranking/exposure metrics, IPS and oracle evaluation | `decision_intelligence.recommendations` (M8: `interactions`, `splits`, `baselines`, `explicit`, `metrics`, `evaluation`, `off_policy`, `oracle`) | recommendations (M9), optimisation (as plain value arrays), customer_value, decision_science |
 | Factorisation, two-tower retrieval, two-stage ranking, hybrid, cold start, SNIPS/DR, operational benchmarks, simulated online evaluation | `decision_intelligence.recommendations` (M9: `protocol`, `factorisation`, `two_tower`, `retrieval`, `candidates`, `features`, `ranking`, `hybrid`, `cold_start`, `off_policy_advanced`, `operational`, `online`, `advanced_cases`) | optimisation (as plain value arrays), customer_value, decision_science |
 | Simulated online period under chosen policies (SIMULATED outcomes with exact expected values) | `decision_intelligence.data.recommendation_experiments` (M9; additive) | recommendations |
+| Subscription customer economics with known truth | `decision_intelligence.data.customer_economics_scenarios` (M10; additive) | customer_value |
+| Discounting, contribution, CAC, payback; point-in-time customer panel; Kaplan–Meier and cohort retention; realised and heuristic LTV; complete-window backtests | `decision_intelligence.customer_value` (M10: `protocol`, `economics`, `panel`, `retention`, `historical`, `heuristic`, `backtest`, `cases`) | customer_value (M11), decision_science, optimisation (as plain value arrays) |
 
 A pillar module must depend on the owning module above. It must not reimplement an owned primitive
 locally, even approximately.
