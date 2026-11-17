@@ -17,15 +17,17 @@ design and its three scientific amendments are encoded as follows:
    a selection (:mod:`.model_selection`).
 
 **Stage.** This is the P0 protocol. Items that later phases must fix before any main-seed
-evaluation (generator numerical parameters, the new-scenario pilot, the repeated-sampling
-preflight and oracle validation sizes) are listed in :data:`PENDING_BEFORE_MAIN`;
-:func:`authorise_seed` refuses the main and fresh seeds while any item is pending.
+evaluation (the repeated-sampling preflight and the oracle validation sizes) are listed in
+:data:`PENDING_BEFORE_MAIN`; :func:`authorise_seed` refuses the main and fresh seeds while any
+item is pending. Every change made after P0 and before any main-seed evaluation is recorded in
+:data:`PROTOCOL_AMENDMENTS`.
 
 **Integrity.** :func:`protocol_digest` hashes every protocol value; :func:`protocol_code_digest`
 hashes the exact bytes of this module and of the decision logic in :mod:`.model_selection` and
 :mod:`.precision`. Tests pin both, so any change is a visible, reviewable diff that must be
-disclosed in the M11 evidence. P0 pilot findings are final only for the M10 scenario
-(:data:`PILOT_FINDINGS_SCOPE`).
+disclosed in the M11 evidence. Generator parameters are pinned by
+:data:`SCENARIO_PARAMETER_DIGESTS` (checked against the generators by a test). P0 pilot
+findings are final only for the M10 scenario (:data:`PILOT_FINDINGS_SCOPE`).
 
 **Economics are M10's** (fair comparison): contribution, the 10% annual discount rate, the
 45-day recording lag, the stability thresholds and the heterogeneity grid are imported from
@@ -43,7 +45,7 @@ from typing import Any
 from decision_intelligence.customer_value import protocol as m10
 
 PROTOCOL_ID = "M11-predictive-ltv"
-PROTOCOL_STAGE = "P0"
+PROTOCOL_STAGE = "P1-amended"
 
 # --- seeds -------------------------------------------------------------------------------
 MAIN_SEED = 20261101
@@ -185,12 +187,29 @@ SCENARIOS = (
                  "HMM; usage, support contacts, payment failures; involuntary churn; planted "
                  "account-closure leakage trap", 60, "2022-01-01", 310.0, (36, 42),
                  ((24, 33),), ("A", "B"), ("non_proportional_hazards",),
-                 "pending P1"),
+                 "fixed at P1: SignalsScenarioConfig defaults (SCENARIO_PARAMETER_DIGESTS)"),
     ScenarioSpec("purchases_noncontractual", "non_contractual",
                  "data.predictive_ltv_scenarios (P1): BG/NBD purchasing with Gamma-Gamma spend",
                  48, "2022-01-01", 310.0, (24, 30), (), ("A",),
-                 ("pareto_nbd_dropout", "correlated_spend"), "pending P1"),
+                 ("pareto_nbd_dropout", "correlated_spend"),
+                 "fixed at P1: PurchasesScenarioConfig defaults (SCENARIO_PARAMETER_DIGESTS)"),
 )
+SCENARIO_PARAMETER_DIGESTS = {
+    "signals_contractual": "fa53fee9e0bbc04504aadfedaff84639358a221a2cdad178db421c6c986fc792",
+    "non_proportional_hazards":
+        "14a2b5b58bd7af02de49f25d75559e1f15d793210c2404227376d34b68926935",
+    "purchases_noncontractual":
+        "70de724902d7bc1410a8668db6fe1871132d10c9d149d93a07c95dec63fcdaee",
+    "pareto_nbd_dropout": "aa60b4637a33eba597323a0a20e822e4021804b5d16e1e9de24d29ed8c119ee0",
+    "correlated_spend": "728fc783f3882aae6187c2e7236a11fafab0d2ed57625b82601e96cce0cec3a2",
+}
+"""``data.predictive_ltv_scenarios.config_digest`` (all parameters except the seed) of the
+default configuration of each new scenario and of each predeclared variant applied to it.
+Every M11 run must use exactly these parameters; only the seed varies."""
+SIGNAL_PARAMETERS_DECISION = (
+    "Behavioural-signal parameters are kept as generated at P1 (owner decision). The P1 pilot "
+    "showed a weak crude Tier B signal; P2's exact Tier A and Tier B oracles quantify the "
+    "available gain; the signals are not re-tuned toward any expected PC3 result.")
 
 
 def scenario(name: str) -> ScenarioSpec:
@@ -325,8 +344,8 @@ MODELS = (
               ("contractual",), ("A",), 1),
     ModelSpec("E3", "discrete-time landmark hazard x contribution by age", "essential",
               "survival", ("contractual",), ("A", "B"), 2),
-    ModelSpec("E4", "BG/NBD + Gamma-Gamma", "essential", "distribution", ("non_contractual",),
-              ("A",), 1),
+    ModelSpec("E4", "BG/NBD + Gamma-Gamma, fitted per segment x channel cell", "essential",
+              "distribution", ("non_contractual",), ("A",), 1),
     ModelSpec("E5", "two-part penalised GLM", "essential", "mean_interval",
               ("contractual", "non_contractual"), ("A", "B"), 3),
     ModelSpec("S1", "Cox proportional hazards (landmark covariates, Efron ties)", "secondary",
@@ -342,6 +361,14 @@ MODELS = (
 )
 SECONDARY_STUDIES = ("S4: misspecification variants (Pareto/NBD dropout, correlated spend)",
                      "S5: non-proportional-hazards switch")
+E4_FIT_UNIT = ("segment x channel cell: separate BG/NBD (r, alpha, a, b) and Gamma-Gamma (p, q, "
+               "gamma) fits in each of the 12 cells, the unit within which the purchases "
+               "generator is BG/NBD + Gamma-Gamma (purchase rate and spend vary by segment, "
+               "dropout by channel); cell fit status follows STATUS_RULES, with the pooled fit "
+               "as the only allowed fallback")
+E4_POOLED_REFERENCE = ("a single pooled fit is reported as a labelled MISSPECIFIED REFERENCE "
+                       "(pooled across segments, frequency and spend are correlated); it is "
+                       "not a selection candidate")
 
 
 def model(model_id: str) -> ModelSpec:
@@ -553,18 +580,55 @@ BUDGETS = RuntimeBudgets(new_tests_target_s=90.0, new_tests_ceiling_s=150.0,
 
 # --- stage gate ---------------------------------------------------------------------------------
 PENDING_BEFORE_MAIN = (
-    "P1: numerical generator parameters of signals_contractual and purchases_noncontractual "
-    "(and their variants)",
-    "P1: pilot precision and feasibility check of the two new scenarios",
-    "P1: preflight confirmation that COVERAGE_REPLICATIONS (1,000) fits the budget, with the "
-    "repeated-sampling scenario scale; otherwise a declared count >= MIN_COVERAGE_REPLICATIONS",
+    "P2-P6 (deferred from P1): preflight confirmation that COVERAGE_REPLICATIONS (1,000) fits "
+    "the budget, with the repeated-sampling scenario scale; otherwise a declared count >= "
+    "MIN_COVERAGE_REPLICATIONS (needs the measured oracle and model-fit costs)",
     "P2: oracle Monte Carlo validation sizes and quadrature settings",
 )
 PILOT_FINDINGS_SCOPE = (
-    "P0 pilot findings use the M10 generator only. They are final for m10_contractual and "
+    "P0 pilot findings use the M10 generator only. They are final for m10_contractual and were "
     "PROVISIONAL for signals_contractual and purchases_noncontractual (60-month runs of the M10 "
-    "generator are a size proxy, not those scenarios); P1 repeats the plan on the new "
-    "generators before main.")
+    "generator were a size proxy); for those two scenarios they are superseded by the P1 "
+    "scenario plan (docs/evidence/m11-p1-scenario-plan.md) at the pinned parameters.")
+
+
+@dataclass(frozen=True)
+class Amendment:
+    id: str
+    stage: str
+    date: str
+    before_main_seed: bool
+    change: str
+    reason: str
+
+
+PROTOCOL_AMENDMENTS = (
+    Amendment("A1", "P1", "2026-11-17", True,
+              "pinned the generator parameters of signals_contractual, purchases_noncontractual "
+              "and the three predeclared variants (SCENARIO_PARAMETER_DIGESTS); scenario "
+              "parameters_status 'pending P1' -> 'fixed at P1'",
+              "P1 generators implemented; closes pending item 'P1: numerical generator "
+              "parameters'"),
+    Amendment("A2", "P1", "2026-11-17", True,
+              "E4 is fitted per segment x channel cell (E4_FIT_UNIT); a pooled fit is reported "
+              "only as a misspecified reference (E4_POOLED_REFERENCE)",
+              "P1 finding: rates vary by segment and channel, so the generator is BG/NBD + "
+              "Gamma-Gamma only within a cell; pooled, frequency and spend are correlated "
+              "(pilot-independent development-seed check, Spearman -0.056)"),
+    Amendment("A3", "P1", "2026-11-17", True,
+              "behavioural-signal parameters kept unchanged (SIGNAL_PARAMETERS_DECISION)",
+              "owner decision after the P1 pilot showed a weak crude Tier B signal; avoids "
+              "tuning the data toward PC3"),
+    Amendment("A4", "P1", "2026-11-17", True,
+              "closed pending items 'P1: generator parameters' and 'P1: pilot of the new "
+              "scenarios'; kept the repeated-sampling preflight (relabelled 'P2-P6, deferred "
+              "from P1') and the P2 oracle item open; PILOT_FINDINGS_SCOPE points to the P1 "
+              "scenario plan; PROTOCOL_STAGE 'P0' -> 'P1-amended'",
+              "P1 pilot completed (docs/evidence/m11-p1-scenario-plan.md); the preflight needs "
+              "oracle and model-fit costs that do not exist before P2-P6"),
+)
+"""Every protocol change after the P0 commit (82e3ebd), all made before any main-seed
+evaluation; the main seed has never been authorised."""
 
 
 class ProtocolNotReady(RuntimeError):
@@ -716,6 +780,17 @@ def validate_protocol() -> list[str]:
         problems.append("invalid selection bounds")
     if not 0 < SELECTION.min_ok_cell_fraction <= 1:
         problems.append("invalid minimum ok-cell fraction")
+    pinned = {"signals_contractual", "purchases_noncontractual"}
+    pinned |= {v for name in pinned for v in scenario(name).variants}
+    if set(SCENARIO_PARAMETER_DIGESTS) != pinned:
+        problems.append("SCENARIO_PARAMETER_DIGESTS must cover the new scenarios and variants")
+    if any(len(d) != 64 for d in SCENARIO_PARAMETER_DIGESTS.values()):
+        problems.append("parameter digests must be SHA-256 hex strings")
+    if any("pending" in sc.parameters_status for sc in SCENARIOS):
+        problems.append("a scenario's parameters are still pending")
+    ids_a = [a.id for a in PROTOCOL_AMENDMENTS]
+    if len(ids_a) != len(set(ids_a)) or not all(a.before_main_seed for a in PROTOCOL_AMENDMENTS):
+        problems.append("amendments must have unique ids and precede the main seed")
     if DEFAULT_PENALTY not in PENALTY_GRID:
         problems.append("the default penalty must be on the grid")
     if not 0 < PLANNING_ALPHA < FAMILY_ALPHA or not 0.5 < PLANNING_POWER < 1:

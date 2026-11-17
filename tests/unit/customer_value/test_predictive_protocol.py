@@ -18,10 +18,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "d7f907714f2b04b5d8ef0288e8df0e5d8ce327f623eb4da19d214423b6b48b88"
+FROZEN_DIGEST = "85eb0b4cc7d15c705dce2e23cb4ac97aa0631fd95efe8b7b402da467497379c1"
 """SHA-256 of the P0 protocol manifest. Any protocol change must update this value in the same
 reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "9cf08205eeee17fcfd3b02bcef62dfad224d44e94bfbaa8942cb49763ea50e11"
+FROZEN_CODE_DIGEST = "eefebd8067285e70a07ad5ad0bf270cdf3434c9968e5aa32967d56e49d8bed9b"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -263,3 +263,18 @@ def test_p0_code_never_reads_ground_truth(rel: str) -> None:
     names |= {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
     names |= {a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) for a in n.names}
     assert not names & {"truth", "EconomicsTruth"}
+
+
+def test_p1_amendments_are_recorded_and_consistent() -> None:
+    assert [a.id for a in pp.PROTOCOL_AMENDMENTS] == ["A1", "A2", "A3", "A4"]
+    assert all(a.before_main_seed and a.stage == "P1" for a in pp.PROTOCOL_AMENDMENTS)
+    assert pp.PROTOCOL_STAGE == "P1-amended"
+    assert "segment x channel" in pp.model("E4").name and "12 cells" in pp.E4_FIT_UNIT
+    assert "MISSPECIFIED REFERENCE" in pp.E4_POOLED_REFERENCE
+    assert pp.model("E4").complexity_rank is not None  # the per-cell fit is the candidate
+    assert "kept as generated at P1" in pp.SIGNAL_PARAMETERS_DECISION
+    assert len(pp.PENDING_BEFORE_MAIN) == 2
+    assert any("COVERAGE_REPLICATIONS" in item for item in pp.PENDING_BEFORE_MAIN)
+    assert any("oracle" in item for item in pp.PENDING_BEFORE_MAIN)
+    for name in ("signals_contractual", "purchases_noncontractual"):
+        assert pp.scenario(name).parameters_status.startswith("fixed at P1")
