@@ -7,7 +7,7 @@ behind business decisions, not an industry-specific application.
 > From evidence to prediction, from prediction to causal understanding, and from causal understanding
 > to optimised business decisions.
 
-**Status: through Milestone 10 (awaiting review). The synthetic data foundation (M2), Pillar 1 —
+**Status: through Milestone 10 (approved; M11 planned). The synthetic data foundation (M2), Pillar 1 —
 statistical foundations (M3), causal foundations with backdoor adjustment (M4) and observational
 causal designs (M5) — Pillar 2's experimentation fundamentals (M6) and advanced experimentation
 (M7), Pillar 3's recommendation baselines (M8) and advanced recommendation and ranking (M9), and

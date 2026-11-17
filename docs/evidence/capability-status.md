@@ -24,9 +24,9 @@ The README and any other document must not claim a status more advanced than wha
 | ------------------------------------------ | ------- | ---------------------------------------------------- |
 | 1. Statistics & Causal Inference          | Statistical foundations: TESTED, SIMULATED (M3). Causal foundations and backdoor adjustment: TESTED, SIMULATED (M4). Observational designs (DiD, event study, synthetic control, sharp RDD): TESTED, SIMULATED (M5). ITS, fuzzy RDD, matching: PLANNED | Per-capability detail in the Milestone 3, 4 and 5 tables below |
 | 2. A/B Testing & Experimentation          | Experimentation fundamentals (assignment, SRM, planning, ITT analysis, noncompliance/attrition, validity checks, decision rules): TESTED, SIMULATED (M6). Advanced experimentation (CUPED/regression adjustment, group-sequential and always-valid inference, Bayesian analysis, cluster-randomised planning, switchback): TESTED, SIMULATED, BENCHMARKED (M7). Geo, interference, bandits, heterogeneous and long-term effects: PLANNED | Per-capability detail in the Milestone 6 and 7 tables below |
-| 3. Recommender Systems                    | Recommendation baselines (popularity, segment popularity, item/user kNN, content-based, PureSVD, explicit-ratings bias model), chronological evaluation, ranking/exposure/fairness metrics, IPS and simulated online value: IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M8). Advanced recommendation and ranking (ALS, BPR, EASE, two-tower retrieval, learning-to-rank, hybrid, cold-start strategies, SNIPS/DR, operational benchmarks, SIMULATED A/B evaluation): IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M9, awaiting review). LambdaMART, deep neural, session-based and context-aware models, long-term retention: PLANNED (not scheduled) | Per-capability detail in the Milestone 8 and 9 tables below |
+| 3. Recommender Systems                    | Recommendation baselines (popularity, segment popularity, item/user kNN, content-based, PureSVD, explicit-ratings bias model), chronological evaluation, ranking/exposure/fairness metrics, IPS and simulated online value: IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M8). Advanced recommendation and ranking (ALS, BPR, EASE, two-tower retrieval, learning-to-rank, hybrid, cold-start strategies, SNIPS/DR, operational benchmarks, SIMULATED A/B evaluation): IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M9). LambdaMART, deep neural, session-based and context-aware models, long-term retention: PLANNED (not scheduled) | Per-capability detail in the Milestone 8 and 9 tables below |
 | 4. Mathematical Optimisation / Gurobi     | PLANNED | Scheduled M12–M13; Gurobi licensing not yet verified |
-| 5. Customer Lifetime Value                | LTV foundations and customer economics (contribution basis, Kaplan–Meier retention, realised and heuristic LTV, CAC, payback, LTV/CAC, backtests): IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M10, awaiting review). Probabilistic, survival-model, predictive and incremental LTV: PLANNED (M11) | Per-capability detail in the Milestone 10 table below |
+| 5. Customer Lifetime Value                | LTV foundations and customer economics (contribution basis, Kaplan–Meier retention, realised and heuristic LTV, CAC, payback, LTV/CAC, backtests): IMPLEMENTED, TESTED, SIMULATED, BENCHMARKED (M10). Probabilistic, survival-model, predictive and incremental LTV: PLANNED (M11) | Per-capability detail in the Milestone 10 table below |
 | 6. Product Sense & Decision Science       | PLANNED | Scheduled M14–M15                                    |
 | Forecasting (supporting capability)       | PLANNED | Scheduled M16; not a seventh pillar                  |
 
@@ -159,7 +159,7 @@ generated [m6-experimentation-fundamentals-results.md](m6-experimentation-fundam
 
 All M6 results are on synthetic data and simulations; none is `PRODUCTION-READY`.
 
-## Pillar 2 status — Milestone 7 (advanced experimentation)
+## Pillar 2 status — Milestone 7 (advanced experimentation) — DONE
 
 Methodology: [../methodology/advanced-experimentation.md](../methodology/advanced-experimentation.md).
 Evidence: [m7-advanced-experimentation.md](m7-advanced-experimentation.md) and the generated
@@ -177,7 +177,9 @@ Evidence: [m7-advanced-experimentation.md](m7-advanced-experimentation.md) and t
 | M7 case studies (CUPED, sequential, Bayesian, cluster, switchback) | DEMONSTRATED | `experimentation/advanced_cases.py`, `scripts/generate_m7_evidence.py`, `tests/integration/test_m7_case_studies.py` |
 | Geo experiments, interference/network designs, heterogeneous effects, bandits, long-term effects, futility boundaries, bias-adjusted estimation after stopping | PLANNED | Not scheduled |
 
-All M7 results are on synthetic data and simulations; none is `PRODUCTION-READY`.
+All M7 results are on synthetic data and simulations; none is `PRODUCTION-READY`. M7 was
+approved and committed (`5e11c6d`, with the NumPy typing fix `31b93a7`); CI passes on Python 3.11
+and 3.12 from `31b93a7` (the initial commit's CI run failed before that fix).
 
 ## Pillar 3 status — Milestone 8 (recommendation baselines) — DONE
 
@@ -202,7 +204,7 @@ Evidence: [m8-recommendation-baselines.md](m8-recommendation-baselines.md) and t
 All M8 results are on synthetic data and simulations; none is `PRODUCTION-READY`. M8 passed its
 scientific assurance review and was committed (`2d6b8e7`) with CI passing on Python 3.11 and 3.12.
 
-## Pillar 3 status — Milestone 9 (advanced recommendation and ranking) — IMPLEMENTED, awaiting review
+## Pillar 3 status — Milestone 9 (advanced recommendation and ranking) — DONE
 
 Methodology: [../methodology/advanced-recommendation.md](../methodology/advanced-recommendation.md).
 Evidence: [m9-advanced-recommendation.md](m9-advanced-recommendation.md) and the generated
@@ -222,9 +224,10 @@ Evidence: [m9-advanced-recommendation.md](m9-advanced-recommendation.md) and the
 | LambdaMART, deep neural ranking, session-based and context-aware models, long-term retention | PLANNED | Not scheduled |
 
 All M9 results are on synthetic data and simulations; online results are SIMULATED; none is
-`PRODUCTION-READY`. Status is **IMPLEMENTED — awaiting scientific assurance review**, not DONE.
+`PRODUCTION-READY`. M9 was approved and committed (`9f738df`) with CI passing on Python 3.11
+and 3.12.
 
-## Pillar 5 status — Milestone 10 (LTV foundations and customer economics) — IMPLEMENTED, awaiting review
+## Pillar 5 status — Milestone 10 (LTV foundations and customer economics) — DONE
 
 Methodology: [../methodology/customer-economics.md](../methodology/customer-economics.md).
 Evidence: [m10-ltv-foundations.md](m10-ltv-foundations.md) and the generated
@@ -245,5 +248,5 @@ Evidence: [m10-ltv-foundations.md](m10-ltv-foundations.md) and the generated
 | M10 case studies | DEMONSTRATED | `customer_value/cases.py`, `scripts/generate_m10_evidence.py`, `tests/integration/test_m10_case_studies.py` |
 | Probabilistic, survival-model, predictive ML and incremental LTV; non-contractual purchasing | PLANNED | M11 |
 
-All M10 results are on synthetic data; none is `PRODUCTION-READY`. Status is **IMPLEMENTED —
-awaiting scientific assurance review**, not DONE.
+All M10 results are on synthetic data; none is `PRODUCTION-READY`. M10 was approved and
+committed (`4459d89`) with CI passing on Python 3.11 and 3.12.

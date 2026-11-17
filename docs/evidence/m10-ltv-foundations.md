@@ -1,6 +1,8 @@
 # Milestone 10 evidence — LTV foundations and customer economics
 
-Status: **IMPLEMENTED — awaiting scientific assurance review**. Not committed or pushed.
+Status: **DONE** — approved and committed (`4459d89`); CI run 44057769168 passed on Python 3.11
+and 3.12. Status line updated 2026-11-17; the evidence below is unchanged. At submission it read:
+"IMPLEMENTED — awaiting scientific assurance review. Not committed or pushed."
 Statuses: [capability-status.md](capability-status.md). Methodology:
 [../methodology/customer-economics.md](../methodology/customer-economics.md). Generated numbers:
 [m10-ltv-foundations-results.md](m10-ltv-foundations-results.md)

@@ -1,6 +1,9 @@
 # Milestone 7 evidence — advanced experimentation
 
-Status: implemented and validated locally; **awaiting scientific review**. Not committed or pushed.
+Status: **DONE** — approved and committed (`5e11c6d`; NumPy typing fix `31b93a7`); CI run
+43407936369 on `31b93a7` passed on Python 3.11 and 3.12 (the run on `5e11c6d` failed before the
+fix). Status line updated 2026-11-17; the evidence below is unchanged. At submission it read:
+"implemented and validated locally; awaiting scientific review. Not committed or pushed."
 Statuses: [capability-status.md](capability-status.md). Methodology:
 [../methodology/advanced-experimentation.md](../methodology/advanced-experimentation.md).
 Generated numbers: [m7-advanced-experimentation-results.md](m7-advanced-experimentation-results.md)
