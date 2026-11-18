@@ -228,9 +228,12 @@ A6 record.
    geometric limit and 3 keep the pooled fallback. In a separate 5-draw inventory the two
    exclusions were a cell with a positive `phi` score (a genuine interior optimum just short
    of the ridge, correctly excluded) and a 67-event cell whose non-converged `mu` missed the
-   1e-4 agreement check by 2%. Very large cells (about 60,000 customers) can also fail the frozen start-agreement
-   rule (1e-4 in total log-likelihood) along the flat ridge and keep the fallback (tested);
-   no development-grid cell did.
+   1e-4 agreement check by 2%. Very large cells (about 60,000 customers) can also fail the
+   frozen start-agreement rule (1e-4 in total log-likelihood) along the flat ridge and keep
+   the fallback. Whether they do is platform-dependent floating point (start gap 3.7e-4 on
+   macOS arm64, 6.1e-5 on Linux x86_64 CI for the same expected-count data); the test asserts
+   that the rule is applied consistently, not which side the gap falls. No development-grid
+   cell was affected.
 10. **E1 likelihood precision on the ridge.** The fitted E1 likelihood uses `betaln`
     differences, which lose about 1e-9 relative precision at `alpha, beta` near e^12-e^15; A7
     compares likelihoods with the exact finite-product form instead. The fit itself is

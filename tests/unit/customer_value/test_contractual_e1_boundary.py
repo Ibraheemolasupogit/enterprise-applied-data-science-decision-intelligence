@@ -181,11 +181,15 @@ def test_the_e1_exception_is_narrow() -> None:
     # (g) too few events for the one-parameter fit
     tiny = _geometric_counts(0.06, scale=0.4, max_window=30)
     assert ct.e1_geometric_boundary(fl, tiny) is None
-    # very large cells: ridge start disagreement above the frozen 1e-4 keeps the fallback
+    # very large cells: on the flat ridge the start gap is platform-dependent floating point
+    # (3.7e-4 on macOS arm64, 6.1e-5 on Linux x86_64 CI), so only the rule is asserted: the
+    # frozen 1e-4 start-agreement check decides, whichever side the gap falls.
     huge = _geometric_counts(0.06, scale=1000.0)
     big = ct.fit("E1", huge)
-    assert big.diagnostics.start_log_likelihood_gap > pp.STATUS_RULES.start_agreement_tolerance
-    assert ct.e1_geometric_boundary(big, huge) is None
+    agrees = big.diagnostics.start_log_likelihood_gap <= pp.STATUS_RULES.start_agreement_tolerance
+    assert (ct.e1_geometric_boundary(big, huge) is not None) == agrees
+    gap = replace(big.diagnostics, start_log_likelihood_gap=1e-3)
+    assert ct.e1_geometric_boundary(replace(big, diagnostics=gap), huge) is None
     # never E2
     assert ct.e1_geometric_boundary(ct.fit("E2", data), data) is None
 
