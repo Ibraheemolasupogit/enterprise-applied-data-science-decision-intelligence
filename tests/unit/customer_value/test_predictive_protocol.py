@@ -18,10 +18,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "b81cdbbc0f29c22cadc6f7bc9383e3d4ee8165ed71d3d64f19f61f41b6ef2175"
-"""SHA-256 of the protocol manifest (P0 as amended through A5). Any protocol change must update
+FROZEN_DIGEST = "33329a8483c6c1e8fc586dc94d99fa9d203edef590bf1a158c9a8239330ba5cc"
+"""SHA-256 of the protocol manifest (P0 as amended through A7). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "f5ae4a9f645d6f88f0fd2716842a2f5075e6f5bc9718efc1d5d071b0379fe0db"
+FROZEN_CODE_DIGEST = "2e69fb2d7647e1fc18f53124945edbd76e3223052d1a1849bae188b9539c23b5"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -278,10 +278,9 @@ def test_p1_amendments_are_recorded_and_consistent() -> None:
 
 
 def test_p2_amendment_pins_the_oracle_numerics_and_closes_its_item() -> None:
-    assert [a.id for a in pp.PROTOCOL_AMENDMENTS] == ["A1", "A2", "A3", "A4", "A5"]
-    a5 = pp.PROTOCOL_AMENDMENTS[-1]
+    assert [a.id for a in pp.PROTOCOL_AMENDMENTS[:5]] == ["A1", "A2", "A3", "A4", "A5"]
+    a5 = pp.PROTOCOL_AMENDMENTS[4]
     assert a5.stage == "P2" and a5.before_main_seed
-    assert pp.PROTOCOL_STAGE == "P2-amended"
     on = pp.ORACLE_NUMERICS
     assert (on.bgnbd_jacobi_nodes, on.pareto_jacobi_nodes) == (64, 64)
     assert on.copula_nodes == (64, 48, 32)
@@ -291,4 +290,42 @@ def test_p2_amendment_pins_the_oracle_numerics_and_closes_its_item() -> None:
     assert "COVERAGE_REPLICATIONS" in pp.PENDING_BEFORE_MAIN[0]
     assert not any("oracle Monte Carlo" in item for item in pp.PENDING_BEFORE_MAIN)
     with pytest.raises(pp.ProtocolNotReady):  # one item still pending: seeds stay refused
+        pp.authorise_seed("main")
+
+
+def test_p3_amendment_adds_only_the_narrow_e2_boundary_exception() -> None:
+    assert [a.id for a in pp.PROTOCOL_AMENDMENTS[:6]] == ["A1", "A2", "A3", "A4", "A5", "A6"]
+    a6 = pp.PROTOCOL_AMENDMENTS[5]
+    assert a6.stage == "P3" and a6.before_main_seed
+    assert pp.PROTOCOL_STAGE == "P3-amended"
+    rule = pp.E2_GEOMETRIC_BOUNDARY
+    assert (rule.model, rule.parameter) == ("E2", "v")
+    assert rule.max_score_per_customer == pp.STATUS_RULES.gradient_tolerance
+    assert rule.log_likelihood_tolerance == pp.STATUS_RULES.relative_change_tolerance
+    assert "Every other status and fallback rule is unchanged" in rule.statement
+    # the frozen status rules and statuses themselves are untouched
+    assert pp.STATUS_RULES.log_parameter_bound == 10.0 and pp.STATUS_RULES.n_starts == 5
+    assert pp.FIT_STATUSES == ("ok", "fallback", "unstable", "failed", "undefined")
+    assert "pooled fit of the same model" in pp.STATUS_RULES.fallback
+    assert len(pp.PENDING_BEFORE_MAIN) == 1
+    with pytest.raises(pp.ProtocolNotReady):
+        pp.authorise_seed("main")
+
+
+def test_p3_amendment_a7_adds_only_the_narrow_e1_boundary_exception() -> None:
+    assert [a.id for a in pp.PROTOCOL_AMENDMENTS] == ["A1", "A2", "A3", "A4", "A5", "A6", "A7"]
+    a7 = pp.PROTOCOL_AMENDMENTS[-1]
+    assert a7.stage == "P3" and a7.before_main_seed
+    assert pp.PROTOCOL_STAGE == "P3-amended"
+    rule = pp.E1_GEOMETRIC_BOUNDARY
+    assert rule.model == "E1" and "alpha + beta" in rule.parameter
+    assert rule.label != pp.E2_GEOMETRIC_BOUNDARY.label
+    assert (rule.max_score_per_customer, rule.log_likelihood_tolerance,
+            rule.log_rate_tolerance) == (pp.E2_GEOMETRIC_BOUNDARY.max_score_per_customer,
+                                         pp.E2_GEOMETRIC_BOUNDARY.log_likelihood_tolerance,
+                                         pp.E2_GEOMETRIC_BOUNDARY.log_rate_tolerance)
+    assert "A6 (E2) and every other status and fallback rule are unchanged" in rule.statement
+    assert pp.E2_GEOMETRIC_BOUNDARY.model == "E2"  # A6 itself unchanged
+    assert pp.FIT_STATUSES == ("ok", "fallback", "unstable", "failed", "undefined")
+    with pytest.raises(pp.ProtocolNotReady):
         pp.authorise_seed("main")

@@ -16,7 +16,7 @@ design and its three scientific amendments are encoded as follows:
    :data:`NO_QUALIFIED_MODEL`; E2 may appear only as :data:`REFERENCE_FALLBACK_LABEL`, never as
    a selection (:mod:`.model_selection`).
 
-**Stage.** This is the P0 protocol as amended through P2 (:data:`PROTOCOL_STAGE`). Items that
+**Stage.** This is the P0 protocol as amended through P3 (:data:`PROTOCOL_STAGE`). Items that
 later phases must fix before any main-seed evaluation (now only the repeated-sampling
 preflight; the oracle numerics were pinned at P2 in :data:`ORACLE_NUMERICS`) are listed in
 :data:`PENDING_BEFORE_MAIN`; :func:`authorise_seed` refuses the main and fresh seeds while any
@@ -46,7 +46,7 @@ from typing import Any
 from decision_intelligence.customer_value import protocol as m10
 
 PROTOCOL_ID = "M11-predictive-ltv"
-PROTOCOL_STAGE = "P2-amended"
+PROTOCOL_STAGE = "P3-amended"
 
 # --- seeds -------------------------------------------------------------------------------
 MAIN_SEED = 20261101
@@ -486,6 +486,71 @@ FIT_STATUSES = ("ok", "fallback", "unstable", "failed", "undefined")
 
 
 @dataclass(frozen=True)
+class BoundaryException:
+    model: str
+    parameter: str
+    label: str
+    statement: str
+    max_score_per_customer: float
+    log_likelihood_tolerance: float
+    log_rate_tolerance: float
+
+
+E2_GEOMETRIC_BOUNDARY = BoundaryException(
+    model="E2", parameter="v", label="v=0 boundary (geometric)",
+    statement=(
+        "An E2 fit (cell or pooled) is replaced by its v = 0 limit, the geometric model, only "
+        "if ALL hold: (a) its status is 'unstable' and its reasons are exactly 'parameter at "
+        "the log-scale bound', optionally with 'Hessian not positive definite'; (b) log v < "
+        "-log_parameter_bound and |log b| <= log_parameter_bound; (c) it is converged with a "
+        "finite likelihood; (d) the geometric MLE b_geo = -log(1 - events / decisions) agrees "
+        "with the E2 b within log_rate_tolerance (log scale); (e) the geometric "
+        "log-likelihood is >= the E2 log-likelihood - log_likelihood_tolerance x "
+        "max(1, |loglik|); (f) the one-sided score for v at (b_geo, v = 0) per customer is <= "
+        "max_score_per_customer (v = 0 is a boundary maximum); (g) the one-parameter "
+        "geometric fit is 'ok' under STATUS_RULES. The fit is then 'ok' with v = 0, labelled "
+        "and counted. Every other status and fallback rule is unchanged: E1 boundaries, v at "
+        "the upper bound, b at a bound, any other reason and any failed check keep the "
+        "original status and the pooled fallback."),
+    max_score_per_customer=STATUS_RULES.gradient_tolerance,
+    log_likelihood_tolerance=STATUS_RULES.relative_change_tolerance,
+    log_rate_tolerance=1e-4)
+"""Amendment A6 (P3): the correctly specified homogeneous-churn case (v = 0) lies on E2's
+parameter boundary; without this exception the frozen boundary rule replaced a correct cell
+fit with a miscalibrated pooled fit (P3 finding 2)."""
+E1_GEOMETRIC_BOUNDARY = BoundaryException(
+    model="E1", parameter="phi = 1 / (alpha + beta)",
+    label="alpha + beta -> infinity boundary (geometric)",
+    statement=(
+        "E1's geometric limit is alpha, beta -> infinity with mu = alpha / (alpha + beta) "
+        "fixed: Beta(alpha, beta) collapses to mu and S(a) -> (1 - mu)^a; in (mu, phi = "
+        "1 / (alpha + beta)) it is the closed boundary phi = 0. An E1 fit (cell or pooled) is "
+        "replaced by this limit only if ALL hold: (a) its status is 'unstable' with reasons "
+        "'parameter at the log-scale bound', optionally with 'Hessian not positive definite', "
+        "or 'failed' with the single reason 'not converged' (the iterates drift along the "
+        "flat ridge towards phi = 0, where no finite (log alpha, log beta) can meet the "
+        "gradient tolerance); (b) a finite likelihood, no separation and start-point "
+        "agreement within STATUS_RULES.start_agreement_tolerance; (c) it lies on the "
+        "geometric ridge: log(alpha + beta) > log_parameter_bound and min(log alpha, "
+        "log beta) >= -log_parameter_bound (degenerate lower boundaries never qualify); (d) "
+        "the geometric MLE mu_geo = events / decisions agrees with the fit's mu within "
+        "log_rate_tolerance (log scale); (e) the geometric log-likelihood is >= the E1 "
+        "log-likelihood at the fit, evaluated with the exact finite-product form (well "
+        "conditioned on the ridge), - log_likelihood_tolerance x max(1, |loglik|); (f) the "
+        "one-sided score for phi at (mu_geo, phi = 0) per customer is <= "
+        "max_score_per_customer (phi = 0 is a boundary maximum; convergence is then exact: "
+        "the mu score is 0 at mu_geo); (g) the "
+        "one-parameter geometric fit is 'ok' under STATUS_RULES. The fit is then 'ok' with "
+        "alpha = beta = infinity and churn mu_geo, labelled and counted. A6 (E2) and every "
+        "other status and fallback rule are unchanged."),
+    max_score_per_customer=STATUS_RULES.gradient_tolerance,
+    log_likelihood_tolerance=STATUS_RULES.relative_change_tolerance,
+    log_rate_tolerance=1e-4)
+"""Amendment A7 (P3): the E1 counterpart of A6 (P3 limitation 7): under homogeneous churn E1
+cells ran to the geometric ridge and fell back to the miscalibrated pooled fit."""
+
+
+@dataclass(frozen=True)
 class CalibrationReporting:
     reliability_bins: int
     d_calibration_bins: int
@@ -667,6 +732,26 @@ PROTOCOL_AMENDMENTS = (
               "PROTOCOL_STAGE 'P1-amended' -> 'P2-amended'",
               "owner approval of the settings measured in the P2 assurance review "
               "(docs/evidence/m11-p2-oracle-findings.md, m11-p2-oracle-plan.md)"),
+    Amendment("A6", "P3", "2026-11-18", True,
+              "narrow E2 v = 0 boundary exception (E2_GEOMETRIC_BOUNDARY): an E2 fit unstable "
+              "only because v reached its lower log-scale bound, and verified to be the "
+              "geometric limit, is used with v = 0 as 'ok' instead of the pooled fallback; "
+              "all other fit-status and fallback rules unchanged; PROTOCOL_STAGE "
+              "'P2-amended' -> 'P3-amended'",
+              "owner approval after P3 finding 2 (docs/evidence/m11-p3-findings.md): under "
+              "homogeneous churn the correct MLE is v = 0, and the pooled substitute was "
+              "miscalibrated (holdout slope 1.18-1.19)"),
+    Amendment("A7", "P3", "2026-11-18", True,
+              "narrow E1 geometric boundary exception (E1_GEOMETRIC_BOUNDARY): an E1 fit "
+              "unstable at the upper log-scale bound, or not converged, only because its "
+              "iterates ran onto the alpha + beta -> infinity ridge, and verified to be at the "
+              "geometric limit phi = 0 (closed-form mu, non-positive one-sided phi score), is "
+              "used with alpha = beta = infinity as 'ok' instead of the pooled fallback; A6 and "
+              "all other fit-status and fallback rules unchanged; PROTOCOL_STAGE stays "
+              "'P3-amended'",
+              "owner approval after P3 limitation 7 (docs/evidence/m11-p3-findings.md): under "
+              "homogeneous churn E1 cells still fell back to the miscalibrated pooled fit "
+              "(holdout slope 1.18-1.19)"),
 )
 """Every protocol change after the P0 commit (82e3ebd), all made before any main-seed
 evaluation; the main seed has never been authorised."""
