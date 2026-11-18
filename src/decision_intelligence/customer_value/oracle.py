@@ -107,7 +107,8 @@ def filter_posterior(model: ChainModel, base: FloatArray, current_age: np.ndarra
         if log_emission is None:
             return np.ones((rows.size, 1, s))
         le = log_emission[rows, a, :]
-        return np.exp(le - le.max(axis=1, keepdims=True))[:, None, :]
+        return np.asarray(np.exp(le - le.max(axis=1, keepdims=True))[:, None, :],
+                          dtype=np.float64)
 
     every = np.arange(n)
     alpha *= emit(0, every)
