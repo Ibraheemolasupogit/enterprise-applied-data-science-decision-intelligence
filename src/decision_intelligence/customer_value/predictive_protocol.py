@@ -16,7 +16,7 @@ design and its three scientific amendments are encoded as follows:
    :data:`NO_QUALIFIED_MODEL`; E2 may appear only as :data:`REFERENCE_FALLBACK_LABEL`, never as
    a selection (:mod:`.model_selection`).
 
-**Stage.** This is the P0 protocol as amended through P3 (:data:`PROTOCOL_STAGE`). Items that
+**Stage.** This is the P0 protocol as amended through P4 (:data:`PROTOCOL_STAGE`). Items that
 later phases must fix before any main-seed evaluation (now only the repeated-sampling
 preflight; the oracle numerics were pinned at P2 in :data:`ORACLE_NUMERICS`) are listed in
 :data:`PENDING_BEFORE_MAIN`; :func:`authorise_seed` refuses the main and fresh seeds while any
@@ -46,7 +46,7 @@ from typing import Any
 from decision_intelligence.customer_value import protocol as m10
 
 PROTOCOL_ID = "M11-predictive-ltv"
-PROTOCOL_STAGE = "P3-amended"
+PROTOCOL_STAGE = "P4-amended"
 
 # --- seeds -------------------------------------------------------------------------------
 MAIN_SEED = 20261101
@@ -130,6 +130,25 @@ TENURE_BAND_MIN_EVENTS = 10
 """A tenure band with fewer training events is merged into its lower neighbour (repeatedly),
 before fitting; the merged bands are reported. The basis is unpenalised, so an empty band
 would otherwise have no finite estimate."""
+E3_EXCLUDED_COVARIATES = ("acquisition_cohort", "tenure_months", "paid_months")
+"""Amendment A8: registry features E3 does not use as linear covariates (the registry itself is
+unchanged; S1, E5 and every other model are unaffected). Frozen at the landmark and entered
+linearly, they were extrapolated far outside the training landmarks' range of cohorts and
+tenures; tenure enters E3 only through its unpenalised tenure-band basis on the decision age."""
+E3_TUNING_LOSS = ("squared error of the window (12-month at the primary horizon) value at the "
+                  "validation landmark; ties to the larger penalty")
+"""Amendment A8 (clarifies TUNING_RULE, which did not name the loss)."""
+E3_SELECTION_ELIGIBILITY = (
+    "E3 is a selection candidate at an evaluation cutoff only if a validation fit exists: at "
+    "least one tuning landmark whose labels are completely recorded before the validation "
+    "landmark. Otherwise E3 is 'not selection-eligible' there; no censored validation windows")
+"""Amendment A8 (owner decision): no relaxation of the complete-label rule."""
+DESIGN_DUPLICATE_RULE = (
+    "after standardisation on the rows of the fit, a column identical (max |difference| <= "
+    "1e-10) to an earlier column in design order (registry order, then one-hot indicators by "
+    "level) is dropped and reported, like an SD-0 column; the feature registry is unchanged")
+"""Amendment A8 (owner decision): deterministic removal of exact duplicate design columns (for
+example ``paid_months = tenure_months + 1`` for active customers)."""
 
 
 @dataclass(frozen=True)
@@ -752,6 +771,17 @@ PROTOCOL_AMENDMENTS = (
               "owner approval after P3 limitation 7 (docs/evidence/m11-p3-findings.md): under "
               "homogeneous churn E1 cells still fell back to the miscalibrated pooled fit "
               "(holdout slope 1.18-1.19)"),
+    Amendment("A8", "P4", "2026-11-18", True,
+              "E3 excludes acquisition_cohort, tenure_months and paid_months from its linear "
+              "covariates (E3_EXCLUDED_COVARIATES), keeping its tenure-band basis; S1 and the "
+              "feature registry unchanged. Clarifications: E3_TUNING_LOSS (window-value MSE, "
+              "ties to the larger penalty), E3_SELECTION_ELIGIBILITY (no validation fit -> not "
+              "selection-eligible; no censored validation), DESIGN_DUPLICATE_RULE "
+              "(deterministic removal of exact duplicate design columns); PROTOCOL_STAGE "
+              "'P3-amended' -> 'P4-amended'",
+              "owner decision after the P4 diagnosis (docs/evidence/m11-p4-findings.md): the "
+              "frozen linear covariates were extrapolated beyond the landmarks' range (W = 24 "
+              "at C = 33: mean(pred - oracle) -18 to -25; five validation-gate failures)"),
 )
 """Every protocol change after the P0 commit (82e3ebd), all made before any main-seed
 evaluation; the main seed has never been authorised."""
@@ -917,6 +947,9 @@ def validate_protocol() -> list[str]:
     ids_a = [a.id for a in PROTOCOL_AMENDMENTS]
     if len(ids_a) != len(set(ids_a)) or not all(a.before_main_seed for a in PROTOCOL_AMENDMENTS):
         problems.append("amendments must have unique ids and precede the main seed")
+    contractual_a = {f.name for f in features("contractual", "A")}
+    if not set(E3_EXCLUDED_COVARIATES) <= contractual_a:
+        problems.append("E3_EXCLUDED_COVARIATES must name contractual Tier A registry features")
     on = ORACLE_NUMERICS
     if min(on.bgnbd_jacobi_nodes, on.pareto_jacobi_nodes, *on.copula_nodes) < 1 or \
             len(on.copula_nodes) != 3:

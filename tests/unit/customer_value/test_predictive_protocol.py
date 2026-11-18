@@ -18,10 +18,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "33329a8483c6c1e8fc586dc94d99fa9d203edef590bf1a158c9a8239330ba5cc"
-"""SHA-256 of the protocol manifest (P0 as amended through A7). Any protocol change must update
+FROZEN_DIGEST = "a86df2f157893f0cf8250b4b30c8f10509a947498f238be770b5ba9f65eea5ba"
+"""SHA-256 of the protocol manifest (P0 as amended through A8). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "2e69fb2d7647e1fc18f53124945edbd76e3223052d1a1849bae188b9539c23b5"
+FROZEN_CODE_DIGEST = "b9675dcfa62a64b7ac2e3cb5e234c5f8845fdcb3adc03ec0539a70101e03b2c6"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -297,7 +297,6 @@ def test_p3_amendment_adds_only_the_narrow_e2_boundary_exception() -> None:
     assert [a.id for a in pp.PROTOCOL_AMENDMENTS[:6]] == ["A1", "A2", "A3", "A4", "A5", "A6"]
     a6 = pp.PROTOCOL_AMENDMENTS[5]
     assert a6.stage == "P3" and a6.before_main_seed
-    assert pp.PROTOCOL_STAGE == "P3-amended"
     rule = pp.E2_GEOMETRIC_BOUNDARY
     assert (rule.model, rule.parameter) == ("E2", "v")
     assert rule.max_score_per_customer == pp.STATUS_RULES.gradient_tolerance
@@ -313,10 +312,10 @@ def test_p3_amendment_adds_only_the_narrow_e2_boundary_exception() -> None:
 
 
 def test_p3_amendment_a7_adds_only_the_narrow_e1_boundary_exception() -> None:
-    assert [a.id for a in pp.PROTOCOL_AMENDMENTS] == ["A1", "A2", "A3", "A4", "A5", "A6", "A7"]
-    a7 = pp.PROTOCOL_AMENDMENTS[-1]
+    assert [a.id for a in pp.PROTOCOL_AMENDMENTS[:7]] == ["A1", "A2", "A3", "A4", "A5", "A6",
+                                                          "A7"]
+    a7 = pp.PROTOCOL_AMENDMENTS[6]
     assert a7.stage == "P3" and a7.before_main_seed
-    assert pp.PROTOCOL_STAGE == "P3-amended"
     rule = pp.E1_GEOMETRIC_BOUNDARY
     assert rule.model == "E1" and "alpha + beta" in rule.parameter
     assert rule.label != pp.E2_GEOMETRIC_BOUNDARY.label
@@ -327,5 +326,29 @@ def test_p3_amendment_a7_adds_only_the_narrow_e1_boundary_exception() -> None:
     assert "A6 (E2) and every other status and fallback rule are unchanged" in rule.statement
     assert pp.E2_GEOMETRIC_BOUNDARY.model == "E2"  # A6 itself unchanged
     assert pp.FIT_STATUSES == ("ok", "fallback", "unstable", "failed", "undefined")
+    with pytest.raises(pp.ProtocolNotReady):
+        pp.authorise_seed("main")
+
+
+def test_p4_amendment_a8_excludes_three_e3_covariates_and_records_the_clarifications() -> None:
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
+    assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]
+    a8 = pp.PROTOCOL_AMENDMENTS[-1]
+    assert a8.stage == "P4" and a8.before_main_seed
+    assert pp.PROTOCOL_STAGE == "P4-amended"
+    assert pp.E3_EXCLUDED_COVARIATES == ("acquisition_cohort", "tenure_months", "paid_months")
+    # the registry itself is unchanged: every excluded name is still a Tier A feature
+    names_a = [f.name for f in pp.features("contractual", "A")]
+    assert set(pp.E3_EXCLUDED_COVARIATES) <= set(names_a)
+    assert names_a == ["segment", "channel", "tenure_months", "acquisition_cohort",
+                       "promo_months_remaining", "paid_months", "mean_contribution",
+                       "last_contribution"]
+    assert "ties to the larger penalty" in pp.E3_TUNING_LOSS
+    assert "no censored validation" in pp.E3_SELECTION_ELIGIBILITY
+    assert "registry is unchanged" in pp.DESIGN_DUPLICATE_RULE
+    assert pp.TUNING_RULE.startswith("temporal: choose the penalty on the validation landmark")
+    assert pp.PENALTY_GRID == (0.01, 0.1, 1.0, 10.0, 100.0) and pp.DEFAULT_PENALTY == 1.0
+    assert pp.TENURE_BAND_EDGES == (0, 1, 2, 3, 6, 12, 24)
+    assert pp.TENURE_BAND_MIN_EVENTS == 10
     with pytest.raises(pp.ProtocolNotReady):
         pp.authorise_seed("main")
