@@ -18,10 +18,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "85eb0b4cc7d15c705dce2e23cb4ac97aa0631fd95efe8b7b402da467497379c1"
-"""SHA-256 of the P0 protocol manifest. Any protocol change must update this value in the same
-reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "eefebd8067285e70a07ad5ad0bf270cdf3434c9968e5aa32967d56e49d8bed9b"
+FROZEN_DIGEST = "b81cdbbc0f29c22cadc6f7bc9383e3d4ee8165ed71d3d64f19f61f41b6ef2175"
+"""SHA-256 of the protocol manifest (P0 as amended through A5). Any protocol change must update
+this value in the same reviewed diff and be disclosed in the M11 evidence."""
+FROZEN_CODE_DIGEST = "f5ae4a9f645d6f88f0fd2716842a2f5075e6f5bc9718efc1d5d071b0379fe0db"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -266,15 +266,29 @@ def test_p0_code_never_reads_ground_truth(rel: str) -> None:
 
 
 def test_p1_amendments_are_recorded_and_consistent() -> None:
-    assert [a.id for a in pp.PROTOCOL_AMENDMENTS] == ["A1", "A2", "A3", "A4"]
-    assert all(a.before_main_seed and a.stage == "P1" for a in pp.PROTOCOL_AMENDMENTS)
-    assert pp.PROTOCOL_STAGE == "P1-amended"
+    assert [a.id for a in pp.PROTOCOL_AMENDMENTS[:4]] == ["A1", "A2", "A3", "A4"]
+    assert all(a.before_main_seed and a.stage == "P1" for a in pp.PROTOCOL_AMENDMENTS[:4])
     assert "segment x channel" in pp.model("E4").name and "12 cells" in pp.E4_FIT_UNIT
     assert "MISSPECIFIED REFERENCE" in pp.E4_POOLED_REFERENCE
     assert pp.model("E4").complexity_rank is not None  # the per-cell fit is the candidate
     assert "kept as generated at P1" in pp.SIGNAL_PARAMETERS_DECISION
-    assert len(pp.PENDING_BEFORE_MAIN) == 2
     assert any("COVERAGE_REPLICATIONS" in item for item in pp.PENDING_BEFORE_MAIN)
-    assert any("oracle" in item for item in pp.PENDING_BEFORE_MAIN)
     for name in ("signals_contractual", "purchases_noncontractual"):
         assert pp.scenario(name).parameters_status.startswith("fixed at P1")
+
+
+def test_p2_amendment_pins_the_oracle_numerics_and_closes_its_item() -> None:
+    assert [a.id for a in pp.PROTOCOL_AMENDMENTS] == ["A1", "A2", "A3", "A4", "A5"]
+    a5 = pp.PROTOCOL_AMENDMENTS[-1]
+    assert a5.stage == "P2" and a5.before_main_seed
+    assert pp.PROTOCOL_STAGE == "P2-amended"
+    on = pp.ORACLE_NUMERICS
+    assert (on.bgnbd_jacobi_nodes, on.pareto_jacobi_nodes) == (64, 64)
+    assert on.copula_nodes == (64, 48, 32)
+    assert "doubled" in on.convergence_check
+    assert on.monte_carlo_draws == 1_000_000 and "independent" in on.monte_carlo_check
+    assert len(pp.PENDING_BEFORE_MAIN) == 1
+    assert "COVERAGE_REPLICATIONS" in pp.PENDING_BEFORE_MAIN[0]
+    assert not any("oracle Monte Carlo" in item for item in pp.PENDING_BEFORE_MAIN)
+    with pytest.raises(pp.ProtocolNotReady):  # one item still pending: seeds stay refused
+        pp.authorise_seed("main")

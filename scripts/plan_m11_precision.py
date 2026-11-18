@@ -1,15 +1,20 @@
 """M11 pilot precision and computational-feasibility plans (P0 and P1).
 
 ``--stage p0`` (default) writes ``docs/evidence/m11-p0-precision-plan.md``; ``--stage p1``
-writes ``docs/evidence/m11-p1-scenario-plan.md`` for the P1 generators. Uses only the M11
-pilot seed (via ``predictive_protocol.authorise_seed("pilot")``) and only observable tables:
-no model is fitted, no ground truth is read, and neither the main nor the fresh seed is
-touched. The P0 stage plans the new scenarios with the M10 generator as a size proxy (marked
+writes ``docs/evidence/m11-p1-scenario-plan.md`` for the P1 generators; ``--stage p2`` writes
+``docs/evidence/m11-p2-oracle-plan.md`` (oracle calibration, the Tier B advantage and the
+non-contractual oracle's calibration and quadrature convergence, using the P2 oracles:
+evaluation references with the true generator parameters, never models).
+Uses only the M11 pilot seed (via ``predictive_protocol.authorise_seed("pilot")``) and
+development seeds; no model is fitted; the latent truth tables are never read (P2 uses the
+oracles' true parameters only); neither the main nor the fresh seed is touched.
+The P0 stage plans the new scenarios with the M10 generator as a size proxy (marked
 PROVISIONAL); the P1 stage replaces that proxy with the P1 generators.
 
 Usage:
     python scripts/plan_m11_precision.py              # writes the P0 plan record
     python scripts/plan_m11_precision.py --stage p1   # writes the P1 scenario plan record
+    python scripts/plan_m11_precision.py --stage p2   # writes the P2 oracle plan record
     python scripts/plan_m11_precision.py --output OUT.md
 """
 
@@ -31,11 +36,18 @@ import numpy as np
 import pandas as pd
 import scipy
 
+from decision_intelligence.common.bootstrap import bootstrap_ci
+from decision_intelligence.customer_value import landmarks as lm
+from decision_intelligence.customer_value import oracle as orc
 from decision_intelligence.customer_value import precision as pr11
 from decision_intelligence.customer_value import predictive_protocol as pp
+from decision_intelligence.customer_value import purchase_oracle as por
+from decision_intelligence.customer_value.features import PromotionPolicy
 from decision_intelligence.customer_value.panel import EconomicsTables, observe
 from decision_intelligence.data import predictive_ltv_scenarios as gen
 from decision_intelligence.data.customer_economics_scenarios import (
+    CHANNELS,
+    SEGMENTS,
     EconomicsScenarioConfig,
     generate_economics_scenario,
 )
@@ -44,6 +56,8 @@ from decision_intelligence.data.point_in_time import as_of
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = REPO_ROOT / "docs" / "evidence" / "m11-p0-precision-plan.md"
 P1_OUTPUT = REPO_ROOT / "docs" / "evidence" / "m11-p1-scenario-plan.md"
+P2_OUTPUT = REPO_ROOT / "docs" / "evidence" / "m11-p2-oracle-plan.md"
+P2_DEV_SEEDS = tuple(range(5101, 5111))  # development range: population-level replication
 BENCH_SEED = 1  # development range: synthetic matrices for timing only
 TIMINGS: dict[str, float] = {}
 
@@ -374,10 +388,276 @@ def plan_p1(seed: int, output: Path) -> int:
     return 0
 
 
+def _policy(promo_months: int, promo_channels: Sequence[bool]) -> PromotionPolicy:
+    return PromotionPolicy(promo_months, tuple(c for c, p in zip(CHANNELS, promo_channels,
+                                                               strict=True) if p))
+
+
+def oracle_pair(sc: gen.SignalsScenario, cutoff: int, horizon: int) -> pd.DataFrame:
+    """Tier A and Tier B oracles with the realised holdout value (comparison population)."""
+    a = orc.signals_oracle(sc, cutoff, horizon, "A").frame["oracle"]
+    b = orc.signals_oracle(sc, cutoff, horizon, "B").frame["oracle"].reindex(a.index)
+    pol = _policy(sc.config.promo_months, sc.config.promo_channels)
+    hf = lm.holdout_frame(sc, sc.config.n_months, cutoff, horizon, "contractual", "A", pol)
+    r = hf.set_index("customer_id")["realised"].reindex(a.index)
+    return pd.DataFrame({"mu_a": a, "mu_b": b, "r": r})
+
+
+def slope(mu: np.ndarray, r: np.ndarray) -> float:
+    x = mu - mu.mean()
+    return float(np.sum(x * (r - r.mean())) / np.sum(x * x))
+
+
+def slope_se(mu: np.ndarray, r: np.ndarray) -> float:
+    """Heteroscedasticity-robust (HC0) standard error of :func:`slope`."""
+    x = mu - mu.mean()
+    e = r - r.mean() - slope(mu, r) * x
+    return float(np.sqrt(np.sum(x * x * e * e)) / np.sum(x * x))
+
+
+def advantage_row(label: str, f: pd.DataFrame, alpha: float, power: float,
+                  rng: np.random.Generator) -> list[object]:
+    r, a, b = f["r"].to_numpy(), f["mu_a"].to_numpy(), f["mu_b"].to_numpy()
+    d = (r - a) ** 2 - (r - b) ** 2
+    ci = bootstrap_ci(d, np.mean, rng=rng, method="percentile",
+                      n_resamples=pp.CLUSTERED_INFERENCE.metric_bootstrap_resamples)
+    gap = float(np.mean((b - a) ** 2))
+    resid = d - (b - a) ** 2
+    z = float(resid.mean() / (resid.std(ddof=1) / np.sqrt(resid.size)))
+    mse_a, mse_b = float(np.mean((r - a) ** 2)), float(np.mean((r - b) ** 2))
+    mde = pr11.minimum_detectable_relative_excess(len(f), alpha, power)
+    return [label, len(f), mse_a, mse_b, float(d.mean()), f"[{ci.ci_lower:.2f}, {ci.ci_upper:.2f}]",
+            gap, gap / mse_b, mde, gap / mse_b / mde, z, slope(a, r), slope(b, r)]
+
+
+def pooled_advantage(frames: Sequence[pd.DataFrame], rng: np.random.Generator
+                     ) -> tuple[float, float, float, int, int]:
+    """Pooled cutoffs: mean paired difference with a customer-cluster bootstrap interval."""
+    rows = pd.concat([f.assign(d=(f["r"] - f["mu_a"]) ** 2 - (f["r"] - f["mu_b"]) ** 2)[["d"]]
+                      for f in frames])
+    per = rows.groupby(level=0)["d"].agg(["sum", "count"])
+    sums = per["sum"].to_numpy(dtype=np.float64)
+    counts = per["count"].to_numpy(dtype=np.float64)
+
+    def ratio(idx: np.ndarray) -> float:
+        j = idx.astype(np.int64)
+        return float(np.sum(sums[j])) / float(np.sum(counts[j]))
+
+    ci = bootstrap_ci(np.arange(sums.size, dtype=float), ratio, rng=rng, method="percentile",
+                      n_resamples=pp.CLUSTERED_INFERENCE.metric_bootstrap_resamples)
+    total = float(np.sum(sums)) / float(np.sum(counts))
+    return total, ci.ci_lower, ci.ci_upper, int(np.sum(counts)), int(sums.size)
+
+
+def purchases_section(seed: int) -> list[str]:
+    """Non-contractual oracle on the pilot seed: calibration against realised value (no latent
+    truth read) and quadrature convergence (default vs doubled rules)."""
+    out: list[str] = []
+    spec = pp.scenario("purchases_noncontractual")
+    rows, conv = [], []
+    for name in (None, *gen.PURCHASES_VARIANTS):
+        cfg = replace(gen.PurchasesScenarioConfig(), seed=seed)
+        cfg = gen.purchases_variant(name, cfg) if name else cfg
+        label = name or "bgnbd (base)"
+        sc = gen.generate_purchases_scenario(cfg)
+        for c in spec.evaluation_cutoffs:
+            with timed(f"purchases oracle: {label}, C={c}"):
+                res = por.purchases_oracle(sc, c, pp.PRIMARY_HORIZON)
+            f = res.frame
+            hf = lm.holdout_frame(sc, cfg.n_months, c, pp.PRIMARY_HORIZON, "non_contractual",
+                                  "A").set_index("customer_id")
+            r = hf["realised"].reindex(f.index).to_numpy()
+            mu = f["oracle"].to_numpy()
+            rows.append([label, c, len(f), float(np.mean((r - mu) ** 2)), float(np.mean(r - mu)),
+                         float(np.mean(r - mu) / (np.std(r - mu, ddof=1) / np.sqrt(len(f)))),
+                         f"{slope(mu, r):.3f} ({slope_se(mu, r):.3f})",
+                         float(f["p_alive"].mean()),
+                         f"{TIMINGS[f'purchases oracle: {label}, C={c}']:.2f}"])
+        h = por.purchase_history(sc, spec.evaluation_cutoffs[0], pp.PRIMARY_HORIZON)
+        hf_ = h.frame
+        seg = np.array([SEGMENTS.index(v) for v in hf_["segment"]])
+        ch = np.array([CHANNELS.index(v) for v in hf_["channel"]])
+        args = (hf_["x"].to_numpy(), hf_["t_x"].to_numpy(), hf_["age"].to_numpy())
+        alpha = cfg.alpha * np.asarray(cfg.segment_alpha_scale)[seg]
+        b = np.asarray(cfg.dropout_b)[ch]
+        if cfg.spend_frequency_correlation != 0.0:
+            spend = (hf_["n_spend"].to_numpy(), hf_["total_spend"].to_numpy())
+            gam = np.asarray(cfg.gg_gamma, dtype=float)[seg]
+            n_l, n_p, n_v = por.COPULA_NODES
+            lo, hi = (por.bgnbd_copula_conditional(
+                *args, *spend, h.edges, r=cfg.r, alpha=alpha, a=cfg.dropout_a, b=b,
+                gg_p=cfg.gg_p, gg_q=cfg.gg_q, gamma=gam, rho=cfg.spend_frequency_correlation,
+                nodes=(f * n_l, f * n_p, f * n_v))[3].sum(axis=1) for f in (1, 2))
+            rule = f"tensor {por.COPULA_NODES} (lambda, p, nu)"
+        elif cfg.dropout_process == "bgnbd":
+            lo = por.bgnbd_conditional(*args, h.edges, r=cfg.r, alpha=alpha, a=cfg.dropout_a,
+                                       b=b)[2].sum(axis=1)
+            hi = por.bgnbd_conditional(*args, h.edges, r=cfg.r, alpha=alpha, a=cfg.dropout_a,
+                                       b=b, nodes=2 * por.JACOBI_NODES)[2].sum(axis=1)
+            rule = f"Gauss-Jacobi {por.JACOBI_NODES} (p)"
+        else:
+            lo = por.pareto_conditional(*args, h.edges, r=cfg.r, alpha=alpha, s=cfg.pareto_s,
+                                        beta=cfg.pareto_beta)[2].sum(axis=1)
+            hi = por.pareto_conditional(*args, h.edges, r=cfg.r, alpha=alpha, s=cfg.pareto_s,
+                                        beta=cfg.pareto_beta,
+                                        nodes=2 * por.PARETO_NODES)[2].sum(axis=1)
+            rule = f"Gauss-Jacobi {por.PARETO_NODES} (death time)"
+        material = hi > 1e-9
+        conv.append([label, rule, int(material.sum()),
+                     f"{float(np.max(np.abs(lo - hi)[material] / hi[material])):.1e}"])
+    out.append("\n## 4. `purchases_noncontractual`: observable-information oracle\n")
+    out.append("BG/NBD + Gamma-Gamma (base) and each predeclared variant with its own oracle "
+               "(true process and parameters; complete-month information at `C`). Realised "
+               "value is the M10 contribution of purchases in months `C+1 .. C+12`; the "
+               "z-statistic tests `mean(R - oracle) = 0`.\n")
+    out.append(table(["scenario", "cutoff", "N", "oracle MSE (noise floor)", "mean residual",
+                      "z", "calibration slope (HC SE)", "mean P(alive at C)",
+                      "oracle seconds"], rows))
+    out.append("\nQuadrature convergence (pilot, first cutoff): maximum relative change in "
+               "expected purchases (copula: expected spend) when every rule is doubled, over "
+               "customers with a non-negligible prediction.\n")
+    out.append(table(["scenario", "default rule", "customers", "max relative change"], conv))
+    return out
+
+
+def plan_p2(seed: int, output: Path) -> int:
+    start = time.perf_counter()
+    alpha, power = pp.PLANNING_ALPHA, pp.PLANNING_POWER
+    rng = np.random.default_rng(BENCH_SEED)
+    lines: list[str] = []
+    w = lines.append
+    headers = ["case", "N", "MSE Tier A oracle", "MSE Tier B oracle", "D = MSE_A - MSE_B",
+               "D 95% CI (customer bootstrap)", "E[(mu_B - mu_A)^2]",
+               "relative Tier B advantage (/ MSE_B)", "relative MDE", "advantage / MDE",
+               "gate z (D vs gap)", "calibration slope A", "calibration slope B"]
+    s_spec = pp.scenario("signals_contractual")
+    pairs = [(c, pp.PRIMARY_HORIZON) for c in s_spec.evaluation_cutoffs]
+    pairs += [(c, h) for h, c in s_spec.secondary_horizon]
+
+    # --- 1. Pilot seed ------------------------------------------------------------------------
+    with timed("generate signals scenario (pilot)"):
+        sig = gen.generate_signals_scenario(replace(gen.SignalsScenarioConfig(), seed=seed))
+    frames: dict[tuple[int, int], pd.DataFrame] = {}
+    with timed("oracles A and B + holdout labels (pilot, 3 cutoffs)"):
+        for c, h in pairs:
+            frames[(c, h)] = oracle_pair(sig, c, h)
+    rows = [advantage_row(f"pilot C={c} W={h}", frames[(c, h)], alpha, power, rng)
+            for c, h in pairs]
+    with timed("NPH variant oracles"):
+        nph = gen.generate_signals_scenario(gen.signals_variant(
+            "non_proportional_hazards", replace(gen.SignalsScenarioConfig(), seed=seed)))
+        c0 = s_spec.evaluation_cutoffs[0]
+        rows.append(advantage_row(f"pilot NPH C={c0} W={pp.PRIMARY_HORIZON}",
+                                  oracle_pair(nph, c0, pp.PRIMARY_HORIZON), alpha, power, rng))
+    pooled = pooled_advantage([frames[(c, pp.PRIMARY_HORIZON)]
+                               for c in s_spec.evaluation_cutoffs], rng)
+    w("## 1. Tier B advantage and oracle calibration (`signals_contractual`)\n")
+    w("`D` is the paired difference in realised squared error between the exact Tier A and "
+      "Tier B oracles; in population expectation `D = E[(mu_B - mu_A)^2] >= 0` (amendment 1). "
+      "The gate column is the z-statistic of `mean(D_i - (mu_B - mu_A)_i^2)`, whose expectation "
+      "is 0; a single seed's sign of `D` is reported, not required. `relative Tier B "
+      "advantage` = `E[(mu_B - mu_A)^2] / MSE_B` is the excess error of the Tier A oracle "
+      "relative to the Tier B noise floor, directly comparable with the relative MDE "
+      "(`4k^2/N`, alpha = Holm's strictest step). Calibration slopes regress realised value on "
+      "each oracle (1 for a calibrated predictor).\n")
+    w(table(headers, rows))
+    w(f"\nPooled cutoffs {s_spec.evaluation_cutoffs} (customer-cluster bootstrap, "
+      f"{pooled[3]} rows, {pooled[4]} customers): D = {pooled[0]:.2f}, 95% CI "
+      f"[{pooled[1]:.2f}, {pooled[2]:.2f}].")
+
+    # --- 2. Population level over development seeds -----------------------------------------------
+    dev_rows = []
+    with timed(f"population level: {len(P2_DEV_SEEDS)} development seeds"):
+        for s in P2_DEV_SEEDS:
+            sc = gen.generate_signals_scenario(replace(gen.SignalsScenarioConfig(), seed=s))
+            for c in s_spec.evaluation_cutoffs:
+                f = oracle_pair(sc, c, pp.PRIMARY_HORIZON)
+                r, a, b = f["r"].to_numpy(), f["mu_a"].to_numpy(), f["mu_b"].to_numpy()
+                gap = float(np.mean((b - a) ** 2))
+                dev_rows.append((s, c, len(f), float(np.mean((r - a) ** 2 - (r - b) ** 2)), gap,
+                                 gap / float(np.mean((r - b) ** 2)),
+                                 pr11.minimum_detectable_relative_excess(len(f), alpha,
+                                                                         power)))
+    dev = pd.DataFrame(dev_rows, columns=["seed", "cutoff", "N", "D", "gap", "advantage",
+                                          "mde"])
+    summary = dev.groupby("cutoff").agg(
+        draws=("seed", "size"), mean_N=("N", "mean"), mean_D=("D", "mean"),
+        sd_D=("D", "std"), mean_gap=("gap", "mean"), mean_advantage=("advantage", "mean"),
+        sd_advantage=("advantage", "std"), min_advantage=("advantage", "min"),
+        mean_mde=("mde", "mean"))
+    w("\n## 2. Population-level Tier B advantage (independent development draws)\n")
+    w(f"Development seeds {P2_DEV_SEEDS[0]}-{P2_DEV_SEEDS[-1]} at the pinned parameters "
+      "(`E[(mu_B - mu_A)^2]` is a population quantity; its across-draw mean estimates it).\n")
+    w(table(["cutoff", "draws", "mean N", "mean D", "SD of D", "mean E[(mu_B - mu_A)^2]",
+             "mean relative advantage", "SD", "min", "mean relative MDE"],
+            [[c, int(r_.draws), float(r_.mean_N), float(r_.mean_D), float(r_.sd_D),
+              float(r_.mean_gap), float(r_.mean_advantage), float(r_.sd_advantage),
+              float(r_.min_advantage), float(r_.mean_mde)]
+             for c, r_ in summary.iterrows()]))
+
+    # --- 3. M10 scenario Tier A oracle ----------------------------------------------------------
+    m10_rows = []
+    with timed("M10 scenario oracle (pilot)"):
+        m10sc = generate_economics_scenario(replace(EconomicsScenarioConfig(), seed=seed))
+        pol = _policy(m10sc.config.promo_months, m10sc.config.promo_channels)
+        for c in pp.scenario("m10_contractual").evaluation_cutoffs:
+            mu = orc.m10_oracle(m10sc, c, pp.PRIMARY_HORIZON).frame["oracle"]
+            hf = lm.holdout_frame(m10sc, m10sc.config.n_months, c, pp.PRIMARY_HORIZON,
+                                  "contractual", "A", pol).set_index("customer_id")
+            r = hf["realised"].reindex(mu.index).to_numpy()
+            m10_rows.append([c, len(mu), float(np.mean((r - mu.to_numpy()) ** 2)),
+                             float(np.mean(r - mu.to_numpy())), slope(mu.to_numpy(), r)])
+    w("\n## 3. `m10_contractual`: exact Tier A oracle (closed-form Gamma posterior)\n")
+    w(table(["cutoff", "N", "oracle MSE (noise floor for PC1)", "mean residual",
+             "calibration slope"], m10_rows))
+
+    lines.extend(purchases_section(seed))
+
+    # --- 5. Runtime of the P2 machinery -----------------------------------------------------------
+    pol_s = _policy(sig.config.promo_months, sig.config.promo_channels)
+    c_last = s_spec.evaluation_cutoffs[-1]
+    with timed(f"training stack Tier B, C={c_last} (pilot)"):
+        stack = lm.training_stack(sig, c_last, pp.PRIMARY_HORIZON, "contractual", "B", pol_s)
+    w("\n## 5. Runtime\n")
+    w(table(["item", "value"], [
+        [f"training stack rows (C={c_last}, Tier B)",
+         f"{len(stack)} rows, {stack['customer_id'].nunique()} customers"],
+        ["peak memory", f"{peak_rss_gb():.2f} GB"]]))
+
+    head = [
+        "# Milestone 11 P2 — oracle calibration and the Tier B advantage",
+        "",
+        "Generated by `python scripts/plan_m11_precision.py --stage p2`. **Planning record, "
+        "not evidence of model performance**: no model is fitted. The oracles are evaluation "
+        "references that use the generator's true parameters and only record-time "
+        "observable data (P2). Pilot and development seeds only; main and fresh seeds "
+        "untouched; generator parameters unchanged (pinned digests).",
+        "",
+        table(["item", "value"], [
+            ["protocol", f"{pp.PROTOCOL_ID} ({pp.PROTOCOL_STAGE})"],
+            ["protocol digest / code digest",
+             f"`{pp.protocol_digest()[:16]}…` / `{pp.protocol_code_digest()[:16]}…`"],
+            ["git", git_state()],
+            ["seeds", f"pilot ({seed}); development {P2_DEV_SEEDS[0]}-{P2_DEV_SEEDS[-1]}"],
+            ["python / numpy / scipy / pandas",
+             f"{platform.python_version()} / {np.__version__} / {scipy.__version__} / "
+             f"{pd.__version__}"],
+        ]),
+        "",
+    ]
+    TIMINGS["total"] = time.perf_counter() - start
+    lines.append("\n## Step timings\n")
+    lines.append(table(["step", "seconds (indicative)"],
+                       [[k_, f"{v:.2f}"] for k_, v in TIMINGS.items()]))
+    output.write_text("\n".join(head + lines) + "\n")
+    print(f"wrote {output} in {TIMINGS['total']:.1f} s")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=None)
-    parser.add_argument("--stage", choices=("p0", "p1"), default="p0")
+    parser.add_argument("--stage", choices=("p0", "p1", "p2"), default="p0")
     args = parser.parse_args(argv)
     problems = pp.validate_protocol()
     if problems:
@@ -385,6 +665,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     seed = pp.authorise_seed("pilot")
     if args.stage == "p1":
         return plan_p1(seed, args.output or P1_OUTPUT)
+    if args.stage == "p2":
+        return plan_p2(seed, args.output or P2_OUTPUT)
     args.output = args.output or OUTPUT
     start = time.perf_counter()
     alpha, power = pp.PLANNING_ALPHA, pp.PLANNING_POWER

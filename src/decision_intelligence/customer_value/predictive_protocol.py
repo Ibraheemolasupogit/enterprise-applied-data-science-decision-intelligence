@@ -16,8 +16,9 @@ design and its three scientific amendments are encoded as follows:
    :data:`NO_QUALIFIED_MODEL`; E2 may appear only as :data:`REFERENCE_FALLBACK_LABEL`, never as
    a selection (:mod:`.model_selection`).
 
-**Stage.** This is the P0 protocol. Items that later phases must fix before any main-seed
-evaluation (the repeated-sampling preflight and the oracle validation sizes) are listed in
+**Stage.** This is the P0 protocol as amended through P2 (:data:`PROTOCOL_STAGE`). Items that
+later phases must fix before any main-seed evaluation (now only the repeated-sampling
+preflight; the oracle numerics were pinned at P2 in :data:`ORACLE_NUMERICS`) are listed in
 :data:`PENDING_BEFORE_MAIN`; :func:`authorise_seed` refuses the main and fresh seeds while any
 item is pending. Every change made after P0 and before any main-seed evaluation is recorded in
 :data:`PROTOCOL_AMENDMENTS`.
@@ -45,7 +46,7 @@ from typing import Any
 from decision_intelligence.customer_value import protocol as m10
 
 PROTOCOL_ID = "M11-predictive-ltv"
-PROTOCOL_STAGE = "P1-amended"
+PROTOCOL_STAGE = "P2-amended"
 
 # --- seeds -------------------------------------------------------------------------------
 MAIN_SEED = 20261101
@@ -550,6 +551,39 @@ ORACLE_GATE = OracleGate(
     consistency_z=3.0, positive_interval_level=0.95)
 
 
+@dataclass(frozen=True)
+class OracleNumerics:
+    bgnbd_jacobi_nodes: int
+    pareto_jacobi_nodes: int
+    copula_nodes: tuple[int, int, int]
+    convergence_check: str
+    convergence_rtol: float
+    copula_convergence_rtol: float
+    copula_spend_convergence_rtol: float
+    monte_carlo_draws: int
+    monte_carlo_check: str
+    monte_carlo_z: float
+
+
+ORACLE_NUMERICS = OracleNumerics(
+    bgnbd_jacobi_nodes=64, pareto_jacobi_nodes=64, copula_nodes=(64, 48, 32),
+    convergence_check=("every oracle is recomputed with every node count doubled on realistic "
+                       "and extreme histories; the relative change must not exceed "
+                       "convergence_rtol (BG/NBD, Pareto/NBD: all outputs) or "
+                       "copula_convergence_rtol (correlated spend: material values) and "
+                       "copula_spend_convergence_rtol (its posterior spend)"),
+    convergence_rtol=1e-10, copula_convergence_rtol=1e-5, copula_spend_convergence_rtol=1e-8,
+    monte_carlo_draws=1_000_000,
+    monte_carlo_check=("the correlated-spend oracle is compared with a likelihood-weighted "
+                       "Monte Carlo estimate from monte_carlo_draws independent draws of the "
+                       "generator's copula prior (no quadrature shared with the oracle); value, "
+                       "P(alive) and spend must lie within monte_carlo_z Monte Carlo SE"),
+    monte_carlo_z=4.5)
+"""Non-contractual oracle numerics (amendment A5; P2-measured: doubled-rule changes about
+1e-14 for BG/NBD and Pareto/NBD and 3.3e-8 for the copula on the pilot). The contractual
+oracles are exact finite sums and need no settings."""
+
+
 # --- precision planning and budgets ----------------------------------------------------------
 PLANNING_ALPHA = FAMILY_ALPHA / len(PRIMARY_COMPARISONS)  # Holm's most stringent step
 PLANNING_POWER = 0.80
@@ -583,7 +617,6 @@ PENDING_BEFORE_MAIN = (
     "P2-P6 (deferred from P1): preflight confirmation that COVERAGE_REPLICATIONS (1,000) fits "
     "the budget, with the repeated-sampling scenario scale; otherwise a declared count >= "
     "MIN_COVERAGE_REPLICATIONS (needs the measured oracle and model-fit costs)",
-    "P2: oracle Monte Carlo validation sizes and quadrature settings",
 )
 PILOT_FINDINGS_SCOPE = (
     "P0 pilot findings use the M10 generator only. They are final for m10_contractual and were "
@@ -626,6 +659,14 @@ PROTOCOL_AMENDMENTS = (
               "scenario plan; PROTOCOL_STAGE 'P0' -> 'P1-amended'",
               "P1 pilot completed (docs/evidence/m11-p1-scenario-plan.md); the preflight needs "
               "oracle and model-fit costs that do not exist before P2-P6"),
+    Amendment("A5", "P2", "2026-11-18", True,
+              "pinned the non-contractual oracle numerics (ORACLE_NUMERICS): Gauss-Jacobi 64 "
+              "nodes (BG/NBD) and 64 (Pareto/NBD), copula tensor rule (64, 48, 32), doubled-rule "
+              "convergence checks and a 1,000,000-draw independent Monte Carlo check; closed "
+              "pending item 'P2: oracle Monte Carlo validation sizes and quadrature settings'; "
+              "PROTOCOL_STAGE 'P1-amended' -> 'P2-amended'",
+              "owner approval of the settings measured in the P2 assurance review "
+              "(docs/evidence/m11-p2-oracle-findings.md, m11-p2-oracle-plan.md)"),
 )
 """Every protocol change after the P0 commit (82e3ebd), all made before any main-seed
 evaluation; the main seed has never been authorised."""
@@ -791,6 +832,15 @@ def validate_protocol() -> list[str]:
     ids_a = [a.id for a in PROTOCOL_AMENDMENTS]
     if len(ids_a) != len(set(ids_a)) or not all(a.before_main_seed for a in PROTOCOL_AMENDMENTS):
         problems.append("amendments must have unique ids and precede the main seed")
+    on = ORACLE_NUMERICS
+    if min(on.bgnbd_jacobi_nodes, on.pareto_jacobi_nodes, *on.copula_nodes) < 1 or \
+            len(on.copula_nodes) != 3:
+        problems.append("oracle quadrature node counts must be positive")
+    if not 0 < on.convergence_rtol <= on.copula_spend_convergence_rtol \
+            <= on.copula_convergence_rtol < 1:
+        problems.append("invalid oracle convergence tolerances")
+    if on.monte_carlo_draws < 1 or on.monte_carlo_z <= 0:
+        problems.append("invalid oracle Monte Carlo check")
     if DEFAULT_PENALTY not in PENALTY_GRID:
         problems.append("the default penalty must be on the grid")
     if not 0 < PLANNING_ALPHA < FAMILY_ALPHA or not 0.5 < PLANNING_POWER < 1:
