@@ -16,7 +16,7 @@ design and its three scientific amendments are encoded as follows:
    :data:`NO_QUALIFIED_MODEL`; E2 may appear only as :data:`REFERENCE_FALLBACK_LABEL`, never as
    a selection (:mod:`.model_selection`).
 
-**Stage.** This is the P0 protocol as amended through P4 (:data:`PROTOCOL_STAGE`). Items that
+**Stage.** This is the P0 protocol as amended through P6 (:data:`PROTOCOL_STAGE`). Items that
 later phases must fix before any main-seed evaluation (now only the repeated-sampling
 preflight; the oracle numerics were pinned at P2 in :data:`ORACLE_NUMERICS`) are listed in
 :data:`PENDING_BEFORE_MAIN`; :func:`authorise_seed` refuses the main and fresh seeds while any
@@ -46,7 +46,7 @@ from typing import Any
 from decision_intelligence.customer_value import protocol as m10
 
 PROTOCOL_ID = "M11-predictive-ltv"
-PROTOCOL_STAGE = "P4-amended"
+PROTOCOL_STAGE = "P6-amended"
 
 # --- seeds -------------------------------------------------------------------------------
 MAIN_SEED = 20261101
@@ -149,6 +149,19 @@ DESIGN_DUPLICATE_RULE = (
     "level) is dropped and reported, like an SD-0 column; the feature registry is unchanged")
 """Amendment A8 (owner decision): deterministic removal of exact duplicate design columns (for
 example ``paid_months = tenure_months + 1`` for active customers)."""
+E5_TUNING_LOSS = (
+    "E5: one penalty shared by both parts, chosen under TUNING_RULE by squared error of the "
+    "window (12-month at the primary horizon) value P(R > 0) x E[R | R > 0] at the "
+    "validation landmark; ties to the larger penalty; if no tuning fit has both parts 'ok', "
+    "DEFAULT_PENALTY, labelled 'fixed penalty: no tuning fit was ok'")
+"""Amendment A9 (owner decision): E5's tuning loss, shared penalty, tie-break and no-ok-fit
+fallback (TUNING_RULE names no loss; E3_TUNING_LOSS is E3's only)."""
+E5_SELECTION_ELIGIBILITY = (
+    "E5 is a selection candidate at an evaluation cutoff only if a validation fit exists: at "
+    "least one tuning landmark whose labels are completely recorded before the validation "
+    "landmark. Otherwise E5 is 'not selection-eligible' there; no censored validation windows")
+"""Amendment A9 (owner decision): E5's selection eligibility (E3_SELECTION_ELIGIBILITY is
+E3's only)."""
 
 
 @dataclass(frozen=True)
@@ -782,6 +795,14 @@ PROTOCOL_AMENDMENTS = (
               "owner decision after the P4 diagnosis (docs/evidence/m11-p4-findings.md): the "
               "frozen linear covariates were extrapolated beyond the landmarks' range (W = 24 "
               "at C = 33: mean(pred - oracle) -18 to -25; five validation-gate failures)"),
+    Amendment("A9", "P6", "2026-11-19", True,
+              "E5 tuning loss, shared penalty, tie-break and no-ok-fit fallback "
+              "(E5_TUNING_LOSS); E5 selection eligibility (E5_SELECTION_ELIGIBILITY); no change "
+              "to E5's design, S2, SELECTION gates or any tolerance; PROTOCOL_STAGE "
+              "'P4-amended' -> 'P6-amended'",
+              "P6 final review: TUNING_RULE names no loss and the A8 clarifications are scoped "
+              "to E3, so E5's penalty choice and eligibility were not independently "
+              "authorised (docs/evidence/m11-p6-findings.md)"),
 )
 """Every protocol change after the P0 commit (82e3ebd), all made before any main-seed
 evaluation; the main seed has never been authorised."""

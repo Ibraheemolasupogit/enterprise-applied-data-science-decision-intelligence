@@ -18,10 +18,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "a86df2f157893f0cf8250b4b30c8f10509a947498f238be770b5ba9f65eea5ba"
-"""SHA-256 of the protocol manifest (P0 as amended through A8). Any protocol change must update
+FROZEN_DIGEST = "6977394140d65b7058d35385213f6a7f110f5acb7f65875c48f25c0b4d2b28a3"
+"""SHA-256 of the protocol manifest (P0 as amended through A9). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "b9675dcfa62a64b7ac2e3cb5e234c5f8845fdcb3adc03ec0539a70101e03b2c6"
+FROZEN_CODE_DIGEST = "a1af7b4717f3e57749a8b160da33e45333beee8bc7e53e7b66f7ea957365a9ed"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -331,11 +331,10 @@ def test_p3_amendment_a7_adds_only_the_narrow_e1_boundary_exception() -> None:
 
 
 def test_p4_amendment_a8_excludes_three_e3_covariates_and_records_the_clarifications() -> None:
-    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS[:8]]
     assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]
-    a8 = pp.PROTOCOL_AMENDMENTS[-1]
+    a8 = pp.PROTOCOL_AMENDMENTS[7]
     assert a8.stage == "P4" and a8.before_main_seed
-    assert pp.PROTOCOL_STAGE == "P4-amended"
     assert pp.E3_EXCLUDED_COVARIATES == ("acquisition_cohort", "tenure_months", "paid_months")
     # the registry itself is unchanged: every excluded name is still a Tier A feature
     names_a = [f.name for f in pp.features("contractual", "A")]
@@ -352,3 +351,33 @@ def test_p4_amendment_a8_excludes_three_e3_covariates_and_records_the_clarificat
     assert pp.TENURE_BAND_MIN_EVENTS == 10
     with pytest.raises(pp.ProtocolNotReady):
         pp.authorise_seed("main")
+
+
+def test_p6_amendment_a9_authorises_e5_tuning_and_eligibility_only() -> None:
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
+    assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"]
+    a9 = pp.PROTOCOL_AMENDMENTS[-1]
+    assert a9.stage == "P6" and a9.before_main_seed
+    assert pp.PROTOCOL_STAGE == "P6-amended"
+    assert pp.E5_TUNING_LOSS == (
+        "E5: one penalty shared by both parts, chosen under TUNING_RULE by squared error of the "
+        "window (12-month at the primary horizon) value P(R > 0) x E[R | R > 0] at the "
+        "validation landmark; ties to the larger penalty; if no tuning fit has both parts 'ok', "
+        "DEFAULT_PENALTY, labelled 'fixed penalty: no tuning fit was ok'")
+    assert pp.E5_SELECTION_ELIGIBILITY == (
+        "E5 is a selection candidate at an evaluation cutoff only if a validation fit exists: "
+        "at least one tuning landmark whose labels are completely recorded before the "
+        "validation landmark. Otherwise E5 is 'not selection-eligible' there; no censored "
+        "validation windows")
+    # A9 changes nothing else: E3's A8 rules, the gates, tolerances and the penalty grid stand
+    assert pp.E3_TUNING_LOSS.startswith("squared error of the window")
+    assert pp.E3_SELECTION_ELIGIBILITY.startswith("E3 is a selection candidate")
+    assert pp.SELECTION.slope_bounds == (0.85, 1.15)
+    assert pp.SELECTION.calibration_in_the_large_tolerance == 0.05
+    assert pp.PENALTY_GRID == (0.01, 0.1, 1.0, 10.0, 100.0) and pp.DEFAULT_PENALTY == 1.0
+    assert pp.STATUS_RULES.gradient_tolerance == 1e-6
+    assert len(pp.PENDING_BEFORE_MAIN) == 1
+    with pytest.raises(pp.ProtocolNotReady):
+        pp.authorise_seed("main")
+    with pytest.raises(pp.ProtocolNotReady):
+        pp.authorise_seed("fresh", confirm_single_final_run=True)
