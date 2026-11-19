@@ -17,40 +17,47 @@ non-empty), and no M11 model exists yet.
 | A7 | P3 | Narrow E1 geometric boundary exception (`E1_GEOMETRIC_BOUNDARY`), separate from A6. E1's geometric limit is `alpha, beta → ∞` with `mu = alpha / (alpha + beta)` fixed (the closed boundary `phi = 1 / (alpha + beta) = 0`; `S(a) → (1 − mu)^a`). An E1 fit (cell or pooled) is replaced by this limit and counted `ok` only if: it is `unstable` with the bound reason (optionally the Hessian reason) **or** `failed` with the single reason *not converged* (the iterates drift along the flat ridge to `phi = 0`); finite likelihood, no separation, start agreement within the frozen 1e-4; on the ridge (`log(alpha + beta) > 10`, no lower bound); closed-form `mu = events / decisions` within 1e-4 (log) of the fit's `mu`; geometric log-likelihood not lower than the fit's, evaluated with the exact finite-product form (relative 1e-9); one-sided `phi` score at `phi = 0` not positive (≤ 1e-6 per customer); the one-parameter fit `ok`. A6 and all other rules unchanged; `PROTOCOL_STAGE` stays `P3-amended` | Owner approval after P3 limitation 7 ([m11-p3-findings.md](m11-p3-findings.md)): under homogeneous churn E1 cells still fell back to the miscalibrated pooled fit (holdout slope 1.16–1.17). Before/after on 10 development draws: [m11-p3-contractual-models.md](m11-p3-contractual-models.md) §6 |
 | A8 | P4 | **E3 covariates**: E3 no longer uses `acquisition_cohort`, `tenure_months`, `paid_months` as linear covariates (`E3_EXCLUDED_COVARIATES`); tenure enters E3 only through its unpenalised tenure-band basis on the decision age. The feature registry, S1 and every other model are unchanged. **Clarifications** (owner decisions on points the protocol left open): `E3_TUNING_LOSS` — penalty chosen by squared error of window (12-month) value at the validation landmark, ties to the larger penalty; `E3_SELECTION_ELIGIBILITY` — with no tuning landmark completed before the validation landmark there is no validation fit and E3 is *not selection-eligible* there (no censored validation windows); `DESIGN_DUPLICATE_RULE` — exact duplicate design columns after standardisation are removed deterministically (earlier column in registry order kept) without altering the registry. `PROTOCOL_STAGE` `P3-amended` → `P4-amended` | P4 diagnosis ([m11-p4-findings.md](m11-p4-findings.md)): frozen at the landmark and entered linearly, these covariates were extrapolated far beyond the training landmarks' range (W = 24 at C = 33: training cohorts 0–5, prediction 0–31). **Original (pre-A8) results:** W = 24 mean(pred − oracle) −18.3 to −24.9, holdout CITL −21% to −34%; M10 v = 1, C = 24: −4.2; five validation-gate failures. **After A8** (record §4): W = 24 bias ≈ 0 (CITL ≤ +1.2%); all eligible validation gates pass (5 → 0 failures). **Trade-off:** one flagged regression — M10 v = 1, C = 30, RMSE vs oracle 1.32 → 2.06 (holdout CITL −2.1% → −2.9%, within tolerance; E3 not selection-eligible there) — and M10 v = 0, C = 30, 3.01 → 3.14 (below the 5% flag); cause: within-band hazard decline under heterogeneity that the coarse frozen tenure bands cannot follow |
 | A9 | P6 | **E5 tuning and eligibility** (prospective; no change to E5's design, S2, `SELECTION` gates or any tolerance). `E5_TUNING_LOSS`: one penalty shared by both parts, chosen under `TUNING_RULE` by squared error of the window (12-month) value `P(R > 0) x E[R \| R > 0]` at the validation landmark; ties to the larger penalty; if no tuning fit has both parts `ok`, `DEFAULT_PENALTY`, labelled 'fixed penalty: no tuning fit was ok'. `E5_SELECTION_ELIGIBILITY`: E5 is a selection candidate only if a validation fit exists (at least one tuning landmark with labels complete before the validation landmark); otherwise 'not selection-eligible'; no censored validation windows. `PROTOCOL_STAGE` `P4-amended` → `P6-amended` | P6 final review ([m11-p6-findings.md](m11-p6-findings.md)): `TUNING_RULE` names no loss and A8's clarifications are scoped to E3, so E5's penalty choice, tie-break and eligibility were not independently authorised. The P6 implementation already followed this wording, so no P6 number changes |
+| A10 | P7 | **Baselines, reference scope, tier rule and E3 fallback** (prospective, before any B1 or B2 selection result; no change to any model's behaviour, `SELECTION` gates, tolerance, target, comparison or seed). `B1_DEFINITION`: B1's single selection candidate (and PC1's comparator) is M10's *Kaplan–Meier by cell*, computed by M10's code unchanged with W = 12, on the M11 contractual population; cell status from M10's thresholds (`undefined` without a usable curve, `unstable` below 30 churn events); **no fallback** — a customer without a finite prediction prevents B1 from qualifying; in PC2 B1 is H4; M10's other methods descriptive only. `B2_DEFINITION`: purchases (acquisition included) in the last 12 complete months, carried forward unchanged (no churn, no annualisation) x mean revenue per recorded purchase x E4's recorded contribution ratio, on E4's population, validated as E4. `REFERENCE_FALLBACK_SCOPE`: E2 is shown with a no-qualified result for contractual scenarios only. `TIER_A_IN_TIER_B`: a Tier A model is a candidate in a Tier B selection of a kind it supports. `E3_NO_OK_FIT_RULE`: authorises P4's existing fallback (unchanged code). `validate_protocol` checks that the reference model is contractual-only. `PROTOCOL_STAGE` `P6-amended` → `P7-amended` | P5 dispositions (B2 unspecified; E2 inapplicable to non-contractual), the P6 review (E3 fallback unauthorised) and the P7 preflight (B1 named nine M10 methods under one id; Tier B candidacy unstated); owner approval at P7. The E3 rule changes no number (it never triggered) |
+| A11 | P7 | **Contractual outcome noise** (`CONTRACTUAL_OUTCOME_NOISE`; prospective; no change to any point prediction, parameter interval, `SELECTION` gate, tolerance, target, comparison or seed; `CALIBRATION.recalibration` 'none in M11' stands; `PROTOCOL_STAGE` stays `P7-amended`). In E1/E2/E3 predictive-interval simulations each simulated paid month's contribution is the contribution model's mean plus a residual drawn with replacement, independently per month, from the completely recorded pre-cutoff months of the source group that mean came from (cell x promotion state, else segment x promotion state, else promotion state). Implemented on a separate random stream: the pre-A11 intervals are reproduced bit-identically and kept | P7 finding 5: the plan's 'parameter + outcome uncertainty' omitted contribution noise; pre-A11 80% / 95% predictive intervals covered about 0.60 / 0.70. Pre-cutoff residuals (development seeds, months <= `complete_through(C)` only): SD 2.1 against a mean of 5.3 per month, within-customer correlation about 0.01, lag-1 about 0.00. Before/after and confirmation (seeds 5711-5713): [m11-p7-evaluation.md](m11-p7-evaluation.md) §§4a-4b |
 
 ## Integrity
 
-| Item | After A1–A4 (P1) | After A5 (P2) | After A6 (P3) | After A7 (P3) | After A8 (P4) | After A9 (P6, current) |
-|---|---|---|---|---|---|---|
-| Protocol stage | `P1-amended` | `P2-amended` | `P3-amended` | `P3-amended` | `P4-amended` | `P6-amended` |
-| Protocol manifest digest | `85eb0b4cc7d15c705dce2e23cb4ac97aa0631fd95efe8b7b402da467497379c1` | `b81cdbbc0f29c22cadc6f7bc9383e3d4ee8165ed71d3d64f19f61f41b6ef2175` | `aef1b81a62d7189c90675be87d0bff42ab4da04b793c1788f4c80c97b9064ec9` | `33329a8483c6c1e8fc586dc94d99fa9d203edef590bf1a158c9a8239330ba5cc` | `a86df2f157893f0cf8250b4b30c8f10509a947498f238be770b5ba9f65eea5ba` | `6977394140d65b7058d35385213f6a7f110f5acb7f65875c48f25c0b4d2b28a3` |
-| Protocol code digest (protocol, selection, precision) | `eefebd8067285e70a07ad5ad0bf270cdf3434c9968e5aa32967d56e49d8bed9b` | `f5ae4a9f645d6f88f0fd2716842a2f5075e6f5bc9718efc1d5d071b0379fe0db` | `e68d4457a1e078faa213fa93ba1cc97692946024486ad07f43499f75f7bb963f` | `2e69fb2d7647e1fc18f53124945edbd76e3223052d1a1849bae188b9539c23b5` | `b9675dcfa62a64b7ac2e3cb5e234c5f8845fdcb3adc03ec0539a70101e03b2c6` | `a1af7b4717f3e57749a8b160da33e45333beee8bc7e53e7b66f7ea957365a9ed` |
-| Pending before main | 2 (repeated-sampling preflight; P2 oracle validation sizes) | 1 (repeated-sampling preflight) | 1 | 1 | 1 | 1 |
+| Item | After A1–A4 (P1) | After A5 (P2) | After A6 (P3) | After A7 (P3) | After A8 (P4) | After A9 (P6) | After A10 (P7) | After A11 (P7, current) |
+|---|---|---|---|---|---|---|---|---|
+| Protocol stage | `P1-amended` | `P2-amended` | `P3-amended` | `P3-amended` | `P4-amended` | `P6-amended` | `P7-amended` | `P7-amended` |
+| Protocol manifest digest | `85eb0b4cc7d15c705dce2e23cb4ac97aa0631fd95efe8b7b402da467497379c1` | `b81cdbbc0f29c22cadc6f7bc9383e3d4ee8165ed71d3d64f19f61f41b6ef2175` | `aef1b81a62d7189c90675be87d0bff42ab4da04b793c1788f4c80c97b9064ec9` | `33329a8483c6c1e8fc586dc94d99fa9d203edef590bf1a158c9a8239330ba5cc` | `a86df2f157893f0cf8250b4b30c8f10509a947498f238be770b5ba9f65eea5ba` | `6977394140d65b7058d35385213f6a7f110f5acb7f65875c48f25c0b4d2b28a3` | `4f6953f9aac1be50664875721ac0b3d4b96dfb67680d5a29a83f700f33d27916` | `0a1ea3bdb7c60e0a82fd4b2f08ff7cde067da852ef69e5b0a3327921f4f608a8` |
+| Protocol code digest (protocol, selection, precision) | `eefebd8067285e70a07ad5ad0bf270cdf3434c9968e5aa32967d56e49d8bed9b` | `f5ae4a9f645d6f88f0fd2716842a2f5075e6f5bc9718efc1d5d071b0379fe0db` | `e68d4457a1e078faa213fa93ba1cc97692946024486ad07f43499f75f7bb963f` | `2e69fb2d7647e1fc18f53124945edbd76e3223052d1a1849bae188b9539c23b5` | `b9675dcfa62a64b7ac2e3cb5e234c5f8845fdcb3adc03ec0539a70101e03b2c6` | `a1af7b4717f3e57749a8b160da33e45333beee8bc7e53e7b66f7ea957365a9ed` | `bae920ef2e1c3b571257ad31fe7f1a4723151027f93e630f95c55a73b75cfb39` | `244acc014ecd3acd5ca995e47bd3bc7866eb38946d1d220d7a8c68363d49ada0` |
+| Pending before main | 2 (repeated-sampling preflight; P2 oracle validation sizes) | 1 (repeated-sampling preflight) | 1 | 1 | 1 | 1 | 1 | 1 |
 
 The current digests are pinned in `tests/unit/customer_value/test_predictive_protocol.py`. The
-main and fresh seeds remain refused while the preflight item is pending. A6–A9 changed only
+main and fresh seeds remain refused while the preflight item is pending. A6–A11 changed only
 `predictive_protocol.py` among the code-digest files (`model_selection.classify_fit` and
 `STATUS_RULES` are unchanged; the exceptions are applied in `customer_value/contractual.py`, the
-E3 rules in `customer_value/survival.py`, the E5 rules in `customer_value/predictive.py`).
+E3 rules in `customer_value/survival.py`, the E5 rules in `customer_value/predictive.py`, the
+A10 baselines in `customer_value/predictive_baselines.py` and the A10 reference scope and A11
+outcome noise in `customer_value/predictive_evaluation.py`).
 
-## Open items for review before P8 (not amendments)
+## Items opened before P7 (resolved by A10)
 
 1. **E3's no-ok-fit penalty fallback is unauthorised.** `survival.py` (committed in P4) falls back
    to `DEFAULT_PENALTY`, labelled 'fixed penalty: no tuning fit was ok', when no tuning fit is
    `ok`. `TUNING_RULE` and `E3_TUNING_LOSS` do not provide this fallback (A9's equivalent clause
    is E5's only). It never triggered in any development record. Options: extend
    `E3_TUNING_LOSS` by amendment, or accept it as a documented implementation convention.
-   Unresolved; no code changed.
+   **Resolved by A10** (`E3_NO_OK_FIT_RULE`); no code changed.
 2. **B2 definition** (P5 disposition): the protocol pins only B2's id and name; its formula must be
-   fixed by amendment before P7 implements it.
+   fixed by amendment before P7 implements it. **Resolved by A10** (`B2_DEFINITION`; also
+   `B1_DEFINITION`, which the P7 preflight found equally unspecified).
 3. **Reference fallback for non-contractual selection** (P5 disposition): `select_model` attaches
    E2 to any no-qualified result; P7 reporting must not show it for the non-contractual scenario.
+   **Resolved by A10** (`REFERENCE_FALLBACK_SCOPE`, applied by `predictive_evaluation.selection_report`;
+   `select_model` unchanged).
 
 ## Unchanged
 
 Seeds and seed blocks, cutoffs, landmarks, horizons, information tiers and features, targets,
 primary comparisons, selection and calibration rules, status rules (apart from the narrow A6
-and A7 exceptions), the feature registry (A8 changes only which registry features E3 uses), the selection gates (A9 adds no gate), penalty conventions, clustered
+and A7 exceptions), the feature registry (A8 changes only which registry features E3 uses), the selection gates (A9–A11 add no gate), penalty conventions, clustered
 inference, the oracle gate, coverage reporting, runtime budgets, and the M10 economics. The
 committed P0 plan record ([m11-p0-precision-plan.md](m11-p0-precision-plan.md)) is kept as
 generated; its header shows the P0 stage and digests that were current at the time. Likewise
@@ -58,6 +65,6 @@ the P1 scenario plan ([m11-p1-scenario-plan.md](m11-p1-scenario-plan.md)) keeps 
 header (`P1-amended`, `85eb0b4c…` / `eefebd80…`), and the committed P2 records
 ([m11-p2-oracle-plan.md](m11-p2-oracle-plan.md), [m11-p2-oracle-findings.md](m11-p2-oracle-findings.md))
 keep their P2 header (`P2-amended`, `b81cdbbc…` / `f5ae4a9f…`), and the committed P3 records keep
-the digests current when they were generated. A5–A9 changed no other protocol value: no seed,
+the digests current when they were generated. A5–A11 changed no other protocol value: no seed,
 seed block, cutoff, horizon, feature registry entry, model, target, comparison, selection rule,
 status threshold, tolerance or budget.

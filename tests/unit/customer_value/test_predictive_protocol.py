@@ -18,10 +18,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "6977394140d65b7058d35385213f6a7f110f5acb7f65875c48f25c0b4d2b28a3"
+FROZEN_DIGEST = "0a1ea3bdb7c60e0a82fd4b2f08ff7cde067da852ef69e5b0a3327921f4f608a8"
 """SHA-256 of the protocol manifest (P0 as amended through A9). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "a1af7b4717f3e57749a8b160da33e45333beee8bc7e53e7b66f7ea957365a9ed"
+FROZEN_CODE_DIGEST = "244acc014ecd3acd5ca995e47bd3bc7866eb38946d1d220d7a8c68363d49ada0"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -354,11 +354,11 @@ def test_p4_amendment_a8_excludes_three_e3_covariates_and_records_the_clarificat
 
 
 def test_p6_amendment_a9_authorises_e5_tuning_and_eligibility_only() -> None:
-    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS[:9]]
     assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"]
-    a9 = pp.PROTOCOL_AMENDMENTS[-1]
+    a9 = pp.PROTOCOL_AMENDMENTS[8]
     assert a9.stage == "P6" and a9.before_main_seed
-    assert pp.PROTOCOL_STAGE == "P6-amended"
+    assert "'P4-amended' -> 'P6-amended'" in a9.change
     assert pp.E5_TUNING_LOSS == (
         "E5: one penalty shared by both parts, chosen under TUNING_RULE by squared error of the "
         "window (12-month at the primary horizon) value P(R > 0) x E[R | R > 0] at the "
@@ -377,6 +377,115 @@ def test_p6_amendment_a9_authorises_e5_tuning_and_eligibility_only() -> None:
     assert pp.PENALTY_GRID == (0.01, 0.1, 1.0, 10.0, 100.0) and pp.DEFAULT_PENALTY == 1.0
     assert pp.STATUS_RULES.gradient_tolerance == 1e-6
     assert len(pp.PENDING_BEFORE_MAIN) == 1
+    with pytest.raises(pp.ProtocolNotReady):
+        pp.authorise_seed("main")
+    with pytest.raises(pp.ProtocolNotReady):
+        pp.authorise_seed("fresh", confirm_single_final_run=True)
+
+
+def test_p7_amendment_a10_fixes_b1_b2_reference_scope_tier_rule_and_e3_fallback() -> None:
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS[:10]]
+    assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10"]
+    a10 = pp.PROTOCOL_AMENDMENTS[9]
+    assert a10.stage == "P7" and a10.before_main_seed
+    assert pp.PROTOCOL_STAGE == "P7-amended"
+    assert pp.B1_DEFINITION == (
+        "B1 at the customer level (existing_undiscounted_12; the selection candidate and PC1's "
+        "comparator) is M10's 'Kaplan–Meier by cell' (backtest.customer_projections, "
+        "unchanged) with W = PRIMARY_HORIZON: run rate x sum_{t=1..W} S(a0 + t) / S(a0), "
+        "where the run rate is the customer's mean contribution over its last up to 3 "
+        "completely recorded months (months <= complete_through(C)), a0 = C - acquisition "
+        "month, and S is the paid-month Kaplan–Meier curve of the customer's segment x "
+        "channel cell at C, truncated where fewer than MIN_AT_RISK customers remain at risk "
+        "and extended by M10's geometric tail over the last KM_TAIL_MONTHS. Population: the "
+        "contractual training_stack population (active at C, acquired by "
+        "complete_through(C)). Cell status (M10's thresholds): 'undefined' if the cell has no "
+        "usable curve (fewer than 2 ages with MIN_AT_RISK at risk); 'unstable' if fewer than "
+        "MIN_CHURN_EVENTS churn events; otherwise 'ok'. No fallback (M10 unchanged): a cell "
+        "that is not 'ok' counts against min_ok_cell_fraction, and a customer without a "
+        "finite prediction is 'undefined' and prevents B1 from qualifying at that cutoff. "
+        "Nothing is tuned. Selection inputs as E1/E2: computed from the tables as recorded by "
+        "C, observed at the validation landmark L_v, scored on L_v's completely recorded "
+        "labels; selection-eligible wherever a validation landmark exists. In PC2 B1 is H4 "
+        "(cohort level), never a selection candidate. M10's other customer methods (run rate, "
+        "historical average, constant churn pooled and by cell) and H1-H3 are reported "
+        "descriptively only")
+    assert pp.B2_DEFINITION == (
+        "B2: for every customer acquired by T_C = complete_through(C) (E4's population), "
+        "prediction of existing_undiscounted_12 = f x s x k, where f = the number of the "
+        "customer's purchases (the acquisition purchase included) in the complete months "
+        "max(acquisition month, T_C - PRIMARY_HORIZON + 1) .. T_C, carried forward unchanged "
+        "to months C+1 .. C+12 (no churn, no annualisation); s = the customer's mean revenue "
+        "per purchase over every completely recorded purchase (months <= T_C, the acquisition "
+        "purchase included); k = the business's recorded contribution-to-revenue ratio over "
+        "completely recorded purchases at C (E4's conversion). Nothing is fitted or tuned; "
+        "status 'ok' where the prediction is finite, otherwise 'undefined'. Selection inputs: "
+        "the same rule with the tables as recorded by the validation landmark L_v, scored on "
+        "L_v's completely recorded labels (as E4); B2 is selection-eligible wherever a "
+        "validation landmark exists. No other target")
+    assert pp.REFERENCE_FALLBACK_SCOPE == (
+        "the reference fallback applies only to scenarios whose kind is among "
+        "model(REFERENCE_FALLBACK_MODEL).kinds (contractual); for a non-contractual scenario a "
+        "NO QUALIFIED MODEL result is reported with no reference model")
+    assert pp.TIER_A_IN_TIER_B == (
+        "a Tier A model is a selection candidate in a Tier B selection of a scenario whose "
+        "kind it supports: it uses only Tier A information, which Tier B includes")
+    assert pp.E3_NO_OK_FIT_RULE == (
+        "E3: if temporal tuning is feasible but no tuning fit is 'ok', DEFAULT_PENALTY, "
+        "labelled 'fixed penalty: no tuning fit was ok'; the resulting fit is still subject "
+        "to the SELECTION status gate")
+    # A10 changes no other value: models, gates, tolerances, targets, comparisons, A8/A9 rules
+    assert pp.model("B1").complexity_rank == 0 and pp.model("B2").complexity_rank == 0
+    assert pp.model("B1").kinds == ("contractual",) and pp.model("B2").kinds == (
+        "non_contractual",)
+    assert pp.REFERENCE_FALLBACK_MODEL == "E2" and pp.model("E2").kinds == ("contractual",)
+    assert pp.REFERENCE_FALLBACK_LABEL == "REFERENCE FALLBACK — not a selection"
+    assert pp.SELECTION.slope_bounds == (0.85, 1.15)
+    assert pp.SELECTION.calibration_in_the_large_tolerance == 0.05
+    assert pp.SELECTION.min_ok_cell_fraction == 0.90
+    assert pp.SELECTION.paired_interval_level == 0.95
+    assert [pc.id for pc in pp.PRIMARY_COMPARISONS] == ["PC1", "PC2", "PC3", "PC4", "PC5"]
+    assert sum(t.primary for t in pp.TARGETS) == 1 and pp.TARGETS[0].primary
+    assert pp.E3_TUNING_LOSS == ("squared error of the window (12-month at the primary "
+                                 "horizon) value at the validation landmark; ties to the "
+                                 "larger penalty")
+    assert pp.E5_TUNING_LOSS.startswith("E5: one penalty shared by both parts")
+    assert pp.PENALTY_GRID == (0.01, 0.1, 1.0, 10.0, 100.0) and pp.DEFAULT_PENALTY == 1.0
+    assert len(pp.PENDING_BEFORE_MAIN) == 1
+    assert pp.validate_protocol() == []
+    with pytest.raises(pp.ProtocolNotReady):
+        pp.authorise_seed("main")
+    with pytest.raises(pp.ProtocolNotReady):
+        pp.authorise_seed("fresh", confirm_single_final_run=True)
+
+
+def test_p7_amendment_a11_adds_contractual_outcome_noise_only() -> None:
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
+    assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11"]
+    a11 = pp.PROTOCOL_AMENDMENTS[-1]
+    assert a11.stage == "P7" and a11.before_main_seed
+    assert "PROTOCOL_STAGE stays 'P7-amended'" in a11.change
+    assert pp.PROTOCOL_STAGE == "P7-amended"
+    assert pp.CONTRACTUAL_OUTCOME_NOISE == (
+        "Contractual predictive intervals (E1, E2, E3): each simulated paid month's contribution "
+        "is the ContributionModel expected contribution plus a residual drawn with replacement, "
+        "independently per month, from the residuals (recorded contribution minus that mean) of "
+        "completely recorded months (billing_month <= complete_through(C)) in the source group "
+        "ContributionModel used for that mean (cell x promotion state, else segment x promotion "
+        "state, else promotion state). Nothing is estimated from validation or holdout outcomes "
+        "and no interval is rescaled (CALIBRATION.recalibration 'none in M11' stands). Intervals "
+        "without the residual are kept and reported as the pre-A11 construction")
+    # A11 changes nothing else
+    assert pp.CALIBRATION.recalibration == "none in M11"
+    assert pp.CALIBRATION.interval_levels == (0.80, 0.95)
+    assert pp.SELECTION.slope_bounds == (0.85, 1.15)
+    assert pp.SELECTION.calibration_in_the_large_tolerance == 0.05
+    assert pp.SELECTION.min_ok_cell_fraction == 0.90
+    assert [pc.id for pc in pp.PRIMARY_COMPARISONS] == ["PC1", "PC2", "PC3", "PC4", "PC5"]
+    assert pp.B1_DEFINITION.startswith("B1 at the customer level")
+    assert pp.B2_DEFINITION.startswith("B2: for every customer")
+    assert len(pp.PENDING_BEFORE_MAIN) == 1
+    assert pp.validate_protocol() == []
     with pytest.raises(pp.ProtocolNotReady):
         pp.authorise_seed("main")
     with pytest.raises(pp.ProtocolNotReady):

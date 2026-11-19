@@ -16,7 +16,7 @@ design and its three scientific amendments are encoded as follows:
    :data:`NO_QUALIFIED_MODEL`; E2 may appear only as :data:`REFERENCE_FALLBACK_LABEL`, never as
    a selection (:mod:`.model_selection`).
 
-**Stage.** This is the P0 protocol as amended through P6 (:data:`PROTOCOL_STAGE`). Items that
+**Stage.** This is the P0 protocol as amended through P7 (:data:`PROTOCOL_STAGE`). Items that
 later phases must fix before any main-seed evaluation (now only the repeated-sampling
 preflight; the oracle numerics were pinned at P2 in :data:`ORACLE_NUMERICS`) are listed in
 :data:`PENDING_BEFORE_MAIN`; :func:`authorise_seed` refuses the main and fresh seeds while any
@@ -46,7 +46,7 @@ from typing import Any
 from decision_intelligence.customer_value import protocol as m10
 
 PROTOCOL_ID = "M11-predictive-ltv"
-PROTOCOL_STAGE = "P6-amended"
+PROTOCOL_STAGE = "P7-amended"
 
 # --- seeds -------------------------------------------------------------------------------
 MAIN_SEED = 20261101
@@ -162,6 +162,12 @@ E5_SELECTION_ELIGIBILITY = (
     "landmark. Otherwise E5 is 'not selection-eligible' there; no censored validation windows")
 """Amendment A9 (owner decision): E5's selection eligibility (E3_SELECTION_ELIGIBILITY is
 E3's only)."""
+E3_NO_OK_FIT_RULE = (
+    "E3: if temporal tuning is feasible but no tuning fit is 'ok', DEFAULT_PENALTY, labelled "
+    "'fixed penalty: no tuning fit was ok'; the resulting fit is still subject to the SELECTION "
+    "status gate")
+"""Amendment A10 (owner decision): authorises E3's existing no-ok-fit fallback (P4 code,
+unchanged); E3_TUNING_LOSS keeps its A8 wording."""
 
 
 @dataclass(frozen=True)
@@ -471,6 +477,60 @@ FAMILY_ALPHA = 0.05  # Holm across PRIMARY_COMPARISONS; everything else is descr
 NO_QUALIFIED_MODEL = "NO QUALIFIED MODEL"
 REFERENCE_FALLBACK_MODEL = "E2"
 REFERENCE_FALLBACK_LABEL = "REFERENCE FALLBACK — not a selection"
+REFERENCE_FALLBACK_SCOPE = (
+    "the reference fallback applies only to scenarios whose kind is among "
+    "model(REFERENCE_FALLBACK_MODEL).kinds (contractual); for a non-contractual scenario a "
+    "NO QUALIFIED MODEL result is reported with no reference model")
+"""Amendment A10 (owner decision, P5 disposition): E2 is never shown for a non-contractual
+scenario."""
+TIER_A_IN_TIER_B = (
+    "a Tier A model is a selection candidate in a Tier B selection of a scenario whose kind it "
+    "supports: it uses only Tier A information, which Tier B includes")
+"""Amendment A10 (owner decision)."""
+B1_DEFINITION = (
+    "B1 at the customer level (existing_undiscounted_12; the selection candidate and PC1's "
+    "comparator) is M10's 'Kaplan–Meier by cell' (backtest.customer_projections, unchanged) "
+    "with W = PRIMARY_HORIZON: run rate x sum_{t=1..W} S(a0 + t) / S(a0), where the run rate "
+    "is the customer's mean contribution over its last up to 3 completely recorded months "
+    "(months <= complete_through(C)), a0 = C - acquisition month, and S is the paid-month "
+    "Kaplan–Meier curve of the customer's segment x channel cell at C, truncated where fewer "
+    "than MIN_AT_RISK customers remain at risk and extended by M10's geometric tail over the "
+    "last KM_TAIL_MONTHS. Population: the contractual training_stack population (active at C, "
+    "acquired by complete_through(C)). Cell status (M10's thresholds): 'undefined' if the cell "
+    "has no usable curve (fewer than 2 ages with MIN_AT_RISK at risk); 'unstable' if fewer "
+    "than MIN_CHURN_EVENTS churn events; otherwise 'ok'. No fallback (M10 unchanged): a cell "
+    "that is not 'ok' counts against min_ok_cell_fraction, and a customer without a finite "
+    "prediction is 'undefined' and prevents B1 from qualifying at that cutoff. Nothing is "
+    "tuned. Selection inputs as E1/E2: computed from the tables as recorded by C, observed at "
+    "the validation landmark L_v, scored on L_v's completely recorded labels; "
+    "selection-eligible wherever a validation landmark exists. In PC2 B1 is H4 (cohort "
+    "level), never a selection candidate. M10's other customer methods (run rate, historical "
+    "average, constant churn pooled and by cell) and H1-H3 are reported descriptively only")
+"""Amendment A10 (owner decision): B1's single selection candidate."""
+B2_DEFINITION = (
+    "B2: for every customer acquired by T_C = complete_through(C) (E4's population), prediction "
+    "of existing_undiscounted_12 = f x s x k, where f = the number of the customer's purchases "
+    "(the acquisition purchase included) in the complete months max(acquisition month, "
+    "T_C - PRIMARY_HORIZON + 1) .. T_C, carried forward unchanged to months C+1 .. C+12 (no "
+    "churn, no annualisation); s = the customer's mean revenue per purchase over every "
+    "completely recorded purchase (months <= T_C, the acquisition purchase included); k = the "
+    "business's recorded contribution-to-revenue ratio over completely recorded purchases at C "
+    "(E4's conversion). Nothing is fitted or tuned; status 'ok' where the prediction is finite, "
+    "otherwise 'undefined'. Selection inputs: the same rule with the tables as recorded by the "
+    "validation landmark L_v, scored on L_v's completely recorded labels (as E4); B2 is "
+    "selection-eligible wherever a validation landmark exists. No other target")
+"""Amendment A10 (owner decision): the RFM heuristic named in the approved plan."""
+CONTRACTUAL_OUTCOME_NOISE = (
+    "Contractual predictive intervals (E1, E2, E3): each simulated paid month's contribution is "
+    "the ContributionModel expected contribution plus a residual drawn with replacement, "
+    "independently per month, from the residuals (recorded contribution minus that mean) of "
+    "completely recorded months (billing_month <= complete_through(C)) in the source group "
+    "ContributionModel used for that mean (cell x promotion state, else segment x promotion "
+    "state, else promotion state). Nothing is estimated from validation or holdout outcomes and "
+    "no interval is rescaled (CALIBRATION.recalibration 'none in M11' stands). Intervals "
+    "without the residual are kept and reported as the pre-A11 construction")
+"""Amendment A11 (owner decision): completes the plan's 'parameter + outcome uncertainty' for
+the contractual models (contribution noise was omitted)."""
 
 
 @dataclass(frozen=True)
@@ -803,6 +863,26 @@ PROTOCOL_AMENDMENTS = (
               "P6 final review: TUNING_RULE names no loss and the A8 clarifications are scoped "
               "to E3, so E5's penalty choice and eligibility were not independently "
               "authorised (docs/evidence/m11-p6-findings.md)"),
+    Amendment("A10", "P7", "2026-11-19", True,
+              "B1 definition (B1_DEFINITION: M10 Kaplan–Meier by cell, unchanged, no "
+              "fallback); B2 definition (B2_DEFINITION); reference-fallback scope "
+              "(REFERENCE_FALLBACK_SCOPE: contractual only); Tier A models in Tier B "
+              "selections (TIER_A_IN_TIER_B); E3 no-ok-fit fallback (E3_NO_OK_FIT_RULE); no "
+              "change to any model's behaviour, SELECTION gates, tolerance, target, comparison "
+              "or seed; PROTOCOL_STAGE 'P6-amended' -> 'P7-amended'",
+              "P5 dispositions (B2 unspecified; E2 not applicable to non-contractual), the P6 "
+              "review (E3 fallback unauthorised) and the P7 preflight (B1 is nine M10 methods "
+              "under one id; Tier B candidacy unstated); prospective, before any B1 or B2 "
+              "selection result exists"),
+    Amendment("A11", "P7", "2026-11-19", True,
+              "contractual predictive-interval outcome noise (CONTRACTUAL_OUTCOME_NOISE); no "
+              "change to any point prediction, parameter interval, SELECTION gate, tolerance, "
+              "target, comparison or seed; PROTOCOL_STAGE stays 'P7-amended'",
+              "P7 finding 5: the plan's 'parameter + outcome uncertainty' omitted contribution "
+              "noise (80%/95% predictive intervals covered ~0.60/~0.70). Pre-cutoff residuals: "
+              "SD 2.1 against a mean of 5.3 per month, within-customer correlation about 0.01, "
+              "lag-1 about 0.00 (development seeds; months <= complete_through(C) only). "
+              "Prospective; pre-A11 results kept"),
 )
 """Every protocol change after the P0 commit (82e3ebd), all made before any main-seed
 evaluation; the main seed has never been authorised."""
@@ -940,6 +1020,8 @@ def validate_protocol() -> list[str]:
             problems.append(f"model {m.id}: only baselines and essential models are candidates")
     if model(REFERENCE_FALLBACK_MODEL).role != "essential":
         problems.append("the reference fallback must be an essential model")
+    if model(REFERENCE_FALLBACK_MODEL).kinds != ("contractual",):
+        problems.append("REFERENCE_FALLBACK_SCOPE needs a contractual-only reference model")
     names = {s.name for s in SCENARIOS}
     targets = {t.id for t in TARGETS}
     for pc in PRIMARY_COMPARISONS:

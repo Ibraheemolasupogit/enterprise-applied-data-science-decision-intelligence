@@ -141,6 +141,23 @@ def test_e3_uses_the_fixed_penalty_when_temporal_tuning_is_infeasible(
     assert not val.selection_eligible and val.eligibility == sv.NOT_ELIGIBLE  # A8
 
 
+def test_e3_no_ok_fit_fallback_follows_amendment_a10(sig: g.SignalsScenario,
+                                                     monkeypatch: pytest.MonkeyPatch) -> None:
+    """A10 (E3_NO_OK_FIT_RULE) authorises P4's existing fallback; behaviour is unchanged."""
+    calls: list[float] = []
+
+    def not_ok(*args: object, **kwargs: object) -> tuple[pd.DataFrame, float, str]:
+        calls.append(float(args[5]))  # type: ignore[arg-type]
+        return pd.DataFrame(), 1.0, "unstable"
+
+    monkeypatch.setattr(sv, "_fit_at_validation", not_ok)
+    lam, label, records = sv._tune(sig, 40, 12, "A", POL)
+    assert calls == list(pp.PENALTY_GRID) and len(records) == len(pp.PENALTY_GRID)
+    assert lam == pp.DEFAULT_PENALTY
+    assert f"labelled '{label}'" in pp.E3_NO_OK_FIT_RULE
+    assert label == "fixed penalty: no tuning fit was ok"
+
+
 def test_temporal_tuning_uses_only_information_recorded_by_the_validation_landmark(
         sig: g.SignalsScenario) -> None:
     cutoff, w = 40, 12
