@@ -16,3 +16,6 @@ htmlcov/
 
 .env
 .DS_Store
+
+# M11 P8 raw pickled results (hashes are kept in each run ledger)
+docs/evidence/m11-p8-*/raw/

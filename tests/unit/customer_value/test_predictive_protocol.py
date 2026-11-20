@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -18,10 +19,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "0a1ea3bdb7c60e0a82fd4b2f08ff7cde067da852ef69e5b0a3327921f4f608a8"
+FROZEN_DIGEST = "9f92d0eb5e2b14ae4b7b06450c0adcf44ad86e2ada44de950c586c74f18ccef4"
 """SHA-256 of the protocol manifest (P0 as amended through A9). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "244acc014ecd3acd5ca995e47bd3bc7866eb38946d1d220d7a8c68363d49ada0"
+FROZEN_CODE_DIGEST = "a8b23ce6fc5052f5f7fe6d29fceaece95a7faf8461f42630ccc5ebd985ac1545"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -123,13 +124,20 @@ def test_model_roles_and_selection_labels() -> None:
     assert pp.PLANNING_ALPHA == pytest.approx(0.01)
 
 
+def _assert_seed_gate_holds_while_pending() -> None:
+    """The gate's invariant at every stage: while any item is pending, the main and fresh seeds
+    are refused (checked with a local pending item, independent of the live protocol)."""
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(pp, "PENDING_BEFORE_MAIN", ("pending item",))
+        with pytest.raises(pp.ProtocolNotReady):
+            pp.authorise_seed("main")
+        with pytest.raises(pp.ProtocolNotReady):
+            pp.authorise_seed("fresh", confirm_single_final_run=True)
+
+
 def test_seed_gate_refuses_main_and_fresh_while_items_are_pending() -> None:
-    assert pp.PENDING_BEFORE_MAIN
+    _assert_seed_gate_holds_while_pending()
     assert pp.authorise_seed("pilot") == pp.PILOT_SEED
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("main")
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("fresh", confirm_single_final_run=True)
     with pytest.raises(ValueError):
         pp.authorise_seed("development")
 
@@ -272,7 +280,7 @@ def test_p1_amendments_are_recorded_and_consistent() -> None:
     assert "MISSPECIFIED REFERENCE" in pp.E4_POOLED_REFERENCE
     assert pp.model("E4").complexity_rank is not None  # the per-cell fit is the candidate
     assert "kept as generated at P1" in pp.SIGNAL_PARAMETERS_DECISION
-    assert any("COVERAGE_REPLICATIONS" in item for item in pp.PENDING_BEFORE_MAIN)
+    assert "kept the repeated-sampling preflight" in pp.PROTOCOL_AMENDMENTS[3].change
     for name in ("signals_contractual", "purchases_noncontractual"):
         assert pp.scenario(name).parameters_status.startswith("fixed at P1")
 
@@ -286,11 +294,9 @@ def test_p2_amendment_pins_the_oracle_numerics_and_closes_its_item() -> None:
     assert on.copula_nodes == (64, 48, 32)
     assert "doubled" in on.convergence_check
     assert on.monte_carlo_draws == 1_000_000 and "independent" in on.monte_carlo_check
-    assert len(pp.PENDING_BEFORE_MAIN) == 1
-    assert "COVERAGE_REPLICATIONS" in pp.PENDING_BEFORE_MAIN[0]
+    assert "closed pending item 'P2: oracle Monte Carlo" in a5.change
     assert not any("oracle Monte Carlo" in item for item in pp.PENDING_BEFORE_MAIN)
-    with pytest.raises(pp.ProtocolNotReady):  # one item still pending: seeds stay refused
-        pp.authorise_seed("main")
+    _assert_seed_gate_holds_while_pending()
 
 
 def test_p3_amendment_adds_only_the_narrow_e2_boundary_exception() -> None:
@@ -306,9 +312,7 @@ def test_p3_amendment_adds_only_the_narrow_e2_boundary_exception() -> None:
     assert pp.STATUS_RULES.log_parameter_bound == 10.0 and pp.STATUS_RULES.n_starts == 5
     assert pp.FIT_STATUSES == ("ok", "fallback", "unstable", "failed", "undefined")
     assert "pooled fit of the same model" in pp.STATUS_RULES.fallback
-    assert len(pp.PENDING_BEFORE_MAIN) == 1
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("main")
+    _assert_seed_gate_holds_while_pending()
 
 
 def test_p3_amendment_a7_adds_only_the_narrow_e1_boundary_exception() -> None:
@@ -326,8 +330,7 @@ def test_p3_amendment_a7_adds_only_the_narrow_e1_boundary_exception() -> None:
     assert "A6 (E2) and every other status and fallback rule are unchanged" in rule.statement
     assert pp.E2_GEOMETRIC_BOUNDARY.model == "E2"  # A6 itself unchanged
     assert pp.FIT_STATUSES == ("ok", "fallback", "unstable", "failed", "undefined")
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("main")
+    _assert_seed_gate_holds_while_pending()
 
 
 def test_p4_amendment_a8_excludes_three_e3_covariates_and_records_the_clarifications() -> None:
@@ -349,8 +352,7 @@ def test_p4_amendment_a8_excludes_three_e3_covariates_and_records_the_clarificat
     assert pp.PENALTY_GRID == (0.01, 0.1, 1.0, 10.0, 100.0) and pp.DEFAULT_PENALTY == 1.0
     assert pp.TENURE_BAND_EDGES == (0, 1, 2, 3, 6, 12, 24)
     assert pp.TENURE_BAND_MIN_EVENTS == 10
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("main")
+    _assert_seed_gate_holds_while_pending()
 
 
 def test_p6_amendment_a9_authorises_e5_tuning_and_eligibility_only() -> None:
@@ -376,11 +378,7 @@ def test_p6_amendment_a9_authorises_e5_tuning_and_eligibility_only() -> None:
     assert pp.SELECTION.calibration_in_the_large_tolerance == 0.05
     assert pp.PENALTY_GRID == (0.01, 0.1, 1.0, 10.0, 100.0) and pp.DEFAULT_PENALTY == 1.0
     assert pp.STATUS_RULES.gradient_tolerance == 1e-6
-    assert len(pp.PENDING_BEFORE_MAIN) == 1
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("main")
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("fresh", confirm_single_final_run=True)
+    _assert_seed_gate_holds_while_pending()
 
 
 def test_p7_amendment_a10_fixes_b1_b2_reference_scope_tier_rule_and_e3_fallback() -> None:
@@ -388,7 +386,7 @@ def test_p7_amendment_a10_fixes_b1_b2_reference_scope_tier_rule_and_e3_fallback(
     assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10"]
     a10 = pp.PROTOCOL_AMENDMENTS[9]
     assert a10.stage == "P7" and a10.before_main_seed
-    assert pp.PROTOCOL_STAGE == "P7-amended"
+    assert "'P6-amended' -> 'P7-amended'" in a10.change
     assert pp.B1_DEFINITION == (
         "B1 at the customer level (existing_undiscounted_12; the selection candidate and PC1's "
         "comparator) is M10's 'Kaplan–Meier by cell' (backtest.customer_projections, "
@@ -451,21 +449,16 @@ def test_p7_amendment_a10_fixes_b1_b2_reference_scope_tier_rule_and_e3_fallback(
                                  "larger penalty")
     assert pp.E5_TUNING_LOSS.startswith("E5: one penalty shared by both parts")
     assert pp.PENALTY_GRID == (0.01, 0.1, 1.0, 10.0, 100.0) and pp.DEFAULT_PENALTY == 1.0
-    assert len(pp.PENDING_BEFORE_MAIN) == 1
     assert pp.validate_protocol() == []
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("main")
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("fresh", confirm_single_final_run=True)
+    _assert_seed_gate_holds_while_pending()
 
 
 def test_p7_amendment_a11_adds_contractual_outcome_noise_only() -> None:
-    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS[:11]]
     assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11"]
-    a11 = pp.PROTOCOL_AMENDMENTS[-1]
+    a11 = pp.PROTOCOL_AMENDMENTS[10]
     assert a11.stage == "P7" and a11.before_main_seed
     assert "PROTOCOL_STAGE stays 'P7-amended'" in a11.change
-    assert pp.PROTOCOL_STAGE == "P7-amended"
     assert pp.CONTRACTUAL_OUTCOME_NOISE == (
         "Contractual predictive intervals (E1, E2, E3): each simulated paid month's contribution "
         "is the ContributionModel expected contribution plus a residual drawn with replacement, "
@@ -484,9 +477,207 @@ def test_p7_amendment_a11_adds_contractual_outcome_noise_only() -> None:
     assert [pc.id for pc in pp.PRIMARY_COMPARISONS] == ["PC1", "PC2", "PC3", "PC4", "PC5"]
     assert pp.B1_DEFINITION.startswith("B1 at the customer level")
     assert pp.B2_DEFINITION.startswith("B2: for every customer")
-    assert len(pp.PENDING_BEFORE_MAIN) == 1
     assert pp.validate_protocol() == []
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("main")
-    with pytest.raises(pp.ProtocolNotReady):
-        pp.authorise_seed("fresh", confirm_single_final_run=True)
+    _assert_seed_gate_holds_while_pending()
+
+
+FROZEN_COMPARISONS = (
+    ("PC1", "m10_contractual", "A", "existing_undiscounted_12", "E2", "B1"),
+    ("PC2", "m10_contractual", "A", "cohort_expected_lifetime", "E2", "B1"),
+    ("PC3", "signals_contractual", "B", "existing_undiscounted_12", "E3", "E3"),
+    ("PC4", "purchases_noncontractual", "A", "existing_undiscounted_12", "E4", "B2"),
+    ("PC5", "signals_contractual", "B", "existing_undiscounted_12", "E5", "E3"),
+)
+
+
+def test_p8_amendment_a12_fixes_the_p8_design_and_keeps_the_seeds_locked() -> None:
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS[:12]]
+    assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12"]
+    a12 = pp.PROTOCOL_AMENDMENTS[11]
+    assert a12.stage == "P8" and a12.before_main_seed
+    assert pp.PROTOCOL_STAGE == "P8-amended"
+    # safeguard 6: A12 did not unlock reserved seeds (it replaced the preflight item by the
+    # dry-run item, which only A13 closed)
+    assert "replaced by the P8 dry-run item, so the main and fresh seeds stay refused" in \
+        " ".join(a12.change.split())
+    _assert_seed_gate_holds_while_pending()
+    # safeguard 2: frozen hypotheses, family and gates unchanged
+    assert tuple((c.id, c.scenario, c.tier, c.target, c.model_a, c.model_b)
+                 for c in pp.PRIMARY_COMPARISONS) == FROZEN_COMPARISONS
+    assert pp.FAMILY_ALPHA == 0.05 and pp.PLANNING_ALPHA == pytest.approx(0.01)
+    assert pp.SELECTION.slope_bounds == (0.85, 1.15)
+    assert pp.SELECTION.calibration_in_the_large_tolerance == 0.05
+    assert pp.SELECTION.min_ok_cell_fraction == 0.90
+    assert pp.SELECTION.paired_interval_level == 0.95
+    assert pp.ORACLE_GATE.consistency_z == 3.0 and pp.ORACLE_GATE.positive_interval_level == 0.95
+    assert pp.STATUS_RULES.gradient_tolerance == 1e-6 and pp.STATUS_RULES.min_events == 30
+    assert pp.CALIBRATION.recalibration == "none in M11"
+    assert (pp.COVERAGE_REPLICATIONS, pp.MIN_COVERAGE_REPLICATIONS,
+            pp.REFIT_STUDY_REPLICATIONS) == (1000, 500, 200)
+    assert pp.CLUSTERED_INFERENCE.metric_bootstrap_resamples == 2000
+    assert pp.CLUSTERED_INFERENCE.refit_bootstrap_resamples == 200
+    b = pp.BUDGETS
+    assert (b.evidence_target_min, b.evidence_ceiling_min, b.evidence_memory_gb) == (
+        20.0, 180.0, 4.0)
+    assert (b.new_tests_target_s, b.new_tests_ceiling_s, b.single_test_ceiling_s,
+            b.test_memory_gb) == (90.0, 150.0, 10.0, 1.5)
+    # PC definitions: exact wording of the test and of PC3's non-evaluable rule
+    assert set(pp.PC_DEFINITIONS) == {"PC1", "PC2", "PC3", "PC4", "PC5"}
+    assert pp.PC_TEST == (
+        "PC1, PC3, PC4 and PC5: one two-sided test each of H0: E[D] = 0 on the main seed, D = "
+        "(R - prediction of model_a)^2 - (R - prediction of model_b)^2, pooled over the "
+        "comparison's evaluation cutoffs (customer x cutoff rows); estimate mean(D); p-value "
+        "from the CR1 customer-clustered z (normal reference); a 95% customer-cluster "
+        "percentile bootstrap interval (CLUSTERED_INFERENCE.metric_bootstrap_resamples) is "
+        "reported; a customer without a finite prediction from either model is excluded and "
+        "counted; a negative estimate favours model_a. PC2 follows PC_DEFINITIONS. Holm at "
+        "FAMILY_ALPHA across the five p-values PC1-PC5")
+    assert pp.PC_DEFINITIONS["PC3"] == (
+        "E3 Tier B vs, at each of cutoffs 36 and 42 of signals_contractual, the Tier A model "
+        "selected by the frozen SELECTION rule (Tier A candidates only); a cutoff whose Tier A "
+        "selection is NO QUALIFIED MODEL is non-evaluable and its rows are excluded, never "
+        "replaced by an unqualified model; PC_TEST pooled over the evaluable cutoffs; if neither "
+        "cutoff is evaluable, PC3 enters Holm with p = 1, reported 'non-evaluable'")
+    assert "inference across R1's independent generator draws" in pp.PC_DEFINITIONS["PC2"]
+    assert "two-sided one-sample t test across the R1 draws" in pp.PC_DEFINITIONS["PC2"]
+    assert "M10's common-support rule" in pp.PC_DEFINITIONS["PC1"]
+    assert "E5 as specified (A9)" in pp.PC_DEFINITIONS["PC5"]
+    # repeated sampling: approved counts, seeds inside their reserved blocks, shared seeds
+    st = {r.id: r for r in pp.REPEATED_SAMPLING}
+    assert {k: (v.replications, v.scales, v.role) for k, v in st.items()} == {
+        "R1": (1000, (1.0,), "confirmatory"), "R2": (500, (1.0,), "reported"),
+        "R3": (200, (0.5, 1.0, 2.0), "confirmatory"), "REFIT": (200, (1.0,), "reported")}
+    assert st["R1"].seed_start == st["R2"].seed_start == st["R3"].seed_start == \
+        pp.COVERAGE_SEED_START
+    assert st["REFIT"].seed_start == pp.REFIT_STUDY_SEED_START
+    assert st["REFIT"].content.startswith(
+        "E2 on m10_contractual, Tier A, cutoff 30 only (cutoff 24 excluded for runtime; E3 not "
+        "included, E3_REFIT_DISCLOSURE)")
+    assert ("excluded for runtime: m10_contractual C = 24, signals_contractual C = 36, "
+            "purchases_noncontractual C = 24") in st["R2"].content
+    pc2 = pp.PC_DEFINITIONS["PC2"]
+    for convention in ("truth = the generator's population_value for the channel",
+                       "the P3 cohort_value with the cell's fit as used by E2's predictions",
+                       "weighted by the channel's acquisitions in each segment over the "
+                       "CHURN_WINDOW_MONTHS before C (M10's H3 cell weighting)",
+                       "H4 = M10's H4 for the channel at C", "summed to INFINITE_SUM_MONTHS"):
+        assert convention in pc2
+    assert pp.BUDGET_SCOPE.startswith(
+        "BUDGETS.evidence_target_min applies to one main-seed evidence run")
+    assert "bounds the complete P8 execution" in pp.BUDGET_SCOPE
+    assert pp.P8_DRY_RUN.startswith(
+        "development seeds only (never a reserved seed or block): 10 draws for each of R1, R2 "
+        "and REFIT, 10 per scale for R3, 20 refits per REFIT draw")
+    assert "'dry run - not evidence'" in pp.P8_DRY_RUN
+    for model in ("E1 and E2", "E3 on", "E4 on", "S2 with E5"):
+        assert model in st["R2"].content
+    assert "never pooled or combined" in pp.SHARED_SEEDS_DISCLOSURE
+    # safeguard 1: E3 refit-bootstrap validation explicitly not performed
+    assert pp.E3_REFIT_DISCLOSURE.startswith(
+        "No refit-bootstrap validation of E3 is performed")
+    # safeguard 3: confirmatory tests separated from exploratory diagnostics
+    assert pp.CONFIRMATORY_TESTS == ("PC1-PC5 (PC_TEST, PC_DEFINITIONS), Holm at FAMILY_ALPHA",
+                                     "ORACLE_GATE on R1", "ACCEPTANCE_GATE_4 on R3")
+    assert "E3 Tier B vs E3 Tier A" in pp.EXPLORATORY_DIAGNOSTICS
+    assert not set(pp.CONFIRMATORY_TESTS) & set(pp.EXPLORATORY_DIAGNOSTICS)
+    assert "|z| < ORACLE_GATE.consistency_z" in pp.ACCEPTANCE_GATE_4
+    assert "95% t interval entirely below 0" in pp.ACCEPTANCE_GATE_4
+    # safeguards 4 and 5: original E4 quadrature outside the validated range; P7 unchanged
+    assert pp.E4_ACCELERATED_MAX_X == 44
+    assert "every other customer uses the original per-count Gauss-Jacobi rule" in \
+        pp.E4_ACCELERATED_SIMULATION
+    assert "P7's e4_simulate (and so P7's record) are unchanged" in pp.E4_ACCELERATED_SIMULATION
+    assert (pp.P8_EXECUTION.workers, pp.P8_EXECUTION.threads_per_worker) == (3, 1)
+    assert pp.validate_protocol() == []
+
+
+@pytest.mark.parametrize("breakage", ["pc", "r2_low", "r1_count", "seed_block", "refit",
+                                      "scales", "budget"])
+def test_validate_protocol_rejects_a12_inconsistencies(monkeypatch: pytest.MonkeyPatch,
+                                                       breakage: str) -> None:
+    from dataclasses import replace
+    studies = list(pp.REPEATED_SAMPLING)
+    if breakage == "pc":
+        monkeypatch.setattr(pp, "PC_DEFINITIONS", {k: v for k, v in pp.PC_DEFINITIONS.items()
+                                                   if k != "PC3"})
+    elif breakage == "r2_low":
+        studies[1] = replace(studies[1], replications=pp.MIN_COVERAGE_REPLICATIONS - 1)
+    elif breakage == "r1_count":
+        studies[0] = replace(studies[0], replications=pp.COVERAGE_REPLICATIONS - 1)
+    elif breakage == "seed_block":
+        studies[2] = replace(studies[2], seed_start=pp.REFIT_STUDY_SEED_START)
+    elif breakage == "refit":
+        studies[3] = replace(studies[3], replications=pp.REFIT_STUDY_REPLICATIONS + 1)
+    elif breakage == "scales":
+        studies[2] = replace(studies[2], scales=(0.5, 2.0))
+    else:
+        monkeypatch.setattr(pp, "BUDGETS", replace(pp.BUDGETS, evidence_ceiling_min=10.0))
+    monkeypatch.setattr(pp, "REPEATED_SAMPLING", tuple(studies))
+    assert pp.validate_protocol() != []
+
+
+def test_p8_amendment_a13_closes_the_dry_run_item_and_pins_the_execution_rules() -> None:
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
+    assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12",
+                   "A13"]
+    a13 = pp.PROTOCOL_AMENDMENTS[-1]
+    assert (a13.stage, a13.date, a13.before_main_seed) == ("P8", "2026-11-20", True)
+    assert "closes the P8 dry-run item" in a13.change
+    assert "PROTOCOL_STAGE stays 'P8-amended'" in a13.change
+    assert pp.PROTOCOL_STAGE == "P8-amended"
+    assert pp.PENDING_BEFORE_MAIN == ()
+    assert pp.COVERAGE_DRAW_LEVEL_RULE == (
+        "For REPEATED_SAMPLING customer-level intervals (R2 and REFIT) the unit of replication "
+        "is the generator draw: for each setting, model, interval, level and group, the mean of "
+        "per-draw coverage, its two-sided 95% t interval across draws, and the label 'below "
+        "nominal' (interval entirely below the nominal level), 'above nominal' (entirely "
+        "above) or 'consistent with nominal'; the pooled customer proportion is descriptive "
+        "only. precision.classify_coverage remains the rule for one interval per replication. "
+        "Coverage is reported, never asserted, and never triggers recalibration or a change of "
+        "method, seed, scale or replication count (COVERAGE_REPORTING_RULE)")
+    assert pp.P8_SINGLE_ATTEMPT == (
+        "The final P8 run (scripts/generate_m11_evidence.py --mode final with --expect-manifest "
+        "and --expect-code equal to the digests pinned after A13) is attempted once in the "
+        "repository: after protocol verification, and only if no final ledger exists anywhere "
+        "under docs/evidence, it takes the fixed reservation 'final' in the attempt registry "
+        "docs/evidence/m11-p8-attempts (an atomically created, immutable entry recorded in a "
+        "hash-chained attempts.log written under an exclusive lock; the registry is validated "
+        "before every reservation and any alteration, deletion or unlogged entry refuses every "
+        "further attempt); only then is the run directory's ledger.json created and any "
+        "reserved seed used. Phases run in the order main seed, REPEATED_SAMPLING, M10 "
+        "comparability, fresh seed; the fresh seed is authorised and recorded only at that "
+        "last phase. Raw results are kept outside Git with their SHA-256 in the ledger; the "
+        "evidence is record.md, summary.json and CSV tables, written only when every phase is "
+        "complete. A failed or interrupted run is recorded and is never resumed, repeated or "
+        "moved to replacement seeds, in any directory, without a new amendment")
+    assert pp.P8_APPROVED_DRY_RUN == (
+        "docs/evidence/m11-p8-dry-run (reservation dry-run-a3cef63df948e378), generated under "
+        "manifest e40970d2d725966e57f8c648b897528a932bc09a8a8f98c60c91392c792cd6eb and code "
+        "b4a1554bd3a4fff2e418e8f359f85c64a66ed080764db7869b92841ee1587b4b: record.md sha256 "
+        "57a645b1f159e9c64e6ceee7fc5f8b641f2692c2d6722abc9ad75a9dcdf406a4; ledger.json "
+        "f1977321a727cc2e87b9594debccb537a526154d64e1e6925292d03c2269c5ae; summary.json "
+        "472ded23d1eb6583c7f45c2c296143745691a6c1210cb2f19f0f6efdaec84816; 10 draws per study, "
+        "wall 3.0 min, peak 2.31 GB, extrapolated full size 141 min (ceiling 180)")
+    # seed authorisation after A13 (returns the seed numbers only; nothing is generated)
+    assert pp.authorise_seed("main") == pp.MAIN_SEED
+    with pytest.raises(pp.ProtocolNotReady, match="once, last"):
+        pp.authorise_seed("fresh")
+    assert pp.authorise_seed("fresh", confirm_single_final_run=True) == pp.FRESH_SEED
+    assert pp.authorise_seed("pilot") == pp.PILOT_SEED
+    _assert_seed_gate_holds_while_pending()
+    # A13 changes nothing else
+    assert [pc.id for pc in pp.PRIMARY_COMPARISONS] == ["PC1", "PC2", "PC3", "PC4", "PC5"]
+    assert pp.SELECTION.slope_bounds == (0.85, 1.15) and pp.FAMILY_ALPHA == 0.05
+    assert {s.id: s.replications for s in pp.REPEATED_SAMPLING} == {
+        "R1": 1000, "R2": 500, "R3": 200, "REFIT": 200}
+    assert pp.BUDGETS.evidence_ceiling_min == 180.0 and pp.validate_protocol() == []
+
+
+def test_the_approved_dry_run_record_matches_its_pinned_hashes() -> None:
+    import hashlib
+    root = REPO / "docs" / "evidence" / "m11-p8-dry-run"
+    pinned = dict(re.findall(r"(record\.md|ledger\.json|summary\.json)(?: sha256)? "
+                             r"([0-9a-f]{64})", pp.P8_APPROVED_DRY_RUN))
+    assert set(pinned) == {"record.md", "ledger.json", "summary.json"}
+    for name, sha in pinned.items():
+        assert hashlib.sha256((root / name).read_bytes()).hexdigest() == sha, name

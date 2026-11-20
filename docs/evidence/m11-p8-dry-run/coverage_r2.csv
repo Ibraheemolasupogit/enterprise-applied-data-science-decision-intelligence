@@ -1,0 +1,561 @@
+setting,model,interval,level,group,draws,mean coverage,draw SE,95% lower,95% upper,classification,pooled coverage (descriptive)
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,all,10,0.7269032877,0.04406329037,0.6272251998,0.8265813756,consistent with nominal,0.7262687552
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,segment=standard,10,0.7391369108,0.05407309405,0.6168150737,0.8614587478,consistent with nominal,0.7364298923
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,segment=value,10,0.7173552524,0.07363930745,0.5507715656,0.8839389393,consistent with nominal,0.7181054863
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,segment=premium,10,0.7162182624,0.05685406084,0.5876054415,0.8448310834,consistent with nominal,0.7163461538
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=8,10,0.769606038,0.08045292973,0.5876088667,0.9516032092,consistent with nominal,0.7679614115
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=2,10,0.727353494,0.07983858699,0.5467460626,0.9079609255,consistent with nominal,0.727341965
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=5,10,0.6384269775,0.06828004214,0.4839667911,0.7928871639,below nominal,0.6384166455
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=3,10,0.7684780243,0.09245808311,0.5593233093,0.9776327392,consistent with nominal,0.7694261046
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=9,10,0.5122290326,0.08443789497,0.3212172436,0.7032408215,below nominal,0.5094051856
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=4,10,0.8347238661,0.06168813273,0.6951756148,0.9742721174,consistent with nominal,0.8362112748
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=7,10,0.8373929682,0.07434794484,0.6692062323,1.005579704,consistent with nominal,0.8362528561
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=6,10,0.7528797986,0.08422334241,0.5623533613,0.9434062359,consistent with nominal,0.7516505841
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=1,10,0.6763674177,0.07041716813,0.5170727165,0.835662119,consistent with nominal,0.6750444275
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.8,decile=0,10,0.7515606471,0.09503528021,0.5365759072,0.9665453869,consistent with nominal,0.7507606491
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,all,10,0.7963484401,0.002322113182,0.7910954552,0.8016014251,consistent with nominal,0.7963136916
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,segment=standard,10,0.7926618138,0.002309244349,0.7874379401,0.7978856874,below nominal,0.7925595562
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,segment=value,10,0.8045161928,0.004980724582,0.7932490111,0.8157833746,consistent with nominal,0.8044346621
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,segment=premium,10,0.7928389959,0.003405385926,0.7851354777,0.8005425141,consistent with nominal,0.7928113553
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=8,10,0.7948259568,0.005084638105,0.7833237063,0.8063282073,consistent with nominal,0.7948717949
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=2,10,0.7904710165,0.009519169702,0.7689371585,0.8120048744,consistent with nominal,0.7905559787
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=5,10,0.7843007005,0.008788514525,0.7644196995,0.8041817016,consistent with nominal,0.7840649581
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=3,10,0.7823618847,0.005370649105,0.7702126324,0.794511137,below nominal,0.782376841
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=9,10,0.7900986602,0.006408107664,0.7756025135,0.8045948068,consistent with nominal,0.7900355872
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=4,10,0.8094647645,0.005772033416,0.7964075177,0.8225220112,consistent with nominal,0.8095479939
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=7,10,0.7921435353,0.00472170251,0.7814623022,0.8028247685,consistent with nominal,0.7920792079
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=6,10,0.7947977753,0.006208248496,0.7807537415,0.8088418091,consistent with nominal,0.7948197054
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=1,10,0.7916560952,0.004361576857,0.7817895229,0.8015226676,consistent with nominal,0.7915714648
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.8,decile=0,10,0.8333213418,0.005653702018,0.8205317792,0.8461109043,above nominal,0.8331643002
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,all,10,0.8952517574,0.02247475241,0.8444103352,0.9460931795,below nominal,0.8947421869
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,segment=standard,10,0.8697679249,0.03733338348,0.785313944,0.9542219057,consistent with nominal,0.8682693354
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,segment=value,10,0.9543460741,0.0173594351,0.9150763037,0.9936158446,consistent with nominal,0.954104508
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,segment=premium,10,0.8667399607,0.03898481993,0.778550171,0.9549297503,consistent with nominal,0.8671016484
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=8,10,0.8634715867,0.05238423535,0.7449702135,0.9819729599,consistent with nominal,0.8626554963
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=2,10,0.9391529809,0.03779206954,0.8536613801,1.024644582,consistent with nominal,0.9388169586
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=5,10,0.784712164,0.06163970836,0.6452734562,0.9241508718,below nominal,0.7843187008
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=3,10,0.9582838379,0.02536241831,0.9009100617,1.015657614,consistent with nominal,0.9586084307
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=9,10,0.7005347005,0.08964514536,0.4977432928,0.9033261081,below nominal,0.6980172852
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=4,10,0.9076030511,0.04779350198,0.7994866382,1.015719464,consistent with nominal,0.9088369731
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=7,10,0.9380668051,0.03413779488,0.8608417478,1.015291862,consistent with nominal,0.9367859863
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=6,10,0.9298740102,0.0285020938,0.8653977946,0.9943502259,consistent with nominal,0.9296597257
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=1,10,0.9305768947,0.03648843312,0.8480343244,1.013119465,consistent with nominal,0.9294237116
+m10_contractual C=30 Tier A,E1,parameter vs oracle,0.95,decile=0,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,all,10,0.9609411005,0.00106542919,0.9585309322,0.9633512687,above nominal,0.9609281779
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,segment=standard,10,0.9589849665,0.001563178215,0.9554488117,0.9625211213,above nominal,0.9589905363
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,segment=value,10,0.9676786886,0.00130310306,0.9647308646,0.9706265125,above nominal,0.967636749
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,segment=premium,10,0.9555468299,0.002064274362,0.9508771169,0.960216543,above nominal,0.9555860806
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=8,10,0.9606723591,0.002979073022,0.9539332278,0.9674114905,above nominal,0.9606499111
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=2,10,0.9670021238,0.00301000164,0.960193027,0.9738112205,above nominal,0.9669966997
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=5,10,0.9548887423,0.003829210497,0.9462264663,0.9635510182,consistent with nominal,0.9548337985
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=3,10,0.9611234756,0.001931515574,0.9567540838,0.9654928674,above nominal,0.9611477908
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=9,10,0.9453994478,0.004272408149,0.9357345891,0.9550643065,consistent with nominal,0.9453482461
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=4,10,0.9595609305,0.002419033991,0.9540886954,0.9650331655,above nominal,0.9596241747
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=7,10,0.9593772171,0.002397171696,0.953954438,0.9647999963,above nominal,0.9593805534
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=6,10,0.9644327003,0.00212631353,0.9596226449,0.9692427557,above nominal,0.9644489589
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=1,10,0.9670219791,0.001481694146,0.9636701541,0.9703738042,above nominal,0.9669966997
+m10_contractual C=30 Tier A,E1,predictive vs realised,0.95,decile=0,10,0.9698995709,0.002487825609,0.9642717184,0.9755274235,above nominal,0.9698275862
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,all,10,0.747634951,0.03744795237,0.6629217973,0.8323481047,consistent with nominal,0.7470867501
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,segment=standard,10,0.7335107389,0.0560520365,0.606712223,0.8603092548,consistent with nominal,0.731154139
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,segment=value,10,0.7878596379,0.05031221095,0.6740455095,0.9016737663,consistent with nominal,0.7877231597
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,segment=premium,10,0.7232384806,0.05628657632,0.5959093988,0.8505675624,consistent with nominal,0.7235576923
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=8,10,0.7774462278,0.07158733525,0.6155044246,0.939388031,consistent with nominal,0.7760853008
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=2,10,0.8016428047,0.05153937333,0.6850526421,0.9182329672,consistent with nominal,0.8007108403
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=5,10,0.6683628115,0.06590147032,0.5192833284,0.8174422946,consistent with nominal,0.6683582847
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=3,10,0.7547753476,0.09023122163,0.5506581433,0.9588925519,consistent with nominal,0.7557135602
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=9,10,0.5128686995,0.1040416229,0.2775101971,0.7482272019,below nominal,0.5096593798
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=4,10,0.8366586696,0.05890517166,0.7034059137,0.9699114256,consistent with nominal,0.8379888268
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=7,10,0.8105440937,0.07126653193,0.649327998,0.9717601894,consistent with nominal,0.8101040873
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=6,10,0.7377125024,0.08315147031,0.5496108083,0.9258141966,consistent with nominal,0.7366683596
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=1,10,0.7723429494,0.06151536861,0.6331855177,0.9115003812,consistent with nominal,0.7712617416
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.8,decile=0,10,0.8038058458,0.09175740236,0.5962361808,1.011375511,consistent with nominal,0.8040060852
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,all,10,0.796825947,0.002171478481,0.7919137214,0.8017381726,consistent with nominal,0.7968214476
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,segment=standard,10,0.7916274216,0.002108385057,0.7868579232,0.7963969199,below nominal,0.7915805504
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,segment=value,10,0.8086245607,0.004674038913,0.7980511501,0.8191979713,consistent with nominal,0.8085921578
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,segment=premium,10,0.7913612587,0.00308598204,0.7843802823,0.798342235,below nominal,0.7913232601
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=8,10,0.792574986,0.006053019742,0.778882104,0.806267868,consistent with nominal,0.792586951
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=2,10,0.7919692792,0.009384054213,0.7707410738,0.8131974847,consistent with nominal,0.7920792079
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=5,10,0.7844666351,0.00788238294,0.7666354461,0.8022978241,consistent with nominal,0.7843187008
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=3,10,0.7764426381,0.006392945223,0.7619807912,0.7909044849,below nominal,0.7765363128
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=9,10,0.7953819541,0.004688942584,0.7847748291,0.8059890792,consistent with nominal,0.7953736655
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=4,10,0.8117477852,0.004958957559,0.8005298438,0.8229657266,above nominal,0.811833418
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=7,10,0.7892758469,0.004792628514,0.7784341679,0.8001175258,consistent with nominal,0.789286621
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=6,10,0.7915360333,0.003607543583,0.7833752027,0.7996968638,below nominal,0.7915185373
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=1,10,0.7959496875,0.004084695174,0.7867094651,0.80518991,consistent with nominal,0.795887281
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.8,decile=0,10,0.8388591345,0.008007081235,0.8207458584,0.8569724107,above nominal,0.8387423935
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,all,10,0.897430641,0.02301729534,0.8453619014,0.9494993805,below nominal,0.8970524766
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,segment=standard,10,0.8523659162,0.04072545851,0.7602385286,0.9444933039,below nominal,0.8508103992
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,segment=value,10,0.9872502201,0.006610234945,0.9722968297,1.00220361,above nominal,0.9870383957
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,segment=premium,10,0.8676373961,0.03973331209,0.7777543996,0.9575203927,consistent with nominal,0.8680173993
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=8,10,0.8155206126,0.06453666059,0.6695285436,0.9615126816,consistent with nominal,0.814166032
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=2,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=5,10,0.7578626008,0.06026545919,0.6215326606,0.8941925409,below nominal,0.7576757168
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=3,10,0.9837469889,0.01228360397,0.9559595462,1.011534432,above nominal,0.9837480955
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=9,10,0.6925705587,0.09354929413,0.4809473529,0.9041937645,below nominal,0.6906456533
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=4,10,0.9066749899,0.04801919025,0.7980480347,1.015301945,consistent with nominal,0.9078212291
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=7,10,0.9189115217,0.03266778568,0.8450118563,0.992811187,consistent with nominal,0.9177456207
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=6,10,0.9388070127,0.02694390488,0.8778556653,0.9997583601,consistent with nominal,0.938801422
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=1,10,0.9598800656,0.02076432003,0.9129079103,1.006852221,consistent with nominal,0.959634425
+m10_contractual C=30 Tier A,E2,parameter vs oracle,0.95,decile=0,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,all,10,0.9602160831,0.001186625163,0.9575317504,0.9629004157,above nominal,0.9601919318
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,segment=standard,10,0.9571379426,0.001368071737,0.9540431494,0.9602327359,above nominal,0.957086914
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,segment=value,10,0.9691381951,0.00147960978,0.9657910852,0.972485305,above nominal,0.9691041004
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,segment=premium,10,0.9541125849,0.002402054691,0.9486787597,0.9595464101,consistent with nominal,0.9542124542
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=8,10,0.9555653464,0.003156582972,0.9484246596,0.9627060332,consistent with nominal,0.9555724803
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=2,10,0.9672560159,0.002638148235,0.9612881099,0.9732239218,above nominal,0.9672505712
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=5,10,0.9521156912,0.003456184007,0.9442972598,0.9599341226,consistent with nominal,0.9520426288
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=3,10,0.960879821,0.003142950501,0.953769973,0.967989669,above nominal,0.9608938547
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=9,10,0.9459891828,0.004197041477,0.9364948154,0.9554835503,consistent with nominal,0.9458566345
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=4,10,0.9590774052,0.00223717213,0.9540165702,0.9641382401,above nominal,0.9591163027
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=7,10,0.9565851101,0.001697014696,0.9527461961,0.960424024,above nominal,0.9565879665
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=6,10,0.9646816261,0.00217349491,0.9597648391,0.9695984132,above nominal,0.9647028949
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=1,10,0.9675261803,0.002305255412,0.9623113302,0.9727410303,above nominal,0.9675044428
+m10_contractual C=30 Tier A,E2,predictive vs realised,0.95,decile=0,10,0.9724528717,0.003358682784,0.9648550034,0.98005074,above nominal,0.9723630832
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,all,10,0.7260176162,0.02318766956,0.6735634634,0.778471769,below nominal,0.7252024677
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,segment=standard,10,0.8141494016,0.03130665392,0.7433288302,0.884969973,consistent with nominal,0.812792342
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,segment=value,10,0.5761687544,0.03477053291,0.4975123443,0.6548251645,below nominal,0.5753647999
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,segment=premium,10,0.7500286926,0.05817360843,0.6184308476,0.8816265376,consistent with nominal,0.7512591575
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=9,10,0.8937092253,0.05988409377,0.7582419937,1.029176457,consistent with nominal,0.8940010168
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=2,10,0.6395521515,0.07000721833,0.4811848211,0.7979194819,below nominal,0.6384869256
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=5,10,0.7430476285,0.06378385631,0.5987585211,0.887336736,consistent with nominal,0.7421974118
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=4,10,0.8164599586,0.05111840568,0.700822091,0.9320978261,consistent with nominal,0.8161503301
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=7,10,0.7932305898,0.06918286523,0.6367280757,0.949733104,consistent with nominal,0.7915714648
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=1,10,0.5172453939,0.04809389915,0.4084494355,0.6260413523,below nominal,0.5161208429
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=3,10,0.7026799996,0.07371292497,0.5359297784,0.8694302208,consistent with nominal,0.7031488065
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=8,10,0.8591476986,0.06147809528,0.720074585,0.9982208122,consistent with nominal,0.8575780655
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=6,10,0.7515738898,0.05147602318,0.6351270352,0.8680207443,consistent with nominal,0.75063484
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.8,decile=0,10,0.543781844,0.07277369411,0.3791563106,0.7084073774,below nominal,0.5425963489
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,all,10,0.7949027508,0.002292780033,0.789716122,0.8000893796,consistent with nominal,0.7948919749
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,segment=standard,10,0.7930111734,0.002070519604,0.7883273327,0.7976950142,below nominal,0.7929402806
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,segment=value,10,0.7985421219,0.004713538183,0.7878793578,0.8092048861,consistent with nominal,0.7985652564
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,segment=premium,10,0.7937904656,0.003708437924,0.7854013962,0.8021795351,consistent with nominal,0.7938415751
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=9,10,0.7849967549,0.002796638445,0.7786703192,0.7913231906,below nominal,0.7849517031
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=2,10,0.7898197582,0.008789320324,0.7699369342,0.8097025821,consistent with nominal,0.7897943641
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=5,10,0.7903513145,0.006253967706,0.7762038566,0.8044987723,consistent with nominal,0.790154783
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=4,10,0.8074268477,0.005347272731,0.7953304764,0.8195232191,consistent with nominal,0.8075165058
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=7,10,0.8016073307,0.004527849443,0.7913646237,0.8118500378,consistent with nominal,0.8017263265
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=1,10,0.7862257588,0.005835421749,0.7730251177,0.7994263999,below nominal,0.7862401625
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=3,10,0.777163508,0.005449914372,0.7648349451,0.7894920708,below nominal,0.7772981209
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=8,10,0.8008356046,0.00507072195,0.7893648346,0.8123063745,consistent with nominal,0.8007108403
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=6,10,0.7881999222,0.005925909631,0.7747945833,0.8016052611,consistent with nominal,0.7882173692
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.8,decile=0,10,0.8223893223,0.007684891454,0.80500489,0.8397737545,above nominal,0.8222616633
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,all,10,0.888316432,0.01475531812,0.8549375835,0.9216952806,below nominal,0.8879128691
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,segment=standard,10,0.935036955,0.02058764809,0.8884644594,0.9816094506,consistent with nominal,0.9345153921
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,segment=value,10,0.7921356684,0.01926656305,0.7485516748,0.835719662,below nominal,0.7917176164
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,segment=premium,10,0.9239195377,0.03226860093,0.8509228909,0.9969161844,consistent with nominal,0.9249084249
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=9,10,0.954148037,0.03625000391,0.872144831,1.036151243,consistent with nominal,0.9544992374
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=2,10,0.878958304,0.04078142458,0.7867043122,0.9712122957,consistent with nominal,0.8783955319
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=5,10,0.8769266679,0.05939752215,0.7425601377,1.011293198,consistent with nominal,0.8764273027
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=4,10,0.9790187133,0.01141328644,0.9532000656,1.004837361,above nominal,0.9789233113
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=7,10,0.9362104253,0.04474481193,0.8349906285,1.037430222,consistent with nominal,0.9350088855
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=1,10,0.6890518149,0.02894030588,0.6235842947,0.7545193352,below nominal,0.6882457477
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=3,10,0.8877148521,0.05208418182,0.7698922471,1.005537457,consistent with nominal,0.8877602844
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=8,10,0.9390449931,0.04152318016,0.8451130337,1.032976953,consistent with nominal,0.9383092155
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=6,10,0.9536086062,0.02313793346,0.9012669643,1.005950248,consistent with nominal,0.9537836465
+m10_contractual C=30 Tier A,E3,parameter vs oracle,0.95,decile=0,10,0.7885271745,0.05226485784,0.670295852,0.9067584971,below nominal,0.7880324544
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,all,10,0.9608231648,0.001043531431,0.9584625327,0.9631837969,above nominal,0.9608012389
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,segment=standard,10,0.9587775713,0.001213988996,0.9560313374,0.9615238052,above nominal,0.9587729794
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,segment=value,10,0.9667830198,0.001862941716,0.9625687528,0.9709972867,above nominal,0.9667400342
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,segment=premium,10,0.9566990407,0.00159022105,0.9531017108,0.9602963707,above nominal,0.9567307692
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=9,10,0.9512355666,0.003322320888,0.9437199546,0.9587511786,consistent with nominal,0.9511947128
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=2,10,0.9654779419,0.003052468807,0.9585727777,0.9723831061,above nominal,0.9654734704
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=5,10,0.9612191996,0.003690749175,0.952870145,0.9695682543,above nominal,0.9611773662
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=4,10,0.9588862742,0.002451870147,0.9533397585,0.9644327898,above nominal,0.9588623667
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=7,10,0.9575894673,0.003259854675,0.9502151637,0.9649637709,above nominal,0.9576034527
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=1,10,0.9654876795,0.002430183652,0.9599902221,0.9709851368,above nominal,0.9654734704
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=3,10,0.9586044141,0.003077885941,0.9516417524,0.9655670758,above nominal,0.9586084307
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=8,10,0.9571139877,0.001346491842,0.9540680116,0.9601599639,above nominal,0.9570957096
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=6,10,0.9621544754,0.003758313146,0.9536525804,0.9706563704,above nominal,0.9621635348
+m10_contractual C=30 Tier A,E3,predictive vs realised,0.95,decile=0,10,0.970441406,0.003781998347,0.9618859313,0.9789968806,above nominal,0.9703346856
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,all,10,0.9253223049,0.004110848751,0.9160229189,0.9346216908,above nominal,0.9253344842
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,segment=standard,10,0.8745352167,0.006745192296,0.8592765316,0.8897939017,above nominal,0.8745784836
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,segment=value,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,segment=premium,10,0.9273127517,0.005585941421,0.9146764743,0.9399490291,above nominal,0.9273122711
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=9,10,0.8698903243,0.007389709071,0.853173641,0.8866070076,above nominal,0.8698525674
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=3,10,0.9429803644,0.01021973702,0.9198617131,0.9660990157,above nominal,0.9431183342
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=5,10,0.8957061314,0.008902790965,0.8755666191,0.9158456438,above nominal,0.8957117483
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=2,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=7,10,0.878578633,0.005546749423,0.8660310141,0.891126252,above nominal,0.8786494034
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=6,10,0.8860198568,0.006117265221,0.8721816414,0.8998580721,above nominal,0.8859827324
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=4,10,0.9141235334,0.006976152007,0.8983423811,0.9299046856,above nominal,0.9141696293
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=1,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=8,10,0.8657727392,0.008582019156,0.8463588631,0.8851866153,above nominal,0.8657019548
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=0,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,all,10,0.9807605958,0.002344936523,0.9754559808,0.9860652107,above nominal,0.9807814364
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,segment=standard,10,0.9609491819,0.004950690967,0.9497499408,0.9721484229,consistent with nominal,0.9610573262
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,segment=value,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,segment=premium,10,0.9952961785,0.001061241397,0.9928954836,0.9976968733,above nominal,0.9953067766
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=9,10,0.9316409407,0.00509987024,0.9201042327,0.9431776487,below nominal,0.931621759
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=3,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=5,10,0.988997321,0.004777157296,0.9781906404,0.9998040016,above nominal,0.9890890637
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=2,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=7,10,0.9626107764,0.0058874317,0.9492924806,0.9759290722,consistent with nominal,0.9626808835
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=6,10,0.9798497687,0.006224299488,0.965769425,0.9939301123,above nominal,0.9799390554
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=4,10,0.9997455471,0.0002544529262,0.9991699346,1.00032116,above nominal,0.999746064
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=1,10,1,0,1,1,above nominal,1
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=8,10,0.9446833622,0.004282204605,0.9349963424,0.954370382,consistent with nominal,0.9446560041
+m10_contractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=0,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,all,10,0.5874972445,0.02277350744,0.5359799915,0.6390144975,below nominal,0.5868471667
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,segment=premium,10,0.7094147026,0.07299987815,0.5442775053,0.8745518998,consistent with nominal,0.7036995766
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,segment=value,10,0.4565819472,0.01933010305,0.4128542161,0.5003096782,below nominal,0.4563045202
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,segment=standard,10,0.6209974091,0.05041930874,0.5069410087,0.7350538095,below nominal,0.6183447549
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=5,10,0.5482530793,0.07849253867,0.3706906207,0.7258155379,below nominal,0.5455889601
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=2,10,0.4177550368,0.05210679273,0.2998812824,0.5356287912,below nominal,0.4184327255
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=9,10,0.3412094004,0.08589391253,0.1469038709,0.5355149299,below nominal,0.3392592593
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=3,10,0.7046634327,0.08060623569,0.5223194593,0.8870074061,consistent with nominal,0.7046632124
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=8,10,0.6720654516,0.05624329742,0.5448342735,0.7992966298,below nominal,0.6713510848
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=7,10,0.7628901236,0.07653305306,0.5897603294,0.9360199177,consistent with nominal,0.7626324871
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=4,10,0.7419920585,0.07040949306,0.5827147194,0.9012693976,consistent with nominal,0.7397631968
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=1,10,0.5504180323,0.06463965745,0.4041929682,0.6966430964,below nominal,0.5499383477
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=6,10,0.6969580709,0.08081775993,0.5141355964,0.8797805454,consistent with nominal,0.6970892945
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.8,decile=0,10,0.4387552034,0.06911909981,0.2823969367,0.5951134701,below nominal,0.4397634885
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,all,10,0.7932173111,0.001666796852,0.7894467546,0.7969878675,below nominal,0.7931646693
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,segment=premium,10,0.7830716177,0.0053814187,0.7708980028,0.7952452325,below nominal,0.782817027
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,segment=value,10,0.8070872931,0.003761973607,0.7985771176,0.8155974686,consistent with nominal,0.8070578906
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,segment=standard,10,0.788883824,0.004833154144,0.7779504697,0.7998171782,below nominal,0.7888244597
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=5,10,0.7865598534,0.003719538531,0.7781456726,0.7949740341,below nominal,0.7865943815
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=2,10,0.783517688,0.004911188388,0.7724078081,0.794627568,below nominal,0.7833908329
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=9,10,0.7781310351,0.00962810771,0.7563507423,0.7999113279,below nominal,0.7780246914
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=3,10,0.7720559867,0.008561016817,0.7526896212,0.7914223522,below nominal,0.7720207254
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=8,10,0.784238277,0.005608635168,0.7715506628,0.7969258913,below nominal,0.784270217
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=7,10,0.7927860091,0.006771661033,0.7774674476,0.8081045706,consistent with nominal,0.7927039684
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=4,10,0.796289713,0.00847066042,0.7771277479,0.8154516782,consistent with nominal,0.7962506167
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=1,10,0.8076950258,0.005232672246,0.7958578988,0.8195321528,consistent with nominal,0.8076448829
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=6,10,0.7956768697,0.008268652705,0.7769718778,0.8143818617,consistent with nominal,0.7955106068
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.8,decile=0,10,0.8351862537,0.004813176095,0.8242980929,0.8460744144,above nominal,0.8351810791
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,all,10,0.7909911813,0.01786106606,0.7505866428,0.8313957198,below nominal,0.7905755289
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,segment=premium,10,0.8706525739,0.04675482663,0.764885808,0.9764193399,consistent with nominal,0.8665032316
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,segment=value,10,0.6894525185,0.02743989791,0.6273791569,0.7515258801,below nominal,0.6886597938
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,segment=standard,10,0.8238480828,0.0358493624,0.7427511908,0.9049449747,below nominal,0.8224037955
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=5,10,0.8235937018,0.03729591151,0.7392244884,0.9079629151,below nominal,0.8225726959
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=2,10,0.5498502315,0.04636033347,0.4449758711,0.654724592,below nominal,0.5500246427
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=9,10,0.4763959619,0.09037056677,0.271963537,0.6808283869,below nominal,0.4745679012
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=3,10,0.8528755861,0.04216467812,0.7574924574,0.9482587147,below nominal,0.8524549716
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=8,10,0.8621193725,0.03430292926,0.7845207553,0.9397179896,below nominal,0.8619329389
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=7,10,0.9655252015,0.01726236869,0.9264750105,1.004575392,consistent with nominal,0.9654917427
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=4,10,0.8937068227,0.04347135343,0.7953677892,0.9920458562,consistent with nominal,0.8924518994
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=1,10,0.8122429913,0.03847268322,0.7252117353,0.8992742472,below nominal,0.8115906289
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=6,10,0.9142710502,0.04132284261,0.8207922858,1.007749815,consistent with nominal,0.9144055254
+signals_contractual C=42 Tier A,E1,parameter vs oracle,0.95,decile=0,10,0.7591921899,0.08761846464,0.5609854525,0.9573989273,consistent with nominal,0.7600394186
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,all,10,0.9635373717,0.0009654200293,0.9613534399,0.9657213036,above nominal,0.963530108
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,segment=premium,10,0.9572805681,0.001795612722,0.9532186099,0.9613425263,above nominal,0.957209717
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,segment=value,10,0.9705583628,0.001297353071,0.9676235463,0.9734931794,above nominal,0.9705789056
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,segment=standard,10,0.9618261152,0.001840893944,0.9576617238,0.9659905066,above nominal,0.9618344755
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=5,10,0.9596269036,0.002825349433,0.9532355191,0.9660182881,above nominal,0.959586003
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=2,10,0.9697192362,0.002240604371,0.964650637,0.9747878354,above nominal,0.9696895022
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=9,10,0.9505935587,0.004180688951,0.9411361833,0.9600509342,consistent with nominal,0.950617284
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=3,10,0.9587877889,0.002538287928,0.9530457827,0.9645297951,above nominal,0.9587959536
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=8,10,0.9625176665,0.004175045903,0.9530730565,0.9719622765,above nominal,0.9625246548
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=7,10,0.9628193063,0.002478314152,0.9572129702,0.9684256424,above nominal,0.9627803796
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=4,10,0.9605930159,0.003065354222,0.9536587029,0.9675273289,above nominal,0.9605328071
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=1,10,0.9745541073,0.00178960553,0.9705057383,0.9786024762,above nominal,0.9745992602
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=6,10,0.9681936747,0.003162679172,0.9610391973,0.975348152,above nominal,0.9681795757
+signals_contractual C=42 Tier A,E1,predictive vs realised,0.95,decile=0,10,0.9679431129,0.002437189208,0.9624298079,0.9734564179,above nominal,0.967972407
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,all,10,0.5882526874,0.02478034568,0.5321956509,0.6443097239,below nominal,0.5874882872
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,segment=premium,10,0.7208005668,0.07909689335,0.5418709629,0.8997301706,consistent with nominal,0.7142857143
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,segment=value,10,0.4513109588,0.01752612374,0.4116641125,0.4909578052,below nominal,0.4512291832
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,segment=standard,10,0.6206904074,0.0508480045,0.5056642298,0.735716585,below nominal,0.6180811808
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=5,10,0.5479270409,0.07094172354,0.3874457128,0.7084083689,below nominal,0.5455889601
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=2,10,0.4316753103,0.05376253375,0.3100560094,0.5532946111,below nominal,0.4322326269
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=9,10,0.3266404405,0.08635019582,0.1313027265,0.5219781545,below nominal,0.3244444444
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=3,10,0.7128916731,0.08287532769,0.525414657,0.9003686893,consistent with nominal,0.7120651369
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=8,10,0.6803887491,0.05032173929,0.5665530661,0.7942244321,below nominal,0.6797337278
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=7,10,0.7696452905,0.07566788123,0.5984726509,0.94081793,consistent with nominal,0.7690411634
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=4,10,0.7484327117,0.07006995069,0.5899234709,0.9069419526,consistent with nominal,0.7461766157
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=1,10,0.5777818757,0.06466508007,0.4314993017,0.7240644498,below nominal,0.5770653514
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=6,10,0.7050332548,0.0820705667,0.5193767344,0.8906897751,consistent with nominal,0.7052294031
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.8,decile=0,10,0.3820976191,0.05802762767,0.2508300055,0.5133652327,below nominal,0.3833456516
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,all,10,0.7939032539,0.001810599483,0.7898073933,0.7979991145,below nominal,0.7938551068
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,segment=premium,10,0.7849073064,0.004741158271,0.7741820613,0.7956325516,below nominal,0.7847113885
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,segment=value,10,0.8083233248,0.003399871711,0.8006322806,0.8160143689,above nominal,0.8082474227
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,segment=standard,10,0.7886924735,0.004045917237,0.7795399728,0.7978449742,below nominal,0.7886136004
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=5,10,0.7891210794,0.003302032883,0.7816513621,0.7965907968,below nominal,0.7890586496
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=2,10,0.7819564946,0.005219125867,0.7701500116,0.7937629775,below nominal,0.7819122721
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=9,10,0.7791034849,0.008766930829,0.7592713095,0.7989356603,below nominal,0.7790123457
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=3,10,0.7720337478,0.007805977373,0.7543754002,0.7896920955,below nominal,0.7720207254
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=8,10,0.7854325297,0.008582821386,0.7660168388,0.8048482206,consistent with nominal,0.7855029586
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=7,10,0.7932918397,0.004617399142,0.7828465571,0.8037371222,consistent with nominal,0.7931969436
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=4,10,0.7948410632,0.006410193833,0.7803401973,0.8093419291,consistent with nominal,0.7947705969
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=1,10,0.8133961475,0.004704412212,0.8027540277,0.8240382673,above nominal,0.8133168927
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=6,10,0.7946343823,0.007226349989,0.7782872429,0.8109815217,consistent with nominal,0.794523927
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.8,decile=0,10,0.8351634144,0.003023010807,0.8283248888,0.8420019399,above nominal,0.8351810791
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,all,10,0.7790762761,0.01879530173,0.7365583496,0.8215942025,below nominal,0.7787148
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,segment=premium,10,0.868080131,0.05084196452,0.7530676168,0.9830926452,consistent with nominal,0.8637174058
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,segment=value,10,0.6781429026,0.03340529804,0.6025748683,0.7537109368,below nominal,0.6770816812
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,segment=standard,10,0.8075332518,0.03937279982,0.7184657907,0.8966007129,below nominal,0.8060622035
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=5,10,0.8220735445,0.04439562696,0.7216436589,0.92250343,below nominal,0.8208477082
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=2,10,0.5609989171,0.0490437845,0.4500541687,0.6719436655,below nominal,0.5611138492
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=9,10,0.4633770521,0.08456274402,0.272082835,0.6546712692,below nominal,0.4614814815
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=3,10,0.8444307205,0.04589854373,0.740601001,0.94826044,below nominal,0.8440661239
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=8,10,0.8651536866,0.03489424925,0.7862174107,0.9440899625,below nominal,0.8648915187
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=7,10,0.9576215447,0.02151493051,0.9089513906,1.006291699,consistent with nominal,0.957604141
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=4,10,0.8684429447,0.0480992538,0.7596348732,0.9772510162,consistent with nominal,0.8670448939
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=1,10,0.7929893826,0.0439067867,0.6936653306,0.8923134346,below nominal,0.7923551171
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=6,10,0.8837551757,0.06132992004,0.7450172578,1.022493094,consistent with nominal,0.8845584608
+signals_contractual C=42 Tier A,E2,parameter vs oracle,0.95,decile=0,10,0.7318232624,0.08953418755,0.5292828587,0.934363666,below nominal,0.7329391476
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,all,10,0.9634075008,0.0009717885406,0.9612091624,0.9656058392,above nominal,0.9634068156
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,segment=premium,10,0.9591234575,0.001408526542,0.9559371491,0.9623097659,above nominal,0.9591040784
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,segment=value,10,0.9711151663,0.001287047201,0.9682036633,0.9740266694,above nominal,0.9711340206
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,segment=standard,10,0.9602737746,0.001557577122,0.9567502903,0.9637972588,above nominal,0.9603057459
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=5,10,0.9616155016,0.002208105368,0.9566204203,0.966610583,above nominal,0.9615574174
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=2,10,0.9692260803,0.001991606594,0.9647207532,0.9737314074,above nominal,0.9691966486
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=9,10,0.9473771802,0.003400053393,0.939685725,0.9550686353,consistent with nominal,0.9474074074
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=3,10,0.9592930527,0.001863208276,0.9550781828,0.9635079227,above nominal,0.9592894152
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=8,10,0.9624909669,0.003146104034,0.9553739851,0.9696079486,above nominal,0.9625246548
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=7,10,0.9600609485,0.003078008852,0.9530980087,0.9670238883,above nominal,0.9600690165
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=4,10,0.9618073062,0.003004821998,0.9550099266,0.9686046858,above nominal,0.9617661569
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=1,10,0.9745820257,0.002637912615,0.9686146528,0.9805493986,above nominal,0.9745992602
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=6,10,0.9679472544,0.003686330177,0.9596081962,0.9762863126,above nominal,0.9679329058
+signals_contractual C=42 Tier A,E2,predictive vs realised,0.95,decile=0,10,0.9696458846,0.002256087037,0.9645422611,0.974749508,above nominal,0.9696969697
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,all,10,0.6645943846,0.03143497852,0.5934835228,0.7357052464,below nominal,0.6646693298
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,segment=premium,10,0.5835732746,0.06823116761,0.4292236501,0.7379228991,below nominal,0.577445955
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,segment=value,10,0.680304903,0.05430760978,0.5574525545,0.8031572514,consistent with nominal,0.680888184
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,segment=standard,10,0.6968725,0.05550567639,0.5713099366,0.8224350634,consistent with nominal,0.6951502372
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=4,10,0.5877665742,0.05261015862,0.4687541271,0.7067790213,below nominal,0.5880611741
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=2,10,0.6998550843,0.06747982087,0.5472051242,0.8525050444,consistent with nominal,0.7000985707
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=8,10,0.7619730483,0.05999059763,0.6262648881,0.8976812084,consistent with nominal,0.7630670611
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=9,10,0.7959428183,0.06453123556,0.6499630216,0.9419226151,consistent with nominal,0.7955555556
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=5,10,0.6032845948,0.06331339307,0.4600597491,0.7465094404,below nominal,0.6022671267
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=3,10,0.6113671422,0.06517978107,0.4639202336,0.7588140508,below nominal,0.6099185788
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=1,10,0.7026333254,0.04711472305,0.5960524172,0.8092142336,consistent with nominal,0.7030826141
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=6,10,0.6292581293,0.09295966001,0.4189687685,0.83954749,consistent with nominal,0.6299950666
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=0,10,0.6376607591,0.1052183227,0.3996403766,0.8756811415,consistent with nominal,0.637841833
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.8,decile=7,10,0.6163665872,0.06502687518,0.4692655758,0.7634675987,below nominal,0.6169583436
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,all,10,0.7942022721,0.002142578059,0.7893554238,0.7990491204,below nominal,0.7941510085
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,segment=premium,10,0.7881991573,0.005946001023,0.7747483685,0.8016499461,consistent with nominal,0.7878315133
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,segment=value,10,0.8067234676,0.004501286787,0.7965408494,0.8169060857,consistent with nominal,0.806740682
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,segment=standard,10,0.7888208291,0.004336600363,0.7790107575,0.7986309007,below nominal,0.7887717449
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=4,10,0.7938029549,0.008971697275,0.7735075657,0.8140983442,consistent with nominal,0.7937839171
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=2,10,0.782820215,0.007422402598,0.7660295738,0.7996108562,below nominal,0.7826515525
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=8,10,0.7896853335,0.005604148987,0.7770078677,0.8023627992,consistent with nominal,0.7896942801
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=9,10,0.7851638978,0.008584553681,0.7657442882,0.8045835074,consistent with nominal,0.7851851852
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=5,10,0.7926210879,0.005650884563,0.7798378989,0.8054042769,consistent with nominal,0.7925086249
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=3,10,0.7800277191,0.008655400002,0.760447844,0.7996075942,below nominal,0.7799161115
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=1,10,0.805129863,0.007134071163,0.7889914728,0.8212682531,consistent with nominal,0.8051787916
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=6,10,0.8014008383,0.007687379859,0.7840107769,0.8187908998,consistent with nominal,0.8014306857
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=0,10,0.8329732438,0.004255506883,0.8233466184,0.8425998692,above nominal,0.8329637842
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.8,decile=7,10,0.7783723624,0.006900209709,0.7627630036,0.7939817212,below nominal,0.7781612029
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,all,10,0.8448399876,0.02796826159,0.7815713843,0.9081085909,below nominal,0.8445776002
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,segment=premium,10,0.7852388658,0.06097143911,0.6473118881,0.9231658435,below nominal,0.7794740361
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,segment=value,10,0.8515099192,0.04778182084,0.743419931,0.9595999075,consistent with nominal,0.852260111
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,segment=standard,10,0.872069037,0.04139536191,0.7784262226,0.9657118515,consistent with nominal,0.8702688455
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=4,10,0.7887598068,0.04821286759,0.679694723,0.8978248905,below nominal,0.7886038481
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=2,10,0.8697073323,0.04836081902,0.7603075592,0.9791071055,consistent with nominal,0.8696402169
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=8,10,0.8965640944,0.05150677697,0.78004767,1.013080519,consistent with nominal,0.8969428008
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=9,10,0.9293447686,0.04090347615,0.836814677,1.02187486,consistent with nominal,0.929382716
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=5,10,0.8273088015,0.05714533039,0.6980370831,0.95658052,consistent with nominal,0.8260226713
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=3,10,0.8066811952,0.04965729052,0.6943485998,0.9190137906,below nominal,0.8055761165
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=1,10,0.8843825232,0.03331862797,0.8090105503,0.9597544961,consistent with nominal,0.8843403206
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=6,10,0.8098625949,0.07573683061,0.6385339811,0.9811912088,consistent with nominal,0.8093241243
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=0,10,0.8087147714,0.1000881395,0.5822996697,1.035129873,consistent with nominal,0.8088199064
+signals_contractual C=42 Tier A,E3,parameter vs oracle,0.95,decile=7,10,0.8271841569,0.05380216986,0.705475193,0.9488931208,below nominal,0.8272122258
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,all,10,0.9647562052,0.0008906765145,0.9627413549,0.9667710554,above nominal,0.9647383735
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,segment=premium,10,0.9602092477,0.001857895882,0.9560063953,0.9644121002,above nominal,0.9601069757
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,segment=value,10,0.9699521522,0.001407819748,0.9667674427,0.9731368617,above nominal,0.9699444885
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,segment=standard,10,0.963470597,0.001118834997,0.9609396164,0.9660015776,above nominal,0.9634686347
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=4,10,0.9610723225,0.002656049967,0.9550639201,0.967080725,above nominal,0.961026147
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=2,10,0.969017411,0.002996727619,0.9622383422,0.9757964799,above nominal,0.9689502218
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=8,10,0.9607458182,0.003164024684,0.9535882971,0.9679033393,above nominal,0.9607988166
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=9,10,0.9546045212,0.003030475729,0.9477491088,0.9614599335,consistent with nominal,0.9545679012
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=5,10,0.9633710532,0.003329876248,0.9558383498,0.9709037566,above nominal,0.9632824051
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=3,10,0.9617792113,0.002907436659,0.9552021326,0.9683562899,above nominal,0.9617567234
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=1,10,0.9696842084,0.001169162062,0.9670393801,0.9723290367,above nominal,0.9696670777
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=6,10,0.9711250411,0.001756872258,0.96715072,0.9750993623,above nominal,0.9711396152
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=0,10,0.9719104918,0.002324456511,0.9666522058,0.9771687777,above nominal,0.9719142646
+signals_contractual C=42 Tier A,E3,predictive vs realised,0.95,decile=7,10,0.9642235177,0.002000913393,0.9596971371,0.9687498983,above nominal,0.9642593049
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,all,10,0.9563599398,0.001831495006,0.9522168103,0.9605030694,above nominal,0.9563051733
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,segment=premium,10,0.9804706086,0.003669619743,0.972169352,0.9887718651,above nominal,0.9802763539
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,segment=value,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,segment=standard,10,0.9160591334,0.002433655408,0.9105538223,0.9215644444,above nominal,0.9159198735
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=7,10,0.9065015642,0.005562698288,0.8939178664,0.919085262,above nominal,0.9063347301
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=3,10,0.9965402588,0.001643429743,0.9928225624,1.000257955,above nominal,0.9965457686
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=9,10,0.8965597259,0.004997580614,0.8852544131,0.9078650387,above nominal,0.8965432099
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=2,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=8,10,0.9122569529,0.003307644626,0.904774541,0.9197393649,above nominal,0.9122287968
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=5,10,0.9476096164,0.003199675841,0.9403714468,0.9548477861,above nominal,0.9475110892
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=6,10,0.9319795633,0.004487498499,0.9218281364,0.9421309901,above nominal,0.9319190923
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=4,10,0.9720603264,0.007582847807,0.9549067329,0.9892139198,above nominal,0.9718796251
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=1,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.8,decile=0,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,all,10,0.9866073566,0.001094025208,0.9841324997,0.9890822136,above nominal,0.9865857869
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,segment=premium,10,0.9978933482,0.0007076034076,0.9962926381,0.9994940583,above nominal,0.9978827725
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,segment=value,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,segment=standard,10,0.9723772829,0.002023715082,0.9677993213,0.9769552445,above nominal,0.9723247232
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=7,10,0.9729777146,0.005075130479,0.9614969719,0.9844584574,above nominal,0.9728863692
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=3,10,0.999506763,0.0003288324762,0.9987628923,1.000250634,above nominal,0.9995065384
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=9,10,0.9429994509,0.00441319431,0.9330161118,0.95298279,consistent with nominal,0.942962963
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=2,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=8,10,0.9573969817,0.002581907707,0.9515563007,0.9632376627,above nominal,0.95734714
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=5,10,0.9990147544,0.0006568403507,0.9975288783,1.000500631,above nominal,0.9990142928
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=6,10,0.994604698,0.003055220009,0.9876933102,1.001516086,above nominal,0.994573261
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=4,10,0.9995108592,0.0003261535838,0.9987730485,1.00024867,above nominal,0.9995066601
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=1,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier A,E5 + S2,conformal vs realised,0.95,decile=0,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,all,10,0.349308329,0.009200045672,0.3284963798,0.3701202782,below nominal,0.3493613454
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,segment=premium,10,0.349861948,0.01044343302,0.3262372612,0.3734866348,below nominal,0.3498997103
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,segment=value,10,0.3755737114,0.01985006487,0.330669745,0.4204776779,below nominal,0.3764472641
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,segment=standard,10,0.3309820402,0.0102939598,0.3076954853,0.3542685951,below nominal,0.3311017396
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=5,10,0.3623495249,0.01593126894,0.3263104907,0.398388559,below nominal,0.3624938393
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=2,10,0.4274954763,0.02462415772,0.3717917616,0.4831991911,below nominal,0.4273040907
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=9,10,0.4758884835,0.0146462628,0.4427563352,0.5090206318,below nominal,0.4758024691
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=3,10,0.3281212167,0.01178635631,0.3014586264,0.3547838071,below nominal,0.3281519862
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=6,10,0.2632673669,0.01357783242,0.2325521761,0.2939825578,below nominal,0.2631968426
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=8,10,0.3313085284,0.01813748576,0.2902786851,0.3723383717,below nominal,0.3313609467
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=4,10,0.3125331014,0.0151187116,0.2783321996,0.3467340031,below nominal,0.3130241737
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=1,10,0.3903172914,0.02432353888,0.3352936237,0.4453409591,below nominal,0.3903822441
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=7,10,0.3130110174,0.0241090319,0.2584725982,0.3675494366,below nominal,0.3130391915
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.8,decile=0,10,0.288922689,0.02256547237,0.237876044,0.3399693339,below nominal,0.2889874353
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,all,10,0.7970313539,0.002323875174,0.791774383,0.8022883247,consistent with nominal,0.7969867337
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,segment=premium,10,0.7915545148,0.005480085687,0.7791576998,0.8039513299,consistent with nominal,0.7911745041
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,segment=value,10,0.8085993163,0.0051603124,0.7969258787,0.820272754,consistent with nominal,0.8084853291
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,segment=standard,10,0.7921035845,0.004210840121,0.7825780024,0.8016291666,consistent with nominal,0.7920927781
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=5,10,0.7895065625,0.008988814548,0.7691724513,0.8098406737,consistent with nominal,0.7893050764
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=2,10,0.7996975338,0.004631200913,0.7892210295,0.8101740382,consistent with nominal,0.7996550025
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=9,10,0.7920549747,0.01056561021,0.7681539039,0.8159560456,consistent with nominal,0.7920987654
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=3,10,0.7914958898,0.005580021058,0.7788730052,0.8041187744,consistent with nominal,0.7915124599
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=6,10,0.7903715952,0.004729260384,0.779673265,0.8010699255,consistent with nominal,0.7903305377
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=8,10,0.8080984157,0.008408155703,0.7890778461,0.8271189854,consistent with nominal,0.8081854043
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=4,10,0.7835251563,0.006443490374,0.7689489684,0.7981013442,below nominal,0.783423779
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=1,10,0.7952742242,0.007301008177,0.7787581962,0.8117902521,consistent with nominal,0.7953144266
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=7,10,0.7888567805,0.006260239948,0.7746951339,0.8030184272,consistent with nominal,0.7887601676
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.8,decile=0,10,0.8313739005,0.007770680901,0.8137953991,0.848952402,above nominal,0.8312392215
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,all,10,0.5040261401,0.01169765371,0.477564209,0.5304880713,below nominal,0.5041426246
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,segment=premium,10,0.5062762865,0.01290338567,0.4770868002,0.5354657728,below nominal,0.5063516826
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,segment=value,10,0.5333120757,0.02447535301,0.4779449806,0.5886791708,below nominal,0.5343378271
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,segment=standard,10,0.4829659502,0.01191805834,0.4560054292,0.5099264713,below nominal,0.4830258303
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=5,10,0.510748643,0.01796951382,0.4700987786,0.5513985074,below nominal,0.5108427797
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=2,10,0.6028487676,0.02750350452,0.5406315179,0.6650660174,below nominal,0.6027599803
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=9,10,0.6625350493,0.01301694827,0.6330886665,0.6919814321,below nominal,0.6624691358
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=3,10,0.4748495505,0.01247231809,0.4466352068,0.5030638942,below nominal,0.4749568221
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=6,10,0.40799621,0.0162268152,0.3712886038,0.4447038163,below nominal,0.4079921066
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=8,10,0.486951315,0.02355601116,0.4336639157,0.5402387144,below nominal,0.4871794872
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=4,10,0.459871731,0.01779437802,0.4196180513,0.5001254107,below nominal,0.4605328071
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=1,10,0.5473361684,0.02937478668,0.4808857843,0.6137865525,below nominal,0.5474722565
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=7,10,0.457945683,0.02491907351,0.4015748224,0.5143165437,below nominal,0.4579738723
+signals_contractual C=42 Tier B,E3,parameter vs oracle,0.95,decile=0,10,0.4293321907,0.02951704799,0.3625599891,0.4961043922,below nominal,0.4294161123
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,all,10,0.9633662572,0.000990448048,0.961125708,0.9656068063,above nominal,0.9633574986
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,segment=premium,10,0.9577136609,0.001342290466,0.9546771889,0.9607501329,above nominal,0.9576554491
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,segment=value,10,0.9696076812,0.00194539603,0.9652068897,0.9740084728,above nominal,0.9696272799
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,segment=standard,10,0.961869817,0.001666742155,0.9580993843,0.9656402497,above nominal,0.9618871903
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=5,10,0.9585067469,0.004689231152,0.9478989691,0.9691145248,consistent with nominal,0.9583538689
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=2,10,0.9687705825,0.003226772778,0.9614711154,0.9760700497,above nominal,0.968703795
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=9,10,0.9521354016,0.004104077629,0.942851333,0.9614194702,consistent with nominal,0.9520987654
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=3,10,0.9622056684,0.003125345867,0.9551356448,0.9692756919,above nominal,0.962250185
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=6,10,0.9686480652,0.003100657469,0.9616338907,0.9756622397,above nominal,0.9686729156
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=8,10,0.9595136067,0.003904110591,0.9506818949,0.9683453184,above nominal,0.959566075
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=4,10,0.9590299392,0.002724263806,0.9528672263,0.9651926521,above nominal,0.9590527874
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=1,10,0.9718189856,0.002682073212,0.9657517144,0.9778862567,above nominal,0.9718865598
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=7,10,0.9657368681,0.0027522961,0.9595107417,0.9719629944,above nominal,0.9657382302
+signals_contractual C=42 Tier B,E3,predictive vs realised,0.95,decile=0,10,0.9672734844,0.003383560764,0.9596193382,0.9749276306,above nominal,0.9672333087
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,all,10,0.9495001124,0.001827235174,0.9453666193,0.9536336055,above nominal,0.9494501159
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,segment=premium,10,0.9608929448,0.002828015257,0.9544955299,0.9672903598,above nominal,0.9607755739
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,segment=value,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,segment=standard,10,0.9106121777,0.002649928106,0.9046176238,0.9166067315,above nominal,0.9104902478
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=7,10,0.9098412018,0.005373008915,0.8976866112,0.9219957924,above nominal,0.9097855558
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=3,10,0.9866560078,0.002726313751,0.9804886577,0.992823358,above nominal,0.9866765359
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=9,10,0.893822835,0.004027651424,0.8847116545,0.9029340155,above nominal,0.8938271605
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=4,10,0.9510723449,0.005121681876,0.9394862955,0.9626583942,above nominal,0.9509126788
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=8,10,0.9038878617,0.004026543554,0.8947791874,0.9129965361,above nominal,0.9038461538
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=6,10,0.9149957198,0.006302457576,0.9007385702,0.9292528693,above nominal,0.9148988653
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=2,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=5,10,0.9348804977,0.006119621693,0.9210369516,0.9487240437,above nominal,0.934696895
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=1,10,0.9997461929,0.0002538071066,0.9991720413,1.000320344,above nominal,0.9997533909
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.8,decile=0,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,all,10,0.9877634788,0.0009297231314,0.985660299,0.9898666587,above nominal,0.9877447354
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,segment=premium,10,0.9980182923,0.0008476855778,0.9961006943,0.9999358903,above nominal,0.9979942055
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,segment=value,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,segment=standard,10,0.9748084657,0.001589218076,0.9712134047,0.9784035268,above nominal,0.9747496046
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=7,10,0.9769423106,0.004388825794,0.9670140969,0.9868705243,above nominal,0.9768301701
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=3,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=9,10,0.9434680932,0.004390487979,0.9335361193,0.953400067,consistent with nominal,0.9434567901
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=4,10,0.9997555012,0.0002444987775,0.9992024066,1.000308596,above nominal,0.99975333
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=8,10,0.9640309092,0.002573807692,0.9582085517,0.9698532667,above nominal,0.9640039448
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=6,10,0.9936237246,0.003661853849,0.9853400357,1.001907414,above nominal,0.9935865812
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=2,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=5,10,0.999751861,0.0002481389578,0.9991905317,1.00031319,above nominal,0.9997535732
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=1,10,1,0,1,1,above nominal,1
+signals_contractual C=42 Tier B,E5 + S2,conformal vs realised,0.95,decile=0,10,1,0,1,1,above nominal,1
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,all,10,0.8020074424,0.01520303856,0.7676157798,0.836399105,consistent with nominal,0.801938704
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,segment=premium,10,0.7248470151,0.04235606524,0.6290309387,0.8206630915,consistent with nominal,0.7250413328
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,segment=standard,10,0.8137996573,0.02792519468,0.7506284782,0.8769708365,consistent with nominal,0.8138460682
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,segment=value,10,0.8225795608,0.02589559191,0.7639996621,0.8811594596,consistent with nominal,0.8223435093
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=9,10,0.8283812052,0.02984620925,0.7608643891,0.8958980212,consistent with nominal,0.8288097887
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=0,10,0.8149346217,0.01993208611,0.7698451103,0.860024133,consistent with nominal,0.8147777778
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=6,10,0.7775295994,0.02373538878,0.7238364197,0.8312227791,consistent with nominal,0.7774071603
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=1,10,0.7969398408,0.02238152458,0.7463093146,0.8475703669,consistent with nominal,0.7965988663
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=2,10,0.8033701395,0.01854736542,0.7614130839,0.845327195,consistent with nominal,0.8031347265
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=5,10,0.7802411862,0.02239558604,0.7295788508,0.8309035216,consistent with nominal,0.7801733719
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=4,10,0.7889499895,0.01937231265,0.7451267737,0.8327732053,consistent with nominal,0.7888827126
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=8,10,0.8283604529,0.02547731599,0.77072676,0.8859941458,consistent with nominal,0.8283872402
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=3,10,0.7973718235,0.01704947691,0.7588032272,0.8359404198,consistent with nominal,0.7973093173
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.8,decile=7,10,0.8040108016,0.0212835596,0.7558640448,0.8521575584,consistent with nominal,0.8039128502
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,all,10,0.9120150953,0.001384660439,0.9088827758,0.9151474148,above nominal,0.9120135176
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,segment=premium,10,0.9189935548,0.002619011818,0.9130689384,0.9249181711,above nominal,0.9189876637
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,segment=standard,10,0.9104979717,0.002230962754,0.9054511833,0.9155447601,above nominal,0.9105682008
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,segment=value,10,0.9105232257,0.001813713212,0.9064203214,0.9146261301,above nominal,0.9105058366
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=9,10,0.8925969795,0.00267256801,0.8865512106,0.8986427484,above nominal,0.8925472747
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=0,10,0.9917872099,0.0009134463633,0.9897208507,0.9938535692,above nominal,0.9917777778
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=6,10,0.8936725691,0.003684666665,0.885337274,0.9020078642,above nominal,0.8937069157
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=1,10,0.9501034385,0.001567612483,0.9465572527,0.9536496243,above nominal,0.9500944759
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=2,10,0.9072079968,0.00298047271,0.9004656991,0.9139502945,above nominal,0.9071809693
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=5,10,0.8972854585,0.002923217677,0.8906726807,0.9038982363,above nominal,0.8973105134
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=4,10,0.8970194219,0.003240211986,0.8896895531,0.9043492907,above nominal,0.8970539188
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=8,10,0.8938465823,0.003672641771,0.8855384894,0.9021546751,above nominal,0.8938535067
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=3,10,0.8957195595,0.002944232171,0.8890592437,0.9023798754,above nominal,0.8957082499
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.8,decile=7,10,0.900853455,0.002216805017,0.8958386936,0.9058682163,above nominal,0.9008448199
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,all,10,0.9451477354,0.009888574204,0.9227782264,0.9675172444,consistent with nominal,0.9451515724
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,segment=premium,10,0.9106181798,0.02916285654,0.844647215,0.9765891446,consistent with nominal,0.9103395651
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,segment=standard,10,0.9282138811,0.0190546144,0.8851093487,0.9713184136,consistent with nominal,0.9280427403
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,segment=value,10,0.9754761599,0.006251030656,0.9613353461,0.9896169737,above nominal,0.9755046614
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=9,10,0.9541204344,0.01110102664,0.9290081675,0.9792327014,consistent with nominal,0.9542825362
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=0,10,0.9677139905,0.00662988022,0.9527161595,0.9827118216,above nominal,0.9676666667
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=6,10,0.930854119,0.01714364599,0.8920724974,0.9696357405,consistent with nominal,0.9308427841
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=1,10,0.9549223209,0.009300806219,0.9338824355,0.9759622063,consistent with nominal,0.9548738468
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=2,10,0.9528865308,0.009150713419,0.9321861789,0.9735868827,consistent with nominal,0.9528679413
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=5,10,0.9311028785,0.01607137126,0.8947469109,0.9674588461,consistent with nominal,0.9310957991
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=4,10,0.9455711557,0.01238333894,0.9175580968,0.9735842146,consistent with nominal,0.9455252918
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=8,10,0.9353576851,0.01527691753,0.9007988966,0.9699164735,consistent with nominal,0.9354229188
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=3,10,0.9505594051,0.01260829812,0.9220374532,0.979081357,consistent with nominal,0.9505225706
+purchases_noncontractual C=30 Tier A,E4,parameter vs oracle,0.95,decile=7,10,0.9283947623,0.01655720641,0.8909397593,0.9658497654,consistent with nominal,0.9284126278
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,all,10,0.9736155358,0.0004220099095,0.9726608831,0.9745701886,above nominal,0.9736096135
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,segment=premium,10,0.9764765206,0.001081387124,0.9740302529,0.9789227882,above nominal,0.9764720844
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,segment=standard,10,0.9723354002,0.0007408651475,0.9706594468,0.9740113536,above nominal,0.9723412544
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,segment=value,10,0.9736400998,0.0008749121928,0.9716609109,0.9756192886,above nominal,0.9736244222
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=9,10,0.9721171132,0.001933211692,0.9677438845,0.9764903419,above nominal,0.972080089
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=0,10,0.9922318425,0.0009842206324,0.9900053808,0.9944583043,above nominal,0.9922222222
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=6,10,0.968642061,0.003064786306,0.9617090327,0.9755750893,above nominal,0.9686457638
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=1,10,0.9747649666,0.001523441178,0.9713187032,0.97821123,above nominal,0.9747693676
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=2,10,0.9707789595,0.001924153318,0.9664262223,0.9751316967,above nominal,0.9707647843
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=5,10,0.9718875687,0.001644398739,0.9681676803,0.9756074571,above nominal,0.9718826406
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=4,10,0.9726447423,0.001662302724,0.9688843523,0.9764051323,above nominal,0.972651473
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=8,10,0.9708762884,0.001604194706,0.9672473479,0.974505229,above nominal,0.9708791819
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=3,10,0.9696536374,0.001505737833,0.9662474218,0.9730598531,above nominal,0.969646431
+purchases_noncontractual C=30 Tier A,E4,predictive vs realised,0.95,decile=7,10,0.9725463178,0.001422548649,0.9693282892,0.9757643464,above nominal,0.9725433526
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,all,10,0.8487923586,0.002688087833,0.8427114814,0.8548732357,above nominal,0.848794424
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,segment=premium,10,0.679608732,0.006007818261,0.6660181029,0.6931993611,below nominal,0.6795752257
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,segment=standard,10,0.8422823199,0.00366418864,0.8339933493,0.8505712905,above nominal,0.8423395848
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,segment=value,10,0.9243744903,0.001996045419,0.9198591218,0.9288898587,above nominal,0.9243464863
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=7,10,0.8661430317,0.003407220193,0.8584353641,0.8738506992,above nominal,0.866162739
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=0,10,0.9911100902,0.001132918667,0.9885472501,0.9936729303,above nominal,0.9911111111
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=3,10,0.968078195,0.00152615197,0.9646257994,0.9715305906,above nominal,0.9680898377
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=1,10,0.9884386055,0.001348737887,0.9853875484,0.9914896625,above nominal,0.9884405913
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=8,10,0.6740415794,0.01431603981,0.6416564474,0.7064267114,below nominal,0.6740024453
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=2,10,0.9805716099,0.001771211973,0.97656485,0.9845783697,above nominal,0.9805469097
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=9,10,0.2316129582,0.006036086183,0.2179583826,0.2452675338,below nominal,0.2315906563
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=4,10,0.9526282798,0.002715106813,0.9464862815,0.9587702781,above nominal,0.9526403558
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=6,10,0.9053384119,0.005012749844,0.8939987839,0.9166780398,above nominal,0.9053813654
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.8,decile=5,10,0.9295140882,0.003346425806,0.9219439471,0.9370842293,above nominal,0.9295398978
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,all,10,0.9605651493,0.001256168491,0.9577234988,0.9634067999,above nominal,0.9605700501
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,segment=premium,10,0.8964043737,0.001997769194,0.8918851058,0.9009236416,below nominal,0.8964135826
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,segment=standard,10,0.9622518583,0.001724732831,0.9583502416,0.966153475,above nominal,0.9622961767
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,segment=value,10,0.9853072712,0.0009808057746,0.9830885344,0.987526008,above nominal,0.985297574
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=7,10,0.9738302232,0.002118764156,0.9690372456,0.9786232007,above nominal,0.9738772788
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=0,10,0.9993368534,0.0002436317935,0.99878572,0.9998879868,above nominal,0.9993333333
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=3,10,0.9977779792,0.0002314193229,0.9972544723,0.9983014861,above nominal,0.9977762953
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=1,10,0.9992154614,0.0003377111535,0.9984515057,0.9999794171,above nominal,0.9992219629
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=8,10,0.9382936986,0.004104605979,0.9290084348,0.9475789624,below nominal,0.9383127709
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=2,10,0.9983312014,0.0003790444748,0.9974737433,0.9991886596,above nominal,0.9983325923
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=9,10,0.7217089695,0.006811231863,0.7063008926,0.7371170465,below nominal,0.7216907675
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=4,10,0.9956638007,0.0009748769751,0.9934584758,0.9978691257,above nominal,0.9956642579
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=6,10,0.988992867,0.0008207259157,0.987136256,0.990849478,above nominal,0.9889926618
+purchases_noncontractual C=30 Tier A,E5 + S2,conformal vs realised,0.95,decile=5,10,0.99233068,0.001001419476,0.9900653117,0.9945960482,above nominal,0.9923316293

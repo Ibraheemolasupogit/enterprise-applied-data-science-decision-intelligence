@@ -1,0 +1,131 @@
+{
+ "mode": "dry-run",
+ "protocol_stage": "P8-amended",
+ "manifest_digest": "e40970d2d725966e57f8c648b897528a932bc09a8a8f98c60c91392c792cd6eb",
+ "code_digest": "b4a1554bd3a4fff2e418e8f359f85c64a66ed080764db7869b92841ee1587b4b",
+ "pending_before_main": [
+  "P8 (A12): scripts/generate_m11_evidence.py implements A12 exactly; its development-seed dry run of every A12 study (reduced replications, P8_EXECUTION) meets BUDGETS and the A12 tests pass; the owner approves the dry-run record and closes this item by amendment"
+ ],
+ "git": "04b9cff + 11 uncommitted or untracked paths",
+ "plan": {
+  "mode": "dry-run",
+  "main": 6200,
+  "m10_comparability": null,
+  "fresh_step": false,
+  "draws": {
+   "R1": [
+    6201,
+    6210,
+    10
+   ],
+   "R2": [
+    6201,
+    6210,
+    10
+   ],
+   "R3": [
+    6201,
+    6210,
+    10
+   ],
+   "REFIT": [
+    6301,
+    6310,
+    10
+   ]
+  },
+  "r3_scales": [
+   0.5,
+   1.0,
+   2.0
+  ],
+  "refits": 20
+ },
+ "workers": 3,
+ "python": "3.12.8",
+ "numpy": "2.5.5",
+ "registry": "/Users/privilege/Desktop/GitHub_repository/enterprise-applied-data-science-decision-intelligence/docs/evidence/m11-p8-attempts",
+ "reservation": "dry-run-a3cef63df948e378",
+ "reservation_sha256": "bb95c98e89fe4b88e0dff99265efaca3cb693fe3c435c295951a9cf877f85683",
+ "status": "complete",
+ "started": "2026-11-19T23:18:15+00:00",
+ "events": [
+  {
+   "phase": "verify",
+   "state": "done",
+   "time": "2026-11-19T23:18:15+00:00"
+  },
+  {
+   "phase": "main",
+   "state": "started",
+   "time": "2026-11-19T23:18:15+00:00",
+   "seed": 6200
+  },
+  {
+   "phase": "main",
+   "state": "done",
+   "time": "2026-11-19T23:18:48+00:00",
+   "file": "raw/main.pkl",
+   "sha256": "dc46855f0d88c77aa15bcb326502391e8db2509264530fdd8296d388869383e4"
+  },
+  {
+   "phase": "repeated_sampling",
+   "state": "started",
+   "time": "2026-11-19T23:18:48+00:00",
+   "tasks": 60
+  },
+  {
+   "phase": "repeated_sampling",
+   "state": "done",
+   "time": "2026-11-19T23:21:18+00:00",
+   "file": "raw/repeated_sampling.pkl",
+   "sha256": "82e5a89c4aa7bba83e27571e6a1dfe4713da4a177765d93dd639953b3d458369"
+  },
+  {
+   "phase": "record",
+   "state": "done",
+   "time": "2026-11-19T23:21:18+00:00",
+   "files": [
+    {
+     "file": "record.md",
+     "sha256": "57a645b1f159e9c64e6ceee7fc5f8b641f2692c2d6722abc9ad75a9dcdf406a4"
+    },
+    {
+     "file": "oracle_gate.csv",
+     "sha256": "3fc1a2cff90477b246267c29328256bd303d8ab1415a2f798bb8e41db6ba43f9"
+    },
+    {
+     "file": "gate4_bias.csv",
+     "sha256": "7e1bae241beaf9bc30515b8f7e8326498d8bf507bda1c4c608c5b0cea24c82cf"
+    },
+    {
+     "file": "gate4_slope.csv",
+     "sha256": "263a78275151fb89856c344f37c5a099e2f872bdb915ab79d1309e183b503e3e"
+    },
+    {
+     "file": "coverage_r2.csv",
+     "sha256": "984d42a40fd036090c46bdf0a15a4e989760151b55fa5f1f844adf603edc89b4"
+    },
+    {
+     "file": "coverage_refit.csv",
+     "sha256": "442c4716152be2999994fc1092e90bf37ffafac9f1ff95a47d1b737944284623"
+    },
+    {
+     "file": "primary_comparisons.csv",
+     "sha256": "1a537ef032e8be9701dcb19556d477d2b7dd143aa72c5a413bfb074270ffbc46"
+    },
+    {
+     "file": "selection.csv",
+     "sha256": "6dc647e06791abc60951fadf284a7b15a7d9145d9dab23b2ffd3b59421f55396"
+    },
+    {
+     "file": "summary.json",
+     "sha256": "472ded23d1eb6583c7f45c2c296143745691a6c1210cb2f19f0f6efdaec84816"
+    }
+   ]
+  }
+ ],
+ "finished": "2026-11-19T23:21:18+00:00",
+ "wall_s": 182.89239683293272,
+ "peak_gb": 2.310029312
+}

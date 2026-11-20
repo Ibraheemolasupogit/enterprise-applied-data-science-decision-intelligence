@@ -1,0 +1,9 @@
+scenario,cutoff,tier,status,selected,reference,excluded
+m10_contractual,24,A,SELECTED,E2,-,E3 (not selection-eligible: no landmark has labels completely recorded before the validation landmark (E3_SELECTION_ELIGIBILITY)); E5 (not selection-eligible: no landmark has labels completely recorded before the validation landmark)
+m10_contractual,30,A,SELECTED,E1,-,E3 (not selection-eligible: no landmark has labels completely recorded before the validation landmark (E3_SELECTION_ELIGIBILITY)); E5 (not selection-eligible: no landmark has labels completely recorded before the validation landmark)
+signals_contractual,36,A,SELECTED,E1,-,-
+signals_contractual,36,B,SELECTED,E1,-,-
+signals_contractual,42,A,SELECTED,E1,-,-
+signals_contractual,42,B,SELECTED,E1,-,-
+purchases_noncontractual,24,A,NO QUALIFIED MODEL,-,-,E5 (not selection-eligible: no landmark has labels completely recorded before the validation landmark)
+purchases_noncontractual,30,A,NO QUALIFIED MODEL,-,-,E5 (not selection-eligible: no landmark has labels completely recorded before the validation landmark)

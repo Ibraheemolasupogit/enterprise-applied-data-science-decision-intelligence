@@ -1,0 +1,57 @@
+setting,model,interval,level,group,draws,mean coverage,draw SE,95% lower,95% upper,classification,pooled coverage (descriptive)
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,all,10,0.6562287432,0.05840468339,0.5241081703,0.7883493161,below nominal,0.6563912655
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,segment=standard,10,0.6678420057,0.08580194342,0.4737445248,0.8619394866,consistent with nominal,0.6707436933
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,segment=value,10,0.6508645202,0.06817699959,0.4966374323,0.8050916082,consistent with nominal,0.6509449602
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,segment=premium,10,0.6344529424,0.07192451962,0.4717483752,0.7971575096,below nominal,0.6339295887
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=9,10,0.5795437646,0.110843727,0.3287978336,0.8302896955,consistent with nominal,0.5796471491
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=3,10,0.614053938,0.08390789007,0.4242411035,0.8038667726,consistent with nominal,0.614559387
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=4,10,0.610965766,0.07711924388,0.436509916,0.7854216159,below nominal,0.6102734475
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=8,10,0.7969827384,0.08411733142,0.6066961146,0.9872693622,consistent with nominal,0.7964759959
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=5,10,0.7260050925,0.09501536824,0.5110653966,0.9409447883,consistent with nominal,0.7240939255
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=2,10,0.6978074935,0.0919270329,0.4898540975,0.9057608894,consistent with nominal,0.6991828396
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=7,10,0.7015354805,0.1129572579,0.4460084104,0.9570625506,consistent with nominal,0.701660281
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=1,10,0.5877608583,0.08167368703,0.4030021421,0.7725195744,below nominal,0.5890166028
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=6,10,0.5733808169,0.1077110515,0.3297214903,0.8170401434,consistent with nominal,0.5732890705
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.8,decile=0,10,0.6737649938,0.1137065317,0.4165429487,0.9309870389,consistent with nominal,0.6755102041
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,all,10,0.7471980499,0.03922375269,0.6584677568,0.8359283429,consistent with nominal,0.747005491
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,segment=standard,10,0.7188707532,0.05641327238,0.591255065,0.8464864414,consistent with nominal,0.7207600743
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,segment=value,10,0.8005298324,0.05853374748,0.6681172963,0.9329423686,consistent with nominal,0.7974966844
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,segment=premium,10,0.736949996,0.08468665239,0.5453754787,0.9285245133,consistent with nominal,0.7323686909
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=9,10,0.5082115631,0.1028562119,0.2755346466,0.7408884796,below nominal,0.5072871388
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=3,10,0.8034039433,0.05078164395,0.6885278837,0.9182800029,consistent with nominal,0.8028097063
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=4,10,0.7005238196,0.1047870468,0.4634790511,0.9375685881,consistent with nominal,0.6984410938
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=8,10,0.8430220082,0.05337425916,0.7222810455,0.9637629708,consistent with nominal,0.8434627171
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=5,10,0.6543792256,0.112660121,0.399524326,0.9092341252,consistent with nominal,0.6518631955
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=2,10,0.7653383282,0.08909543418,0.5637904537,0.9668862028,consistent with nominal,0.76659857
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=7,10,0.8265425919,0.08064665975,0.6441071728,1.008978011,consistent with nominal,0.8270753512
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=1,10,0.8590041067,0.06763936835,0.7059932251,1.012014988,consistent with nominal,0.8600255428
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=6,10,0.720630958,0.08506912369,0.5281912305,0.9130706854,consistent with nominal,0.7211440245
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.8,decile=0,10,0.7904398596,0.09085603678,0.5849092252,0.995970494,consistent with nominal,0.7910714286
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,all,10,0.8669771528,0.02140616769,0.8185530373,0.9154012684,below nominal,0.8668624697
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,segment=standard,10,0.8675329523,0.03013652602,0.7993593941,0.9357065105,below nominal,0.8687889047
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,segment=value,10,0.9243481702,0.02609961362,0.8653067423,0.9833895981,consistent with nominal,0.9258123342
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,segment=premium,10,0.7824611102,0.06103289005,0.6443951208,0.9205270996,below nominal,0.7818161103
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=9,10,0.7980404549,0.07749127345,0.6227430156,0.9733378942,consistent with nominal,0.7982613142
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=3,10,0.7497213901,0.07297994546,0.5846292837,0.9148134964,below nominal,0.7496807152
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=4,10,0.7900232668,0.06966026491,0.6324407996,0.9476057341,below nominal,0.7886532073
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=8,10,0.8984484284,0.0559849625,0.7718016445,1.025095212,consistent with nominal,0.8986210419
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=5,10,0.8819673151,0.06934001132,0.7251093118,1.038825318,consistent with nominal,0.8805513017
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=2,10,0.9340295846,0.04430038283,0.8338151563,1.034244013,consistent with nominal,0.934371808
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=7,10,0.9541196144,0.03905508466,0.8657708749,1.042468354,consistent with nominal,0.9542784163
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=1,10,0.9393197758,0.02552469721,0.8815788992,0.9970606525,consistent with nominal,0.9397190294
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=6,10,0.8120118684,0.07808517991,0.6353709194,0.9886528175,consistent with nominal,0.8117977528
+m10_contractual C=30 Tier A,E2,refit bootstrap vs oracle,0.95,decile=0,10,0.9118566274,0.03981743088,0.821783341,1.001929914,consistent with nominal,0.9125
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,all,10,0.88547857,0.02903296664,0.8198014365,0.9511557034,consistent with nominal,0.8850466096
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,segment=standard,10,0.8819506499,0.03544532344,0.8017677576,0.9621335422,consistent with nominal,0.8826580758
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,segment=value,10,0.9533086992,0.02427252752,0.8984004272,1.008216971,consistent with nominal,0.9517572944
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,segment=premium,10,0.8022991627,0.08402665144,0.6122176713,0.9923806541,consistent with nominal,0.7983365615
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=9,10,0.7113841777,0.1151777931,0.4508339081,0.9719344473,consistent with nominal,0.7095372028
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=3,10,0.8910184028,0.03554361859,0.8106131514,0.9714236542,consistent with nominal,0.8906768838
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=4,10,0.8038830119,0.09028042491,0.5996545021,1.008111522,consistent with nominal,0.802708919
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=8,10,0.9632674806,0.02989204276,0.895646982,1.030887979,consistent with nominal,0.9634831461
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=5,10,0.8278737078,0.0930545805,0.617369622,1.038377794,consistent with nominal,0.8259315978
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=2,10,0.944635853,0.03606299392,0.863055693,1.026216013,consistent with nominal,0.9445863126
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=7,10,0.8896275166,0.07358477875,0.7231671822,1.056087851,consistent with nominal,0.8899106003
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=1,10,0.9664935065,0.03350649351,0.8906965522,1.042290461,consistent with nominal,0.9670498084
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=6,10,0.8970724313,0.06116987433,0.758696562,1.035448301,consistent with nominal,0.8970888662
+m10_contractual C=30 Tier A,E2,Hessian vs oracle,0.95,decile=0,10,0.9592561898,0.02867214241,0.8943952975,1.024117082,consistent with nominal,0.9591836735

@@ -16,12 +16,13 @@ design and its three scientific amendments are encoded as follows:
    :data:`NO_QUALIFIED_MODEL`; E2 may appear only as :data:`REFERENCE_FALLBACK_LABEL`, never as
    a selection (:mod:`.model_selection`).
 
-**Stage.** This is the P0 protocol as amended through P7 (:data:`PROTOCOL_STAGE`). Items that
-later phases must fix before any main-seed evaluation (now only the repeated-sampling
-preflight; the oracle numerics were pinned at P2 in :data:`ORACLE_NUMERICS`) are listed in
-:data:`PENDING_BEFORE_MAIN`; :func:`authorise_seed` refuses the main and fresh seeds while any
-item is pending. Every change made after P0 and before any main-seed evaluation is recorded in
-:data:`PROTOCOL_AMENDMENTS`.
+**Stage.** This is the P0 protocol as amended through P8 (:data:`PROTOCOL_STAGE`; A12, drafted
+at the P8 preflight, fixes the P8 design). Items that must be closed before any main-seed
+evaluation are listed in :data:`PENDING_BEFORE_MAIN` (empty since A13, which closed the P8
+dry-run item of A12; A12 closed the repeated-sampling preflight and the oracle numerics were
+pinned at P2 in :data:`ORACLE_NUMERICS`); :func:`authorise_seed` refuses the main and fresh
+seeds while any item is pending. Every change made after P0 and before any main-seed evaluation
+is recorded in :data:`PROTOCOL_AMENDMENTS`.
 
 **Integrity.** :func:`protocol_digest` hashes every protocol value; :func:`protocol_code_digest`
 hashes the exact bytes of this module and of the decision logic in :mod:`.model_selection` and
@@ -46,7 +47,7 @@ from typing import Any
 from decision_intelligence.customer_value import protocol as m10
 
 PROTOCOL_ID = "M11-predictive-ltv"
-PROTOCOL_STAGE = "P7-amended"
+PROTOCOL_STAGE = "P8-amended"
 
 # --- seeds -------------------------------------------------------------------------------
 MAIN_SEED = 20261101
@@ -766,15 +767,213 @@ class RuntimeBudgets:
 
 BUDGETS = RuntimeBudgets(new_tests_target_s=90.0, new_tests_ceiling_s=150.0,
                          single_test_ceiling_s=10.0, test_memory_gb=1.5,
-                         evidence_target_min=20.0, evidence_ceiling_min=45.0,
+                         evidence_target_min=20.0, evidence_ceiling_min=180.0,
                          evidence_memory_gb=4.0)
+"""Amendment A12 raised ``evidence_ceiling_min`` from 45 to 180 (measured P8 design ~150 min on
+P8_EXECUTION.workers workers); every other budget is unchanged."""
+BUDGET_SCOPE = (
+    "BUDGETS.evidence_target_min applies to one main-seed evidence run and to each phase's "
+    "development record; BUDGETS.evidence_ceiling_min bounds the complete P8 execution (every "
+    "REPEATED_SAMPLING study, the main-seed run, the M10 comparability replication and the "
+    "fresh seed) on P8_EXECUTION, within BUDGETS.evidence_memory_gb; the dry run reports both "
+    "against its measured and extrapolated full-size runtimes")
+"""Amendment A12 (owner clarification)."""
+P8_DRY_RUN = (
+    "development seeds only (never a reserved seed or block): 10 draws for each of R1, R2 and "
+    "REFIT, 10 per scale for R3, 20 refits per REFIT draw, and the main-seed analysis on one "
+    "development seed; same code path and P8_EXECUTION as the final run; its record reports "
+    "runtime, peak memory, extrapolated full-size runtime and every statistic, labelled "
+    "'dry run - not evidence'")
+"""Amendment A12 (owner decision): the dry run that the pending item requires."""
+COVERAGE_DRAW_LEVEL_RULE = (
+    "For REPEATED_SAMPLING customer-level intervals (R2 and REFIT) the unit of replication is "
+    "the generator draw: for each setting, model, interval, level and group, the mean of "
+    "per-draw coverage, its two-sided 95% t interval across draws, and the label 'below "
+    "nominal' (interval entirely below the nominal level), 'above nominal' (entirely above) "
+    "or 'consistent with nominal'; the pooled customer proportion is descriptive only. "
+    "precision.classify_coverage remains the rule for one interval per replication. Coverage "
+    "is reported, never asserted, and never triggers recalibration or a change of method, "
+    "seed, scale or replication count (COVERAGE_REPORTING_RULE)")
+"""Amendment A13 (owner decision)."""
+P8_SINGLE_ATTEMPT = (
+    "The final P8 run (scripts/generate_m11_evidence.py --mode final with --expect-manifest and "
+    "--expect-code equal to the digests pinned after A13) is attempted once in the repository: "
+    "after protocol verification, and only if no final ledger exists anywhere under "
+    "docs/evidence, it takes the fixed reservation 'final' in the attempt registry "
+    "docs/evidence/m11-p8-attempts (an atomically created, immutable entry recorded in a "
+    "hash-chained attempts.log written under an exclusive lock; the registry is validated "
+    "before every reservation and any alteration, deletion or unlogged entry refuses every "
+    "further attempt); only then is the run directory's ledger.json created and any reserved "
+    "seed used. Phases run in the order main seed, REPEATED_SAMPLING, M10 comparability, fresh "
+    "seed; the fresh seed is authorised and recorded only at that last phase. Raw results are "
+    "kept outside Git with their SHA-256 in the ledger; the evidence is record.md, summary.json "
+    "and CSV tables, written only when every phase is complete. A failed or interrupted run is "
+    "recorded and is never resumed, repeated or moved to replacement seeds, in any directory, "
+    "without a new amendment")
+"""Amendment A13 (owner decision)."""
+P8_APPROVED_DRY_RUN = (
+    "docs/evidence/m11-p8-dry-run (reservation dry-run-a3cef63df948e378), generated under "
+    "manifest e40970d2d725966e57f8c648b897528a932bc09a8a8f98c60c91392c792cd6eb and code "
+    "b4a1554bd3a4fff2e418e8f359f85c64a66ed080764db7869b92841ee1587b4b: record.md sha256 "
+    "57a645b1f159e9c64e6ceee7fc5f8b641f2692c2d6722abc9ad75a9dcdf406a4; ledger.json "
+    "f1977321a727cc2e87b9594debccb537a526154d64e1e6925292d03c2269c5ae; summary.json "
+    "472ded23d1eb6583c7f45c2c296143745691a6c1210cb2f19f0f6efdaec84816; 10 draws per study, "
+    "wall 3.0 min, peak 2.31 GB, extrapolated full size 141 min (ceiling 180)")
+"""Amendment A13 (owner approval of the P8 dry-run record)."""
+
+# --- P8: confirmatory tests, repeated sampling, execution (amendment A12) -----------------------
+PC_TEST = (
+    "PC1, PC3, PC4 and PC5: one two-sided test each of H0: E[D] = 0 on the main seed, D = "
+    "(R - prediction of model_a)^2 - (R - prediction of model_b)^2, pooled over the comparison's "
+    "evaluation cutoffs (customer x cutoff rows); estimate mean(D); p-value from the CR1 "
+    "customer-clustered z (normal reference); a 95% customer-cluster percentile bootstrap "
+    "interval (CLUSTERED_INFERENCE.metric_bootstrap_resamples) is reported; a customer without "
+    "a finite prediction from either model is excluded and counted; a negative estimate favours "
+    "model_a. PC2 follows PC_DEFINITIONS. Holm at FAMILY_ALPHA across the five p-values PC1-PC5")
+PC_DEFINITIONS = {
+    "PC1": ("E2 vs B1 (B1_DEFINITION) on m10_contractual, Tier A, existing_undiscounted_12, "
+            "cutoffs 24 and 30, on the customers both models predict (M10's common-support "
+            "rule); excluded customers are counted and reported"),
+    "PC2": ("inference across R1's independent generator draws. On each draw, for every "
+            "frailty_variance in the m10_contractual heterogeneity grid (one M10-generator "
+            "scenario per value with the draw's seed, every other parameter at its M10 "
+            "default), every channel and cutoffs 24 and 30, three expected discounted lifetime "
+            "values per acquired customer (MONTHLY_DISCOUNT_RATE, summed to "
+            "INFINITE_SUM_MONTHS): truth = the generator's population_value for the channel "
+            "(its configured segment mix; M10's truth convention); E2 = the channel's segment x "
+            "channel cells, each the P3 cohort_value with the cell's fit as used by E2's "
+            "predictions (pooled fallback and A6 boundary included) and the ContributionModel's "
+            "expected contribution by age, weighted by the channel's acquisitions in each "
+            "segment over the CHURN_WINDOW_MONTHS before C (M10's H3 cell weighting); H4 = "
+            "M10's H4 for the channel at C. Relative bias = value / truth - 1; draw statistic "
+            "S = mean over grid values, channels and cutoffs of (|bias of H4| - |bias of E2|); "
+            "a draw with any undefined value is excluded and counted; H0: E[S] = 0, two-sided "
+            "one-sample t test across the R1 draws; positive favours E2; E1, built like E2 (A7 "
+            "limit as its geometric equivalent), is reported alongside and not tested"),
+    "PC3": ("E3 Tier B vs, at each of cutoffs 36 and 42 of signals_contractual, the Tier A model "
+            "selected by the frozen SELECTION rule (Tier A candidates only); a cutoff whose Tier "
+            "A selection is NO QUALIFIED MODEL is non-evaluable and its rows are excluded, never "
+            "replaced by an unqualified model; PC_TEST pooled over the evaluable cutoffs; if "
+            "neither cutoff is evaluable, PC3 enters Holm with p = 1, reported 'non-evaluable'"),
+    "PC4": ("E4 vs B2 (B2_DEFINITION) on purchases_noncontractual, Tier A, "
+            "existing_undiscounted_12, cutoffs 24 and 30, E4's population"),
+    "PC5": ("E5 Tier B vs E3 Tier B on signals_contractual, existing_undiscounted_12, cutoffs "
+            "36 and 42; E5 as specified (A9)"),
+}
+"""Amendment A12: the exact form of each frozen primary comparison (PRIMARY_COMPARISONS is
+unchanged)."""
+
+
+@dataclass(frozen=True)
+class RepeatedStudy:
+    id: str
+    seed_start: int
+    replications: int
+    scales: tuple[float, ...]
+    """Multipliers of the scenario's acquisitions_per_month (1.0 = the frozen scenario)."""
+    content: str
+    role: str
+    """``confirmatory`` (an acceptance criterion) or ``reported`` (COVERAGE_REPORTING_RULE)."""
+
+
+R3_REPLICATIONS = 200
+REPEATED_SAMPLING = (
+    RepeatedStudy("R1", COVERAGE_SEED_START, COVERAGE_REPLICATIONS, (1.0,),
+                  "ORACLE_GATE on signals_contractual (Tier A vs Tier B oracles, cutoffs 36 "
+                  "and 42) and the PC2 draw statistic", "confirmatory"),
+    RepeatedStudy("R2", COVERAGE_SEED_START, MIN_COVERAGE_REPLICATIONS, (1.0,),
+                  "interval coverage at CALIBRATION.interval_levels, by segment and prediction "
+                  "decile as well as marginally: E1 and E2 on m10_contractual C = 30 and "
+                  "signals_contractual C = 42 Tier A; E3 on m10_contractual C = 30 Tier A and "
+                  "signals_contractual C = 42 Tiers A and B; E4 on purchases_noncontractual "
+                  "C = 30; S2 with E5 on the same four settings (excluded for runtime: "
+                  "m10_contractual C = 24, signals_contractual C = 36, purchases_noncontractual "
+                  "C = 24). Parameter intervals (Hessian "
+                  "draws for E1, E2 and E4, CR1 draws for E3; survival and purchase-process "
+                  "parameters only: the contribution model and E4's contribution ratio are held "
+                  "fixed) against the same-tier oracle; predictive intervals (contractual with "
+                  "CONTRACTUAL_OUTCOME_NOISE) and S2 against the realised value; no "
+                  "recalibration", "reported"),
+    RepeatedStudy("R3", COVERAGE_SEED_START, R3_REPLICATIONS, (0.5, 1.0, 2.0),
+                  "ACCEPTANCE_GATE_4: E2 on m10_contractual and E4 on purchases_noncontractual "
+                  "(their correctly specified settings) at both evaluation cutoffs, with the "
+                  "oracle, at every scale", "confirmatory"),
+    RepeatedStudy("REFIT", REFIT_STUDY_SEED_START, REFIT_STUDY_REPLICATIONS, (1.0,),
+                  "E2 on m10_contractual, Tier A, cutoff 30 only (cutoff 24 excluded for "
+                  "runtime; E3 not included, E3_REFIT_DISCLOSURE): per draw "
+                  "CLUSTERED_INFERENCE.refit_bootstrap_resamples customer resamples "
+                  "(CLUSTERED_INFERENCE.resampling), E2 cell fits refitted on each, percentile "
+                  "intervals of each customer's expected window value at "
+                  "CALIBRATION.interval_levels (the contribution model held fixed); coverage "
+                  "against the oracle, beside the Hessian parameter intervals", "reported"),
+)
+"""Amendment A12: the repeated-sampling studies (P8)."""
+SHARED_SEEDS_DISCLOSURE = (
+    "R1, R2 and R3 use the same coverage-block draws (seed COVERAGE_SEED_START + r): R2 the "
+    "first MIN_COVERAGE_REPLICATIONS of R1's draws, R3 the first R3_REPLICATIONS at each scale "
+    "(the scale changes only acquisitions_per_month). Draws are independent within each study; "
+    "the studies are dependent on one another and are never pooled or combined. Within a draw "
+    "every scenario's generator receives the same integer seed; analyses of different scenarios "
+    "are never combined within a draw")
+E3_REFIT_DISCLOSURE = (
+    "No refit-bootstrap validation of E3 is performed (owner decision, P8 preflight): E3's "
+    "parameter intervals rest on the CR1 sandwich, conditional on the chosen penalty, and are "
+    "reported as not validated by a refit bootstrap")
+ACCEPTANCE_GATE_4 = (
+    "Correctness gate (approved plan, acceptance 4), on R3 for E2 on m10_contractual and E4 on "
+    "purchases_noncontractual: (i) at every scale and cutoff, the mean over draws of the "
+    "aggregate relative bias against the oracle, sum(pred) / sum(oracle) - 1, is consistent "
+    "with 0 (|z| < ORACLE_GATE.consistency_z); (ii) per draw, the least-squares slope of "
+    "log(oracle-excess RMSE) on log(scale) over the three scales; the mean slope across draws "
+    "has a two-sided 95% t interval entirely below 0. A failure indicates a bug")
+CONFIRMATORY_TESTS = (
+    "PC1-PC5 (PC_TEST, PC_DEFINITIONS), Holm at FAMILY_ALPHA",
+    "ORACLE_GATE on R1",
+    "ACCEPTANCE_GATE_4 on R3",
+)
+EXPLORATORY_DIAGNOSTICS = (
+    "E3 Tier B vs E3 Tier A", "R2 coverage and the REFIT study (COVERAGE_REPORTING_RULE)",
+    "selection frequencies across draws", "P(alive) reliability",
+    "pre-A11 vs A11 interval comparison", "CR1 vs model-based standard errors",
+    "E5 extrapolation diagnostics", "E4_ACCELERATED_SIMULATION equivalence check",
+    "M10 comparability replication (M10_COMPARABILITY_SEED)",
+)
+"""Amendment A12: reported, never acceptance criteria or Holm members."""
+E4_ACCELERATED_MAX_X = 44
+E4_ACCELERATED_SIMULATION = (
+    "P8 repeated-sampling E4 parameter and predictive draws may use the accelerated "
+    "computation: one Gauss-Jacobi rule for Beta(a, b) per parameter draw, reweighted exactly by "
+    "(1 - p)^x B(a, b) / B(a, b + x), the window's expected purchases from its first and last "
+    "edges (the monthly terms telescope), and all parameter draws at once; only for customers "
+    "with x <= E4_ACCELERATED_MAX_X repeat purchases (the range validated at the P8 preflight: "
+    "relative difference <= 2e-11 from the per-count rule); every other customer uses the "
+    "original per-count Gauss-Jacobi rule unless the accuracy is independently established and "
+    "recorded. Point predictions and P7's e4_simulate (and so P7's record) are unchanged")
+
+
+@dataclass(frozen=True)
+class P8Execution:
+    workers: int
+    threads_per_worker: int
+    seeding: str
+    equivalent_optimisations: tuple[str, ...]
+
+
+P8_EXECUTION = P8Execution(
+    workers=3, threads_per_worker=1,
+    seeding="each draw is generated and simulated from its own seed only, so results do not "
+            "depend on scheduling or the number of workers",
+    equivalent_optimisations=(
+        "O1 parallel draws", "O2 the E3/E5 tuning fit at the chosen penalty is the validation "
+        "input", "O3 one paired-bootstrap weight matrix per selection report; (b, a) mirrors "
+        "(a, b)", "O4 E4_ACCELERATED_SIMULATION", "O5 one pass per seed feeds every study",
+        "O6 repeated draws skip quantities no repeated-sampling study reports"))
+"""Amendment A12; memory is bounded by BUDGETS.evidence_memory_gb (measured 3.1 GB)."""
 
 # --- stage gate ---------------------------------------------------------------------------------
-PENDING_BEFORE_MAIN = (
-    "P2-P6 (deferred from P1): preflight confirmation that COVERAGE_REPLICATIONS (1,000) fits "
-    "the budget, with the repeated-sampling scenario scale; otherwise a declared count >= "
-    "MIN_COVERAGE_REPLICATIONS (needs the measured oracle and model-fit costs)",
-)
+PENDING_BEFORE_MAIN: tuple[str, ...] = ()
+"""Amendment A13 closed the last item (the P8 dry-run item of A12): the main and fresh seeds are
+available through :func:`authorise_seed` (the fresh seed with ``confirm_single_final_run``)."""
 PILOT_FINDINGS_SCOPE = (
     "P0 pilot findings use the M10 generator only. They are final for m10_contractual and were "
     "PROVISIONAL for signals_contractual and purchases_noncontractual (60-month runs of the M10 "
@@ -883,6 +1082,32 @@ PROTOCOL_AMENDMENTS = (
               "SD 2.1 against a mean of 5.3 per month, within-customer correlation about 0.01, "
               "lag-1 about 0.00 (development seeds; months <= complete_through(C) only). "
               "Prospective; pre-A11 results kept"),
+    Amendment("A12", "P8", "2026-11-19", True,
+              "P8 design: PC_TEST and PC_DEFINITIONS (exact form of PC1-PC5; PC3 comparator = "
+              "the frozen Tier A selection, non-evaluable cutoffs excluded, p = 1 if none); "
+              "REPEATED_SAMPLING (R1 1,000 draws, R2 500, R3 200 per scale at 0.5/1/2, E2-only "
+              "REFIT study 200 x 200) with SHARED_SEEDS_DISCLOSURE; E3_REFIT_DISCLOSURE; "
+              "ACCEPTANCE_GATE_4; CONFIRMATORY_TESTS vs EXPLORATORY_DIAGNOSTICS; "
+              "E4_ACCELERATED_SIMULATION (x <= E4_ACCELERATED_MAX_X); P8_EXECUTION (3 workers, "
+              "1 thread each); BUDGETS.evidence_ceiling_min 45 -> 180 (BUDGET_SCOPE); "
+              "P8_DRY_RUN; PC2 pinned to the P3 cohort_value, M10 population_value, H3 cell "
+              "weighting and H4 conventions; R2 and REFIT excluded cutoffs recorded. The "
+              "repeated-sampling "
+              "preflight item is closed and replaced by the P8 dry-run item, so the main and "
+              "fresh seeds stay refused. PRIMARY_COMPARISONS, FAMILY_ALPHA, SELECTION, "
+              "STATUS_RULES, ORACLE_GATE, tolerances, targets, models and seeds unchanged; "
+              "PROTOCOL_STAGE 'P7-amended' -> 'P8-amended'",
+              "P8 preflight (measured, development seeds): one full-scope draw 60 s; reduced "
+              "draw 29 s on one worker, 10.9 s effective on 3 workers (3.1 GB); P8 design about "
+              "150 min. Owner decisions at the P8 preflight review; prospective, before any "
+              "main-seed, fresh-seed, coverage-block or refit-block evaluation"),
+    Amendment("A13", "P8", "2026-11-20", True,
+              "closes the P8 dry-run item (PENDING_BEFORE_MAIN empty: the main and fresh seeds "
+              "become available through authorise_seed); COVERAGE_DRAW_LEVEL_RULE; "
+              "P8_SINGLE_ATTEMPT; P8_APPROVED_DRY_RUN; no change to any comparison, gate, "
+              "tolerance, study size, model or seed; PROTOCOL_STAGE stays 'P8-amended'",
+              "owner approval of the P8 dry-run record and of the single-attempt safeguards "
+              "(attempt registry) tested at the P8 execution-readiness review"),
 )
 """Every protocol change after the P0 commit (82e3ebd), all made before any main-seed
 evaluation; the main seed has never been authorised."""
@@ -1022,6 +1247,36 @@ def validate_protocol() -> list[str]:
         problems.append("the reference fallback must be an essential model")
     if model(REFERENCE_FALLBACK_MODEL).kinds != ("contractual",):
         problems.append("REFERENCE_FALLBACK_SCOPE needs a contractual-only reference model")
+    if set(PC_DEFINITIONS) != {pc.id for pc in PRIMARY_COMPARISONS}:
+        problems.append("PC_DEFINITIONS must define exactly the primary comparisons")
+    studies = {st.id: st for st in REPEATED_SAMPLING}
+    if len(studies) != len(REPEATED_SAMPLING) or set(studies) != {"R1", "R2", "R3", "REFIT"}:
+        problems.append("REPEATED_SAMPLING must define R1, R2, R3 and REFIT once each")
+    else:
+        cov = range(COVERAGE_SEED_START, COVERAGE_SEED_START + COVERAGE_REPLICATIONS)
+        refit = range(REFIT_STUDY_SEED_START, REFIT_STUDY_SEED_START + REFIT_STUDY_REPLICATIONS)
+        for st in REPEATED_SAMPLING:
+            block = refit if st.id == "REFIT" else cov
+            if st.replications < 1 or st.seed_start not in block or \
+                    st.seed_start + st.replications - 1 not in block:
+                problems.append(f"{st.id}: seeds outside its reserved block")
+            if st.role not in ("confirmatory", "reported") or not st.scales:
+                problems.append(f"{st.id}: invalid role or scales")
+        if studies["R1"].replications != COVERAGE_REPLICATIONS:
+            problems.append("R1 must use COVERAGE_REPLICATIONS")
+        if not MIN_COVERAGE_REPLICATIONS <= studies["R2"].replications <= COVERAGE_REPLICATIONS:
+            problems.append("R2 replications must lie in [MIN_COVERAGE_REPLICATIONS, "
+                            "COVERAGE_REPLICATIONS]")
+        if studies["REFIT"].replications != REFIT_STUDY_REPLICATIONS:
+            problems.append("REFIT must use REFIT_STUDY_REPLICATIONS")
+        if len(studies["R3"].scales) < 3 or 1.0 not in studies["R3"].scales:
+            problems.append("R3 needs at least three scales including 1.0")
+    if P8_EXECUTION.workers < 1 or P8_EXECUTION.threads_per_worker < 1:
+        problems.append("invalid P8 execution")
+    if BUDGETS.evidence_ceiling_min < BUDGETS.evidence_target_min:
+        problems.append("the evidence ceiling must not be below the target")
+    if E4_ACCELERATED_MAX_X < 0:
+        problems.append("invalid E4 accelerated range")
     names = {s.name for s in SCENARIOS}
     targets = {t.id for t in TARGETS}
     for pc in PRIMARY_COMPARISONS:
