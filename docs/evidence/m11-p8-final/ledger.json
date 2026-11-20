@@ -1,0 +1,79 @@
+{
+ "mode": "final",
+ "protocol_stage": "P8-amended",
+ "manifest_digest": "9f92d0eb5e2b14ae4b7b06450c0adcf44ad86e2ada44de950c586c74f18ccef4",
+ "code_digest": "a8b23ce6fc5052f5f7fe6d29fceaece95a7faf8461f42630ccc5ebd985ac1545",
+ "pending_before_main": [],
+ "git": "981aa10 + 2 uncommitted or untracked paths",
+ "plan": {
+  "mode": "final",
+  "main": 20261101,
+  "m10_comparability": 20261001,
+  "fresh_step": true,
+  "draws": {
+   "R1": [
+    810000,
+    810999,
+    1000
+   ],
+   "R2": [
+    810000,
+    810499,
+    500
+   ],
+   "R3": [
+    810000,
+    810199,
+    200
+   ],
+   "REFIT": [
+    820000,
+    820199,
+    200
+   ]
+  },
+  "r3_scales": [
+   0.5,
+   1.0,
+   2.0
+  ],
+  "refits": 200
+ },
+ "workers": 3,
+ "python": "3.12.8",
+ "numpy": "2.5.5",
+ "registry": "/Users/privilege/Desktop/GitHub_repository/enterprise-applied-data-science-decision-intelligence/docs/evidence/m11-p8-attempts",
+ "reservation": "final",
+ "reservation_sha256": "e5dc98f0402381f5c73083278ca2cf140e6cf76fb77a3b6e5c5641f724c6ad04",
+ "status": "failed",
+ "started": "2026-11-20T01:04:11+00:00",
+ "events": [
+  {
+   "phase": "verify",
+   "state": "done",
+   "time": "2026-11-20T01:04:11+00:00"
+  },
+  {
+   "phase": "main",
+   "state": "started",
+   "time": "2026-11-20T01:04:11+00:00",
+   "seed": 20261101
+  },
+  {
+   "phase": "main",
+   "state": "done",
+   "time": "2026-11-20T01:04:52+00:00",
+   "file": "raw/main.pkl",
+   "sha256": "d514d59e4b8e813f23855c482f2f952818ebf202446bfef71a341b072cd23b11"
+  },
+  {
+   "phase": "repeated_sampling",
+   "state": "started",
+   "time": "2026-11-20T01:04:52+00:00",
+   "tasks": 2300
+  }
+ ],
+ "finished": "2026-11-20T03:23:18+00:00",
+ "phase": "repeated_sampling",
+ "error": "ValueError: p <= 0, p > 1 or p contains NaNs"
+}
