@@ -19,10 +19,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "9f92d0eb5e2b14ae4b7b06450c0adcf44ad86e2ada44de950c586c74f18ccef4"
+FROZEN_DIGEST = "27c949b491a25ee4f571f9f0243903a7d3d3e4c7ca2097db30abdf94dfb0ba08"
 """SHA-256 of the protocol manifest (P0 as amended through A9). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "a8b23ce6fc5052f5f7fe6d29fceaece95a7faf8461f42630ccc5ebd985ac1545"
+FROZEN_CODE_DIGEST = "8830e11ebb46a6f712c458f9dff23a27c6ab710ff1359d2dd256ee90ea0d8879"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -617,10 +617,10 @@ def test_validate_protocol_rejects_a12_inconsistencies(monkeypatch: pytest.Monke
 
 
 def test_p8_amendment_a13_closes_the_dry_run_item_and_pins_the_execution_rules() -> None:
-    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS[:13]]
     assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12",
                    "A13"]
-    a13 = pp.PROTOCOL_AMENDMENTS[-1]
+    a13 = pp.PROTOCOL_AMENDMENTS[12]
     assert (a13.stage, a13.date, a13.before_main_seed) == ("P8", "2026-11-20", True)
     assert "closes the P8 dry-run item" in a13.change
     assert "PROTOCOL_STAGE stays 'P8-amended'" in a13.change
@@ -681,3 +681,104 @@ def test_the_approved_dry_run_record_matches_its_pinned_hashes() -> None:
     assert set(pinned) == {"record.md", "ledger.json", "summary.json"}
     for name, sha in pinned.items():
         assert hashlib.sha256((root / name).read_bytes()).hexdigest() == sha, name
+
+
+def test_p8_amendment_a14_records_the_failure_fixes_e4_and_authorises_one_retry() -> None:
+    import hashlib
+
+    from decision_intelligence.customer_value import predictive_cases as pc
+    ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
+    assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12",
+                   "A13", "A14"]
+    a14 = pp.PROTOCOL_AMENDMENTS[-1]
+    # A14 followed the failed attempt's main-seed computation but preceded any inspection
+    assert (a14.stage, a14.date) == ("P8", "2026-11-20")
+    assert (a14.before_main_seed, a14.before_outcome_inspection) == (False, True)
+    assert pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION == ("A14",)
+    assert "PROTOCOL_STAGE stays 'P8-amended'" in a14.change
+    assert pp.PROTOCOL_STAGE == "P8-amended" and pp.PENDING_BEFORE_MAIN == ()
+    assert pp.P8_FAILED_ATTEMPTS == (
+        ("m11-p8-final/ledger.json",
+         "cd7c8391347df2f9a2cf802161f35a0cb6a9a889b29c8fce3825a22ebe5902a9"),)
+    assert pp.P8_FINAL_ATTEMPT_KEY == "final-a14"
+    assert pp.E4_ACCELERATED_MIN_A == 0.4 == pc.E4_ACCELERATED_MIN_A
+    assert pp.E4_ZERO_DROPOUT_RULE == (
+        "In E4 outcome simulation (P7 e4_simulate and P8 e4_simulate_fast) a dropout probability "
+        "that is exactly 0 in floating point is its limit, no dropout within the window "
+        "(purchases until dropout = the largest int64, the value NumPy returns for every "
+        "positive p below about 1e-300); the geometric draw is made with p replaced by 1, so "
+        "every other draw and the random stream are unchanged. A non-finite or out-of-range p, "
+        "or a non-finite or non-positive BG/NBD parameter draw, raises an error naming the "
+        "task's study and seed")
+    assert pp.E4_ACCELERATED_SMALL_A.startswith(
+        "Parameter draws with a < E4_ACCELERATED_MIN_A use the original per-count Gauss-Jacobi "
+        "nodes with the telescoped integrand (A(e_0) - A(e_H)) / p, finite at p = 0; for a >= "
+        "0.4 the accelerated rule is within 1.3e-11 of the per-count rule (the A12 bound 2e-11 "
+        "holds).")
+    assert pp.E4_ACCELERATED_SMALL_A.endswith(
+        "only R2's E4 interval coverage (reported, never asserted) uses it, never a point "
+        "prediction, primary comparison, selection or gate")
+    assert pp.P8_RETRY_RULE == (
+        "Exactly one new final attempt: reservation P8_FINAL_ATTEMPT_KEY in docs/evidence/"
+        "m11-p8-attempts and run directory docs/evidence/m11-p8-final-a14, on the same seed plan "
+        "as the failed attempt (main, M10 comparability, coverage and refit blocks; the fresh "
+        "seed still unused and last), allowed only if the only final ledgers under "
+        "docs/evidence are those in P8_FAILED_ATTEMPTS with unchanged SHA-256. The failed "
+        "attempt's ledger, raw results and reservation are kept unchanged as evidence and its "
+        "main-seed results are never inspected. P8_SINGLE_ATTEMPT otherwise stands: no further "
+        "attempt without a new amendment")
+    assert pp.P8_FAILED_ATTEMPT_RECORD.startswith("First final attempt (reservation 'final'")
+    for fragment in ("d514d59e4b8e813f23855c482f2f952818ebf202446bfef7"
+                     "1a341b072cd23b11, never opened",
+                     "the fresh seed was not consumed",
+                     "docs/evidence/m11-p8-final-attempt-1.md"):
+        assert fragment in pp.P8_FAILED_ATTEMPT_RECORD
+    # the preserved evidence matches the amendment (hashes only; raw results are never read)
+    evidence = REPO / "docs" / "evidence"
+    for rel, sha in pp.P8_FAILED_ATTEMPTS:
+        assert hashlib.sha256((evidence / rel).read_bytes()).hexdigest() == sha
+    entry = evidence / "m11-p8-attempts" / "final.json"
+    assert hashlib.sha256(entry.read_bytes()).hexdigest() in pp.P8_FAILED_ATTEMPT_RECORD.replace(
+        "e5dc98f0402381f5c7308327" "8ca2cf140e6cf76fb77a3b6e5c5641f724c6ad04",
+        "e5dc98f0402381f5c73083278ca2cf140e6cf76fb77a3b6e5c5641f724c6ad04")
+    # A14 changes nothing else
+    assert [c.id for c in pp.PRIMARY_COMPARISONS] == ["PC1", "PC2", "PC3", "PC4", "PC5"]
+    assert pp.SELECTION.slope_bounds == (0.85, 1.15) and pp.FAMILY_ALPHA == 0.05
+    assert pp.SELECTION.calibration_in_the_large_tolerance == 0.05
+    assert {st.id: st.replications for st in pp.REPEATED_SAMPLING} == {
+        "R1": 1000, "R2": 500, "R3": 200, "REFIT": 200}
+    assert pp.E4_ACCELERATED_MAX_X == 44 and pp.BUDGETS.evidence_ceiling_min == 180.0
+    assert pp.validate_protocol() == []
+
+
+def test_amendment_timing_is_recorded_truthfully() -> None:
+    """A1-A13 precede any main-seed computation; A14 alone follows it; all precede any
+    outcome inspection."""
+    timing = {a.id: (a.before_main_seed, a.before_outcome_inspection)
+              for a in pp.PROTOCOL_AMENDMENTS}
+    assert timing == {**{f"A{i}": (True, True) for i in range(1, 14)}, "A14": (False, True)}
+    assert pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION == ("A14",)
+    assert pp.validate_protocol() == []
+
+
+@pytest.mark.parametrize("breakage", ["earlier_marked_after", "a14_marked_before",
+                                      "inspected", "unlisted_exception", "order"])
+def test_validate_protocol_guards_amendment_timing(monkeypatch: pytest.MonkeyPatch,
+                                                   breakage: str) -> None:
+    from dataclasses import replace
+    amends = list(pp.PROTOCOL_AMENDMENTS)
+    idx = {a.id: i for i, a in enumerate(amends)}
+    if breakage == "earlier_marked_after":  # an earlier amendment may not claim the exception
+        amends[idx["A13"]] = replace(amends[idx["A13"]], before_main_seed=False)
+    elif breakage == "a14_marked_before":  # nor may A14 claim to precede the computation
+        amends[idx["A14"]] = replace(amends[idx["A14"]], before_main_seed=True)
+    elif breakage == "inspected":
+        amends[idx["A14"]] = replace(amends[idx["A14"]], before_outcome_inspection=False)
+    elif breakage == "unlisted_exception":
+        monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", ())
+    else:  # listed, but an earlier-dated amendment follows a later one
+        amends[idx["A13"]] = replace(amends[idx["A13"]], before_main_seed=False)
+        amends.append(replace(amends[idx["A12"]], id="A15"))
+        monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", ("A13", "A14"))
+    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", tuple(amends))
+    assert pp.validate_protocol() != []

@@ -293,6 +293,25 @@ def simulate_contractual(pred: ContractualPrediction, n_draws: int, rng: np.rand
     return SimulatedValue(expected, outcome, f.index, tuple(fixed), outcome_noise)
 
 
+NO_DROPOUT = np.iinfo(np.int64).max
+"""Purchases until dropout when the dropout probability is 0: never within any window (the
+value NumPy itself returns for every positive p below about 1e-300)."""
+
+
+def dropout_purchase_limit(p: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    """Purchases until dropout, ``K ~ Geometric(p)`` on ``{1, 2, ...}``. A probability that is
+    exactly 0 in floating point (a Beta(a, b + x) draw below the smallest positive double, as
+    happens for very small ``a``) is its limit: no dropout (``E4_ZERO_DROPOUT_RULE``, A14). The
+    geometric draw is made with such ``p`` replaced by 1, so every other draw and the random
+    stream are unchanged. Non-finite or out-of-range ``p`` raises."""
+    p = np.asarray(p, dtype=np.float64)
+    if not np.all(np.isfinite(p)) or np.any((p < 0.0) | (p > 1.0)):
+        raise ValueError("dropout probability non-finite or outside [0, 1]")
+    zero = p == 0.0
+    k = rng.geometric(np.where(zero, 1.0, p))
+    return np.asarray(np.where(zero, NO_DROPOUT, k), dtype=np.int64)
+
+
 def e4_simulate(pred: E4Prediction, n_draws: int, rng: np.random.Generator) -> SimulatedValue:
     """E4: Hessian-based draws of each cell's BG/NBD and Gamma-Gamma log parameters; outcomes
     from the posteriors (alive, ``lambda``, ``p``, purchases, spends)."""
@@ -324,7 +343,7 @@ def e4_simulate(pred: E4Prediction, n_draws: int, rng: np.random.Generator) -> S
             lam = rng.gamma(r + x, 1.0 / (alpha + T))
             p = rng.beta(a, b + x)
             n_gap = rng.poisson(lam * e0)
-            k_drop = rng.geometric(p)
+            k_drop = dropout_purchase_limit(p, rng)
             n_raw = rng.poisson(lam * t)
             count = np.where(alive, np.clip(k_drop - n_gap, 0, n_raw), 0)
             nu = rng.gamma(p_s * n_sp + q_s, 1.0 / (g_s + s_sp))

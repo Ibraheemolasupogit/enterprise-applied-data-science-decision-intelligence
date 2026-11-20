@@ -247,7 +247,7 @@ def test_digest_mismatch_and_final_requirements_refuse_before_any_reservation(
                      "--expect-manifest", pp.protocol_digest(),
                      "--expect-code", pp.protocol_code_digest()]) == 2
     assert not (tmp_path / "run").exists() and not (tmp_path / "registry").exists()
-    assert GEN.reservation_key(fake_final) == "final"
+    assert GEN.reservation_key(fake_final) == pp.P8_FINAL_ATTEMPT_KEY == "final-a14"
 
 
 def test_development_plans_never_touch_reserved_seeds() -> None:
@@ -365,7 +365,7 @@ def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
     _final(tmp_path, fn=rec)
     assert [t.study for t in rec.calls][0] == "MAIN" and rec.calls[-1].seed == 6004
     led = _ledger(tmp_path / "final")
-    assert led["reservation"] == "final" and led["status"] == "complete"
+    assert led["reservation"] == pp.P8_FINAL_ATTEMPT_KEY and led["status"] == "complete"
     assert GEN.verify_run(tmp_path / "final") == []
     for other in ("final", "another"):  # any directory: the prior final ledger refuses
         again = Recorder()

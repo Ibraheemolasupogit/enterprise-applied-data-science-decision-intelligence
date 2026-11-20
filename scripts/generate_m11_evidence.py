@@ -387,9 +387,31 @@ class AttemptRegistry:
             self.lock.unlink(missing_ok=True)
 
 
+def final_attempt_key() -> str:
+    """The reservation key of the authorised final attempt (A14: ``P8_FINAL_ATTEMPT_KEY``; the
+    first attempt used ``final``)."""
+    return str(pp.P8_FINAL_ATTEMPT_KEY)
+
+
+def authorised_failed_attempts() -> dict[str, str]:
+    """Failed final ledgers an amendment has recorded (path relative to ``docs/evidence`` ->
+    SHA-256): only these may exist when the authorised new attempt starts."""
+    return {str(path): str(sha) for path, sha in pp.P8_FAILED_ATTEMPTS}
+
+
+def unauthorised_final_attempts(evidence_root: Path) -> list[Path]:
+    allowed = authorised_failed_attempts()
+    out = []
+    for f in prior_final_attempts(evidence_root):
+        rel = f.relative_to(evidence_root).as_posix()
+        if allowed.get(rel) != _sha256(f):
+            out.append(f)
+    return out
+
+
 def reservation_key(plan: SeedPlan) -> str:
     if plan.mode == "final":
-        return "final"
+        return final_attempt_key()
     digest = hashlib.sha256(json.dumps(asdict(plan), sort_keys=True).encode()).hexdigest()
     return f"{plan.mode}-{digest[:16]}"
 
@@ -430,9 +452,10 @@ def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_
     refuse_real_final_under_test(plan.mode, fn)
     verify_protocol(plan, expect_manifest, expect_code)
     if plan.mode == "final":
-        prior = prior_final_attempts(evidence_root)
+        prior = unauthorised_final_attempts(evidence_root)
         if prior:
-            raise RunRefused(f"a final run was already attempted: {prior}")
+            raise RunRefused(f"a final run was already attempted: {prior} (only an amendment "
+                             "can authorise a new attempt)")
     reg = AttemptRegistry(registry)
     key = reservation_key(plan)
     entry_sha = reg.reserve(key, {"run_dir": str(run_dir), "mode": plan.mode,
@@ -773,7 +796,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             plan = rehearsal_plan(args.draws, args.refits)
         else:
             plan = dry_run_plan(args.draws, args.refits)
-        run_dir = args.run_dir or DEFAULT_RUN_DIRS[plan.mode]
+        run_dir = args.run_dir or (EVIDENCE / f"m11-p8-{final_attempt_key()}"
+                                   if plan.mode == "final" else DEFAULT_RUN_DIRS[plan.mode])
         out = execute(plan, run_dir, args.workers, registry=args.registry,
                       expect_manifest=args.expect_manifest, expect_code=args.expect_code,
                       output=args.output)

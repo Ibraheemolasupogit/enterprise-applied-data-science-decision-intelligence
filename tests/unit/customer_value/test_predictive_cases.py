@@ -245,7 +245,7 @@ def test_a_failing_draw_aborts_without_a_record(tmp_path: Path,
                      "--registry", str(tmp_path / "registry")]) == 1
     assert not (run_dir / "record.md").exists()
     assert gen.verify_run(run_dir) != []
-    with pytest.raises(ValueError, match="unknown study"):
+    with pytest.raises(RuntimeError, match="task R9 seed 6163.*unknown study"):
         pc.run_task(pc.Task("R9", 6163))
 
 

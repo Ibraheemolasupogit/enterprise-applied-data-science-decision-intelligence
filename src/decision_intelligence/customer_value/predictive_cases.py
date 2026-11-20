@@ -110,12 +110,21 @@ def beta_nodes_batch(a: np.ndarray, b: np.ndarray, n: int = btyd.E4_JACOBI_NODES
             np.asarray(w / w.sum(axis=1, keepdims=True), dtype=np.float64))
 
 
+E4_ACCELERATED_MIN_A = pp.E4_ACCELERATED_MIN_A
+"""Amendment A14 (``E4_ACCELERATED_SMALL_A``): the accelerated rule is used only for parameter
+draws with ``a >=`` this value; smaller ``a`` uses the original per-count nodes, like
+``x > E4_ACCELERATED_MAX_X``."""
+
+
 def e4_window_purchases(params: np.ndarray, x: np.ndarray, t_x: np.ndarray, T: np.ndarray,
-                        e0: float, eh: float, max_x: int = pp.E4_ACCELERATED_MAX_X
+                        e0: float, eh: float, max_x: int = pp.E4_ACCELERATED_MAX_X,
+                        min_a: float = E4_ACCELERATED_MIN_A
                         ) -> tuple[np.ndarray, np.ndarray]:
     """Expected window purchases and P(alive at T), shape ``(D, n)``, for natural BG/NBD
-    parameters ``params`` ``(D, 4)``; accelerated rule for ``x <= max_x``, the original
-    per-count rule otherwise."""
+    parameters ``params`` ``(D, 4)``; accelerated rule for ``x <= max_x`` and ``a >= min_a``,
+    the original per-count rule otherwise."""
+    if not np.all(np.isfinite(params)) or np.any(params <= 0.0):
+        raise ValueError("BG/NBD parameter draws must be finite and positive")
     r, alpha, a, b = (params[:, k][:, None] for k in range(4))
     k = r + x[None, :]
     with np.errstate(divide="ignore", over="ignore"):
@@ -126,19 +135,17 @@ def e4_window_purchases(params: np.ndarray, x: np.ndarray, t_x: np.ndarray, T: n
     p_alive = 1.0 / (1.0 + odds)
     window = np.empty_like(p_alive)
     pn0, w0 = beta_nodes_batch(params[:, 2], params[:, 3])
+    small_a = params[:, 2] < min_a
     for xv in np.unique(x):
         cols = np.flatnonzero(x == xv)
         den = params[:, 1][:, None] + T[cols][None, :]
         kk = (params[:, 0] + xv)[:, None, None]
-        if xv <= max_x:
-            ratio = np.exp(special.betaln(params[:, 2], params[:, 3])
-                           - special.betaln(params[:, 2], params[:, 3] + xv))
-            pn, w = pn0, w0 * (1.0 - pn0) ** xv * ratio[:, None]
-        else:  # the original per-count Gauss-Jacobi rule
-            nodes = [btyd.beta_nodes(float(params[d, 2]), float(params[d, 3] + xv))
-                     for d in range(params.shape[0])]
-            pn = np.stack([q[0] for q in nodes])
-            w = np.stack([q[1] for q in nodes])
+        ratio = np.exp(special.betaln(params[:, 2], params[:, 3])
+                       - special.betaln(params[:, 2], params[:, 3] + xv))
+        pn, w = pn0.copy(), w0 * (1.0 - pn0) ** xv * ratio[:, None]
+        original = np.ones(params.shape[0], dtype=bool) if xv > max_x else small_a
+        for d in np.flatnonzero(original):  # the original per-count Gauss-Jacobi rule
+            pn[d], w[d] = btyd.beta_nodes(float(params[d, 2]), float(params[d, 3] + xv))
         a0 = (1.0 + pn[:, None, :] * e0 / den[:, :, None]) ** (-kk)
         ah = (1.0 + pn[:, None, :] * eh / den[:, :, None]) ** (-kk)
         window[:, cols] = np.einsum("dj,dcj->dc", w / pn, a0 - ah)
@@ -181,7 +188,7 @@ def e4_simulate_fast(pred: btyd.E4Prediction, n_draws: int, rng: np.random.Gener
         lam = rng.gamma(bp[:, 0][:, None] + x[None, :], 1.0 / (bp[:, 1][:, None] + T[None, :]))
         p = rng.beta(np.broadcast_to(bp[:, 2][:, None], shape), bp[:, 3][:, None] + x[None, :])
         n_gap = rng.poisson(lam * e0)
-        k_drop = rng.geometric(p)
+        k_drop = ev.dropout_purchase_limit(p, rng)
         n_raw = rng.poisson(lam * t)
         count = np.where(alive, np.clip(k_drop - n_gap, 0, n_raw), 0)
         nu = rng.gamma(p_s * n_sp[None, :] + q_s, 1.0 / (g_s + s_sp[None, :]))
@@ -708,6 +715,16 @@ def run_task(task: Task) -> dict[str, Any]:
     import os
     import time
     t0 = time.perf_counter()
+    try:
+        out = _dispatch(task)
+    except Exception as exc:
+        raise RuntimeError(f"task {task.study} seed {task.seed} scale {task.scale:g} refits "
+                           f"{task.refits}: {type(exc).__name__}: {exc}") from exc
+    out.update({"task": task, "seconds": time.perf_counter() - t0, "pid": os.getpid()})
+    return out
+
+
+def _dispatch(task: Task) -> dict[str, Any]:
     if task.study == "R1":
         out = r1_draw(task.seed)
     elif task.study == "R2":
@@ -722,7 +739,6 @@ def run_task(task: Task) -> dict[str, Any]:
         out = m10_comparability(task.seed)
     else:
         raise ValueError(f"unknown study {task.study!r}")
-    out.update({"task": task, "seconds": time.perf_counter() - t0, "pid": os.getpid()})
     return out
 
 

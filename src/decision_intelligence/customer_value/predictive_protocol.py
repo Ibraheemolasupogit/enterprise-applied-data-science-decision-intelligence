@@ -820,6 +820,52 @@ P8_APPROVED_DRY_RUN = (
     "472ded23d1eb6583c7f45c2c296143745691a6c1210cb2f19f0f6efdaec84816; 10 draws per study, "
     "wall 3.0 min, peak 2.31 GB, extrapolated full size 141 min (ceiling 180)")
 """Amendment A13 (owner approval of the P8 dry-run record)."""
+P8_FAILED_ATTEMPTS = (("m11-p8-final/ledger.json",
+                       "cd7c8391347df2f9a2cf802161f35a0cb6a9a889b29c8fce3825a22ebe5902a9"),)
+"""Amendment A14: failed final ledgers (path relative to docs/evidence, SHA-256) that may exist
+when the authorised new attempt starts."""
+P8_FAILED_ATTEMPT_RECORD = (
+    "First final attempt (reservation 'final', registry entry sha256 e5dc98f0402381f5c7308327"
+    "8ca2cf140e6cf76fb77a3b6e5c5641f724c6ad04; ledger m11-p8-final/ledger.json), started "
+    "2026-11-20T01:04:11Z on commit 981aa10 under manifest 9f92d0eb… and code a8b23ce6…: the "
+    "main phase completed (raw/main.pkl sha256 d514d59e4b8e813f23855c482f2f952818ebf202446bfef7"
+    "1a341b072cd23b11, never opened); the repeated-sampling phase failed at 03:23:18Z with "
+    "ValueError 'p <= 0, p > 1 or p contains NaNs' from Generator.geometric in E4's R2 outcome "
+    "simulation (purchases_noncontractual, C = 30, a seed in 810000-810499; not recorded): "
+    "Beta(a, b + x) dropout draws underflow to exactly 0 when a weakly identified cell's "
+    "Hessian parameter draw gives a below about 0.02. No repeated-sampling result was stored; "
+    "the fresh seed was not consumed (docs/evidence/m11-p8-final-attempt-1.md)")
+"""Amendment A14."""
+E4_ZERO_DROPOUT_RULE = (
+    "In E4 outcome simulation (P7 e4_simulate and P8 e4_simulate_fast) a dropout probability "
+    "that is exactly 0 in floating point is its limit, no dropout within the window (purchases "
+    "until dropout = the largest int64, the value NumPy returns for every positive p below about "
+    "1e-300); the geometric draw is made with p replaced by 1, so every other draw and the "
+    "random stream are unchanged. A non-finite or out-of-range p, or a non-finite or "
+    "non-positive BG/NBD parameter draw, raises an error naming the task's study and seed")
+"""Amendment A14."""
+E4_ACCELERATED_MIN_A = 0.4
+E4_ACCELERATED_SMALL_A = (
+    "Parameter draws with a < E4_ACCELERATED_MIN_A use the original per-count Gauss-Jacobi "
+    "nodes with the telescoped integrand (A(e_0) - A(e_H)) / p, finite at p = 0; for a >= 0.4 "
+    "the accelerated rule is within 1.3e-11 of the per-count rule (the A12 bound 2e-11 holds). "
+    "Validated at the A14 review on development seeds: 2-4 times more accurate than the frozen "
+    "per-edge differencing against an exact reference for a <= 0.01; on four draws with the "
+    "weakest cells (35,000+ customers) the fallback changed expected 12-month values by at most "
+    "1.2e-9 relative and interval endpoints by at most 4.7e-9, left outcome draws bit-identical "
+    "and changed no customer's coverage; only R2's E4 interval coverage (reported, never "
+    "asserted) uses it, never a point prediction, primary comparison, selection or gate")
+"""Amendment A14."""
+P8_FINAL_ATTEMPT_KEY = "final-a14"
+P8_RETRY_RULE = (
+    "Exactly one new final attempt: reservation P8_FINAL_ATTEMPT_KEY in docs/evidence/"
+    "m11-p8-attempts and run directory docs/evidence/m11-p8-final-a14, on the same seed plan as "
+    "the failed attempt (main, M10 comparability, coverage and refit blocks; the fresh seed "
+    "still unused and last), allowed only if the only final ledgers under docs/evidence are "
+    "those in P8_FAILED_ATTEMPTS with unchanged SHA-256. The failed attempt's ledger, raw "
+    "results and reservation are kept unchanged as evidence and its main-seed results are never "
+    "inspected. P8_SINGLE_ATTEMPT otherwise stands: no further attempt without a new amendment")
+"""Amendment A14 (owner approval, 2026-11-20)."""
 
 # --- P8: confirmatory tests, repeated sampling, execution (amendment A12) -----------------------
 PC_TEST = (
@@ -987,8 +1033,18 @@ class Amendment:
     stage: str
     date: str
     before_main_seed: bool
+    """True: made before any main-seed computation."""
     change: str
     reason: str
+    before_outcome_inspection: bool = True
+    """True: made before any main-seed, fresh-seed, coverage-block or refit-block outcome was
+    inspected (implied by ``before_main_seed``; recorded separately since A14)."""
+
+
+AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14",)
+"""The only amendments made after a main-seed computation (A14: after the failed first final
+attempt computed the main-seed analysis, before any outcome was inspected). Every other
+amendment precedes any main-seed computation (``validate_protocol`` enforces both)."""
 
 
 PROTOCOL_AMENDMENTS = (
@@ -1108,6 +1164,19 @@ PROTOCOL_AMENDMENTS = (
               "tolerance, study size, model or seed; PROTOCOL_STAGE stays 'P8-amended'",
               "owner approval of the P8 dry-run record and of the single-attempt safeguards "
               "(attempt registry) tested at the P8 execution-readiness review"),
+    Amendment("A14", "P8", "2026-11-20", False,
+              "records the failed first final attempt (P8_FAILED_ATTEMPT_RECORD, "
+              "P8_FAILED_ATTEMPTS); E4_ZERO_DROPOUT_RULE; E4_ACCELERATED_MIN_A and "
+              "E4_ACCELERATED_SMALL_A; P8_FINAL_ATTEMPT_KEY and P8_RETRY_RULE (one new attempt "
+              "on the same seeds); no change to any estimand, comparison, gate, tolerance, "
+              "study size, model or seed; PROTOCOL_STAGE stays 'P8-amended'",
+              "the floating-point underflow defect found in the first final attempt (an "
+              "implementation defect, not a model or parameter issue); same seeds rather than "
+              "replacements, because dropping the draws that triggered the failure would bias "
+              "coverage; validation: P7 record sections and every P8 dry-run table reproduce "
+              "byte-identically with the correction, and the small-a fallback changes no "
+              "coverage outcome",
+              before_outcome_inspection=True),
 )
 """Every protocol change after the P0 commit (82e3ebd), all made before any main-seed
 evaluation; the main seed has never been authorised."""
@@ -1277,6 +1346,11 @@ def validate_protocol() -> list[str]:
         problems.append("the evidence ceiling must not be below the target")
     if E4_ACCELERATED_MAX_X < 0:
         problems.append("invalid E4 accelerated range")
+    if not 0 < E4_ACCELERATED_MIN_A:
+        problems.append("invalid E4 accelerated minimum a")
+    if P8_FINAL_ATTEMPT_KEY == "final" or any(
+            len(sha) != 64 for _, sha in P8_FAILED_ATTEMPTS):
+        problems.append("A14 retry needs a new attempt key and SHA-256 failed-ledger hashes")
     names = {s.name for s in SCENARIOS}
     targets = {t.id for t in TARGETS}
     for pc in PRIMARY_COMPARISONS:
@@ -1303,8 +1377,17 @@ def validate_protocol() -> list[str]:
     if any("pending" in sc.parameters_status for sc in SCENARIOS):
         problems.append("a scenario's parameters are still pending")
     ids_a = [a.id for a in PROTOCOL_AMENDMENTS]
-    if len(ids_a) != len(set(ids_a)) or not all(a.before_main_seed for a in PROTOCOL_AMENDMENTS):
-        problems.append("amendments must have unique ids and precede the main seed")
+    if len(ids_a) != len(set(ids_a)):
+        problems.append("amendments must have unique ids")
+    after = tuple(a.id for a in PROTOCOL_AMENDMENTS if not a.before_main_seed)
+    if after != AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION:
+        problems.append("only the amendments in AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION may "
+                        "follow a main-seed computation; every other one must precede it")
+    if not all(a.before_outcome_inspection for a in PROTOCOL_AMENDMENTS):
+        problems.append("every amendment must precede any outcome inspection")
+    flags = [a.before_main_seed for a in PROTOCOL_AMENDMENTS]
+    if any(not f and any(flags[i + 1:]) for i, f in enumerate(flags)):
+        problems.append("an amendment cannot precede the main seed after one that followed it")
     contractual_a = {f.name for f in features("contractual", "A")}
     if not set(E3_EXCLUDED_COVARIATES) <= contractual_a:
         problems.append("E3_EXCLUDED_COVARIATES must name contractual Tier A registry features")
