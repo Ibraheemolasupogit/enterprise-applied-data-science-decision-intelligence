@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import signal
@@ -249,7 +250,12 @@ def test_watchdog_stops_tree_if_rss_probe_stalls(tmp_path, command):
 
 @pytest.mark.parametrize("status", ["complete", "memory_limit"])
 def test_only_successful_supervision_can_complete_the_ledger(tmp_path, monkeypatch, status):
-    from scripts import generate_m11_evidence as gen
+    spec = importlib.util.spec_from_file_location(
+        "generate_m11_evidence_supervision", REPO / "scripts" / "generate_m11_evidence.py")
+    assert spec is not None and spec.loader is not None
+    gen = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, spec.name, gen)
+    spec.loader.exec_module(gen)
 
     ledger = gen.Ledger.create(tmp_path, {})
     ledger.finish("supervision_pending", supervisor_pid=os.getpid())
