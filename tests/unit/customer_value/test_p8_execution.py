@@ -12,6 +12,7 @@ import json
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -249,7 +250,7 @@ def test_digest_mismatch_and_final_requirements_refuse_before_any_reservation(
                      "--expect-manifest", pp.protocol_digest(),
                      "--expect-code", pp.protocol_code_digest()]) == 2
     assert not (tmp_path / "run").exists() and not (tmp_path / "registry").exists()
-    assert GEN.reservation_key(fake_final) == pp.P8_FINAL_ATTEMPT_KEY == "final-a14"
+    assert GEN.reservation_key(fake_final) == pp.P8_FINAL_ATTEMPT_KEY == "final-a15"
 
 
 def test_development_plans_never_touch_reserved_seeds() -> None:
@@ -266,10 +267,19 @@ def test_development_plans_never_touch_reserved_seeds() -> None:
         GEN.rehearsal_plan(3, 2))
 
 
-def test_final_plan_maps_studies_to_their_reserved_blocks(monkeypatch: pytest.MonkeyPatch
-                                                          ) -> None:
-    """Seed mapping only (nothing is generated): the gate is opened in this process alone."""
+@pytest.fixture
+def synthetic_execution_approval(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Model the future approval in memory for tests that need to pass the hold."""
+    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", (
+        *pp.PROTOCOL_AMENDMENTS[:-1],
+        replace(pp.PROTOCOL_AMENDMENTS[-1], before_outcome_inspection=True),
+    ))
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())
+
+
+@pytest.mark.usefixtures("synthetic_execution_approval")
+def test_final_plan_maps_studies_to_their_reserved_blocks() -> None:
+    """Seed mapping only (nothing is generated): the gate is opened in this process alone."""
     plan = GEN.final_plan()
     st = {s.id: s for s in pp.REPEATED_SAMPLING}
     for k in ("R1", "R2", "R3", "REFIT"):
@@ -330,9 +340,9 @@ def _final(tmp_path: Path, run: str = "final", fn: Any = None) -> Path:
     return out
 
 
+@pytest.mark.usefixtures("synthetic_execution_approval")
 def test_final_mode_requires_a_clean_working_tree(tmp_path: Path,
                                                   monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # exercise the clean-tree guard
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: ["?? untracked.txt"])
     rec = Recorder()
     with pytest.raises(GEN.RunRefused, match="not clean"):
@@ -360,9 +370,9 @@ def test_a_real_final_run_can_never_start_inside_the_tests(tmp_path: Path,
     assert not (tmp_path / "registry").exists() and not (tmp_path / "final").exists()
 
 
+@pytest.mark.usefixtures("synthetic_execution_approval")
 def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
                                                       monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # synthetic authorised state only
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
     monkeypatch.setattr(GEN, "resolve_fresh_seed", lambda plan, **kw: 6004)  # development only
     monkeypatch.setattr(GEN, "a15_gate_applies", lambda: False)  # historical replay only
@@ -382,20 +392,26 @@ def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
         _final(tmp_path, run="third")
 
 
-def test_a15_execution_hold_refuses_even_with_matching_digests(
+def test_a16_execution_hold_refuses_before_reservation_even_with_matching_digests(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
+    monkeypatch.setattr(GEN.AttemptRegistry, "reserve",
+                        lambda *args, **kwargs: pytest.fail("reservation reached"))
+    assert GEN.a15_gate_applies()
+    assert GEN.final_attempt_key() == GEN.A15_ATTEMPT_KEY == "final-a15"
+    run = f"m11-p8-{GEN.final_attempt_key()}"
     rec = Recorder()
     with pytest.raises(GEN.RunRefused, match="protocol items are pending"):
-        _final(tmp_path, fn=rec)
+        _final(tmp_path, run=run, fn=rec)
     with pytest.raises(pp.ProtocolNotReady, match="pending"):
         GEN.final_plan()
     assert rec.calls == []
-    assert not (tmp_path / "registry").exists() and not (tmp_path / "final").exists()
+    assert not (tmp_path / "registry").exists() and not (tmp_path / run).exists()
 
 
 @pytest.fixture
-def candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+def candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+              synthetic_execution_approval: None) -> tuple[Path, Path, Path]:
     """A simulated future approval in a temporary tree. All task seeds are development seeds."""
     root = tmp_path / "evidence"
     registry = root / GEN.REGISTRY_DIR.name
@@ -412,8 +428,6 @@ def candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Pa
         pins.append((ledger.relative_to(root).as_posix(),
                      hashlib.sha256(ledger.read_bytes()).hexdigest()))
     monkeypatch.setattr(pp, "P8_FAILED_ATTEMPTS", tuple(pins))
-    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", "final-a15")
-    monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
     monkeypatch.setattr(pp, "authorise_seed",
                         lambda *a, **kw: pytest.fail("unexpected seed access"))

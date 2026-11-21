@@ -19,9 +19,9 @@ design and its three scientific amendments are encoded as follows:
 **Stage.** This is the P0 protocol as amended through P8 (:data:`PROTOCOL_STAGE`; A12, drafted
 at the P8 preflight, fixes the P8 design). Items that must be closed before any main-seed
 evaluation are listed in :data:`PENDING_BEFORE_MAIN`. A13 closed the P8 dry-run item.
-A15 holds further execution pending separate owner authorisation. :func:`authorise_seed`
-refuses the main and fresh seeds while any item is pending. Amendments and their timing
-are recorded in :data:`PROTOCOL_AMENDMENTS`.
+A16 configures the candidate attempt and retains the execution hold. :func:`authorise_seed`
+refuses the main and fresh seeds while any item or outcome-blindness confirmation is pending.
+Amendments and their timing are recorded in :data:`PROTOCOL_AMENDMENTS`.
 
 **Integrity.** :func:`protocol_digest` hashes every protocol value; :func:`protocol_code_digest`
 hashes the exact bytes of this module and of the decision logic in :mod:`.model_selection` and
@@ -861,10 +861,10 @@ E4_ACCELERATED_SMALL_A = (
     "and changed no customer's coverage; only R2's E4 interval coverage (reported, never "
     "asserted) uses it, never a point prediction, primary comparison, selection or gate")
 """Amendment A14."""
-P8_FINAL_ATTEMPT_KEY = "final-a14"
-"""The last configured reservation is consumed. A15 grants no new reservation."""
+P8_FINAL_ATTEMPT_KEY = "final-a15"
+"""A16 candidate key. The execution hold prevents using it for a reservation."""
 P8_RETRY_RULE = (
-    "Exactly one new final attempt: reservation P8_FINAL_ATTEMPT_KEY in docs/evidence/"
+    "Exactly one new final attempt: reservation final-a14 in docs/evidence/"
     "m11-p8-attempts and run directory docs/evidence/m11-p8-final-a14, on the same seed plan as "
     "the failed attempt (main, M10 comparability, coverage and refit blocks; the fresh seed "
     "still unused and last), allowed only if the only final ledgers under docs/evidence are "
@@ -1024,9 +1024,10 @@ P8_EXECUTION = P8Execution(
 
 # --- stage gate ---------------------------------------------------------------------------------
 PENDING_BEFORE_MAIN: tuple[str, ...] = (
-    "A15 execution hold: separate owner authorisation and a verified single-use gate are required",
+    "A16 execution hold: configuration only; separate owner execution authorisation, "
+    "outcome-blindness confirmation and verified preflight are required",
 )
-"""Final execution remains prohibited after A15 amendment approval."""
+"""Final execution remains prohibited after A16 configuration approval."""
 PILOT_FINDINGS_SCOPE = (
     "P0 pilot findings use the M10 generator only. They are final for m10_contractual and were "
     "PROVISIONAL for signals_contractual and purchases_noncontractual (60-month runs of the M10 "
@@ -1043,13 +1044,14 @@ class Amendment:
     """True: made before any main-seed computation."""
     change: str
     reason: str
-    before_outcome_inspection: bool = True
+    before_outcome_inspection: bool | None = True
     """True: made before any main-seed, fresh-seed, coverage-block or refit-block outcome was
-    inspected (implied by ``before_main_seed``; recorded separately since A14)."""
+    inspected (implied by ``before_main_seed``; recorded separately since A14).
+    None records a pending confirmation for the held A16 configuration."""
 
 
-AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14", "A15")
-"""A14 followed the first main computation. A15 followed both completed main computations."""
+AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14", "A15", "A16")
+"""A14 followed the first main computation. A15 and A16 followed both."""
 
 
 PROTOCOL_AMENDMENTS = (
@@ -1195,6 +1197,16 @@ PROTOCOL_AMENDMENTS = (
               "deserialisation or outcome inspection. Both ledgers and reservations "
               "are preserved.",
               before_outcome_inspection=True),
+    Amendment("A16", "P8", "2026-11-21", False,
+              "Configure the candidate reservation key final-a15 in docs/evidence/"
+              "m11-p8-attempts and its output directory docs/evidence/m11-p8-final-a15/. "
+              "Retain the execution hold. Preserve the A15 corrections, frozen statistical "
+              "specifications, resource limits and both permanently consumed reservations "
+              "(final and final-a14).",
+              "The owner approved configuration only. Reservation creation, reserved-seed "
+              "generation and dispatch require separate owner execution authorisation. "
+              "Confirmation of continued outcome blindness is pending.",
+              before_outcome_inspection=None),
 )
 """Protocol changes since P0 (82e3ebd), with their relation to computation and inspection."""
 
@@ -1206,7 +1218,8 @@ class ProtocolNotReady(RuntimeError):
 def authorise_seed(purpose: str, *, confirm_single_final_run: bool = False) -> int:
     """The only sanctioned way to obtain a reserved seed.
 
-    ``pilot`` is always allowed (planning). ``main`` requires no pending protocol items.
+    ``pilot`` is always allowed (planning). ``main`` requires no pending protocol items and
+    confirmed outcome-blindness timing for every amendment.
     ``fresh`` additionally requires ``confirm_single_final_run=True``.
     """
     if purpose == "pilot":
@@ -1216,6 +1229,8 @@ def authorise_seed(purpose: str, *, confirm_single_final_run: bool = False) -> i
     if PENDING_BEFORE_MAIN:
         raise ProtocolNotReady(f"{len(PENDING_BEFORE_MAIN)} protocol items are pending; "
                                f"the {purpose} seed is refused")
+    if any(a.before_outcome_inspection is not True for a in PROTOCOL_AMENDMENTS):
+        raise ProtocolNotReady("outcome-blindness confirmation is required")
     if purpose == "main":
         return MAIN_SEED
     if not confirm_single_final_run:
@@ -1400,8 +1415,10 @@ def validate_protocol() -> list[str]:
     if after != AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION:
         problems.append("only the amendments in AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION may "
                         "follow a main-seed computation; every other one must precede it")
-    if not all(a.before_outcome_inspection for a in PROTOCOL_AMENDMENTS):
-        problems.append("every amendment must precede any outcome inspection")
+    if any(a.before_outcome_inspection is not True
+           and not (a.id == "A16" and a.before_outcome_inspection is None and PENDING_BEFORE_MAIN)
+           for a in PROTOCOL_AMENDMENTS):
+        problems.append("amendments require confirmed outcome blindness before execution")
     flags = [a.before_main_seed for a in PROTOCOL_AMENDMENTS]
     if any(not f and any(flags[i + 1:]) for i, f in enumerate(flags)):
         problems.append("an amendment cannot precede the main seed after one that followed it")

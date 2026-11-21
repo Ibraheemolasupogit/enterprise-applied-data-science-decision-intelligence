@@ -149,6 +149,9 @@ def failed_attempt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Pat
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
     monkeypatch.setattr(GEN, "resolve_fresh_seed", lambda plan, **kw: 6009)  # never reserved
     monkeypatch.setattr(GEN, "a15_gate_applies", lambda: False)  # historical replay only
+    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS",
+                        tuple(a for a in pp.PROTOCOL_AMENDMENTS if a.id not in ("A15", "A16")))
+    monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", ("A14",))
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # historical fake A14 only
     ledger = tmp_path / "m11-p8-final" / "ledger.json"
     ledger.parent.mkdir()
@@ -252,11 +255,14 @@ def test_historical_final_attempts_are_consumed_and_no_retry_is_authorised() -> 
         assert record["reservation"] == key
         assert record["reservation_sha256"] == hashlib.sha256(reservation).hexdigest()
 
-    # Both keys already exist in the validated registry and can never be reserved again.
-    # A15 recognises both historical failures and still retains an independent execution hold.
-    assert GEN.final_attempt_key() == "final-a14" and GEN.final_attempt_key() in final_keys
+    # Both historical keys are consumed. A16 configures a candidate but holds execution.
+    key = GEN.final_attempt_key()
+    assert key == "final-a15" and key not in logged
+    run_dir = GEN.EVIDENCE / f"m11-p8-{key}"
+    assert not run_dir.exists() and not run_dir.is_symlink()
     assert GEN.authorised_failed_attempts() == {
         f"{directory}/ledger.json": sha for directory, sha in histories.values()}
     assert GEN.unauthorised_final_attempts(GEN.EVIDENCE) == []
+    GEN.verify_a15_history(GEN.EVIDENCE, reg)
     with pytest.raises(GEN.RunRefused, match="protocol items are pending"):
         GEN.verify_protocol(_fake_final(), pp.protocol_digest(), pp.protocol_code_digest())
