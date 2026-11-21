@@ -222,12 +222,37 @@ def test_a14_refuses_unlisted_or_altered_final_ledgers(tmp_path: Path,
     assert rec.calls == [] and not (tmp_path / "m11-p8-final-a14").exists()
 
 
-def test_the_repository_is_ready_for_exactly_the_authorised_retry() -> None:
-    """Read-only: the real registry and evidence admit 'final-a14' and nothing else (no
-    reservation is made; raw results are never read)."""
-    assert GEN.final_attempt_key() == "final-a14"
-    assert GEN.unauthorised_final_attempts(GEN.EVIDENCE) == []
+def test_historical_final_attempts_are_consumed_and_no_retry_is_authorised() -> None:
+    """Check committed failure and reservation metadata without attempting a reservation."""
+    histories = {
+        "final": ("m11-p8-final",
+                  "cd7c8391347df2f9a2cf802161f35a0cb6a9a889b29c8fce3825a22ebe5902a9"),
+        "final-a14": ("m11-p8-final-a14",
+                      "74a0cdd66175ab19f5ecf0dddef08114230713897d5f968d6295df390b678008"),
+    }
     reg = GEN.AttemptRegistry(GEN.REGISTRY_DIR)
     assert reg.validate() == [] and not reg.lock.exists()
-    assert (reg.root / "final.json").exists() and not (reg.root / "final-a14.json").exists()
-    assert not (GEN.EVIDENCE / "m11-p8-final-a14").exists()
+    logged = [json.loads(line)["key"] for line in reg.log.read_text().splitlines()]
+    final_keys = {
+        path.stem for path in reg.root.glob("*.json")
+        if json.loads(path.read_bytes()).get("mode") == "final"
+    }
+    assert final_keys == histories.keys()
+    for key, (directory, expected_hash) in histories.items():
+        assert logged.count(key) == 1
+        reservation = (reg.root / f"{key}.json").read_bytes()
+        assert json.loads(reservation)["key"] == key
+        ledger = (GEN.EVIDENCE / directory / "ledger.json").read_bytes()
+        assert hashlib.sha256(ledger).hexdigest() == expected_hash
+        record = json.loads(ledger)
+        assert (record["mode"], record["status"], record["phase"]) == (
+            "final", "failed", "repeated_sampling")
+        assert record["reservation"] == key
+        assert record["reservation_sha256"] == hashlib.sha256(reservation).hexdigest()
+
+    # Both keys already exist in the validated registry and can never be reserved again.
+    # The only configured key is one of those consumed keys, and the retry gate refuses
+    # the unallowlisted A14 ledger before reaching reservation.
+    assert GEN.final_attempt_key() == "final-a14" and GEN.final_attempt_key() in final_keys
+    assert GEN.unauthorised_final_attempts(GEN.EVIDENCE) == [
+        GEN.EVIDENCE / "m11-p8-final-a14" / "ledger.json"]
