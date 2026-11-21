@@ -45,6 +45,8 @@ import sys  # noqa: E402
 import threading  # noqa: E402
 import time  # noqa: E402
 from collections.abc import Callable, Sequence  # noqa: E402
+from concurrent.futures import ProcessPoolExecutor  # noqa: E402
+from contextlib import nullcontext  # noqa: E402
 from dataclasses import asdict, dataclass, field  # noqa: E402
 from pathlib import Path  # noqa: E402
 from typing import Any  # noqa: E402
@@ -58,6 +60,11 @@ from decision_intelligence.common.failure_trace import (  # noqa: E402
 )
 from decision_intelligence.customer_value import predictive_cases as pc  # noqa: E402
 from decision_intelligence.customer_value import predictive_protocol as pp  # noqa: E402
+from decision_intelligence.customer_value.resource_supervision import (  # noqa: E402
+    SupervisedChild,
+    await_supervisor,
+    supervise,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 EVIDENCE = REPO / "docs" / "evidence"
@@ -213,6 +220,13 @@ def run_tasks(tasks: Sequence[pc.Task], workers: int, fn: TaskFn = pc.run_task
         return pool.map(fn, list(tasks), chunksize=1)
 
 
+def run_supervised_tasks(tasks: Sequence[pc.Task], workers: int, fn: TaskFn
+                         ) -> list[dict[str, Any]]:
+    """Propagate abrupt worker death instead of replacing the worker and waiting on its task."""
+    with ProcessPoolExecutor(max_workers=workers, mp_context=mp.get_context("spawn")) as pool:
+        return list(pool.map(fn, tasks, chunksize=1))
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -242,9 +256,12 @@ class Ledger:
         led.save()
         return led
 
-    def save(self) -> None:
+    def save(self, *, deadline: float | None = None) -> None:
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(self.data, indent=1, default=str))
+        if deadline is not None and time.monotonic() >= deadline:
+            tmp.unlink()
+            raise RunRefused("time limit expired before completion could be recorded")
         tmp.replace(self.path)
 
     def event(self, phase: str, state: str, **info: Any) -> None:
@@ -543,13 +560,16 @@ ReportFn = Callable[[SeedPlan, dict[str, Any], dict[str, Any], Path, "Path | Non
 def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_task,
             registry: Path = REGISTRY_DIR, evidence_root: Path = EVIDENCE,
             expect_manifest: str | None = None, expect_code: str | None = None,
-            output: Path | None = None, report_fn: ReportFn | None = None) -> Path:
+            output: Path | None = None, report_fn: ReportFn | None = None,
+            resources: SupervisedChild | None = None) -> Path:
     """Run every phase in order (``PHASES``); returns the record path. Order of safeguards:
     protocol verification (final: approved digests, nothing pending, clean Git working tree),
     final-attempt evidence checks under the reservation lock for A15, then the per-directory
     ledger. A failure or interruption is recorded and the run is never resumed."""
     refuse_real_final_under_test(plan.mode, fn)
     verify_protocol(plan, expect_manifest, expect_code)
+    if plan.mode == "final" and fn is pc.run_task and resources is None:
+        raise RunRefused("final execution requires the external resource supervisor")
     reg = AttemptRegistry(registry)
     key = reservation_key(plan)
     preflight = None
@@ -593,14 +613,15 @@ def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_
     t0 = time.perf_counter()
     results: dict[str, Any] = {}
     try:
-        with MemoryMonitor() as mon:
+        with (nullcontext(resources) if resources is not None else MemoryMonitor()) as mon:
             ledger.event(phase, "started", seed=plan.main)
             results["main"] = run_tasks([pc.Task("MAIN", plan.main)], 1, fn)
             _store(run_dir, ledger, phase, results["main"])
             phase = "repeated_sampling"
             tasks = study_tasks(plan)
             ledger.event(phase, "started", tasks=len(tasks))
-            results["repeated_sampling"] = run_tasks(tasks, workers, fn)
+            dispatch = run_supervised_tasks if resources is not None and workers > 1 else run_tasks
+            results["repeated_sampling"] = dispatch(tasks, workers, fn)
             _store(run_dir, ledger, phase, results["repeated_sampling"])
             if plan.m10_comparability is not None:
                 phase = "m10_comparability"
@@ -616,7 +637,9 @@ def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_
                 _store(run_dir, ledger, phase, results["fresh"])
             phase = "record"
             wall = time.perf_counter() - t0
-            perf = {"wall": wall, "peak_gb": mon.peak_gb, "workers": workers}
+            perf: dict[str, Any] = {"wall": wall, "peak_gb": mon.peak_gb, "workers": workers}
+            if resources is not None:
+                perf["resource_snapshot"] = "before report generation"
             files = (report_fn or write_report)(plan, results, perf, run_dir, output)
             ledger.event(phase, "done", files=[
                 {"file": str(f.relative_to(run_dir)) if f.is_relative_to(run_dir) else str(f),
@@ -629,7 +652,11 @@ def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_
         error = str(exc) if isinstance(exc, TracedTaskError) else type(exc).__name__
         ledger.finish("failed", phase=phase, error=error, failure_trace=failure_trace(exc))
         raise
-    ledger.finish("complete", wall_s=wall, peak_gb=mon.peak_gb)
+    if resources is None:
+        ledger.finish("complete", wall_s=wall, peak_gb=mon.peak_gb)
+    else:
+        # Only the parent can certify completion after monitoring the runner's entire lifetime.
+        ledger.finish("supervision_pending", supervisor_pid=os.getppid())
     return files[0]
 
 
@@ -799,6 +826,9 @@ def render(plan: SeedPlan, results: dict[str, Any], perf: dict[str, Any]) -> str
               f"{perf['peak_gb']:.2f} GB (budget {pp.BUDGETS.evidence_memory_gb:g} GB); parallel "
               f"efficiency {ex.attrs['efficiency']:.2f}. Full-size extrapolation (`BUDGET_SCOPE`): "
               f"ceiling {pp.BUDGETS.evidence_ceiling_min:g} min.", "", table(ex), ""]
+    if "resource_snapshot" in perf:
+        lines += ["The report's resource figures are a pre-report snapshot. The external "
+                  "supervisor measures through report and ledger completion.", ""]
     lines += ["## 2. Primary comparisons (PC_TEST, PC_DEFINITIONS; Holm across PC1-PC5)", "",
               f"PC3 comparator by cutoff: {a['main']['pc3_comparator']}.", "",
               table(_tests_table(a, a["main"]["tests"], True)), "",
@@ -888,8 +918,32 @@ def write_report(plan: SeedPlan, results: dict[str, Any], perf: dict[str, Any], 
     return files
 
 
+def _run_under_supervision(argv: Sequence[str], run_dir: Path) -> int:
+    timeout_s = pp.BUDGETS.evidence_ceiling_min * 60
+    deadline = time.monotonic() + timeout_s
+    result = supervise([sys.executable, str(Path(__file__).resolve()), *argv,
+                        "--_supervised-child"], timeout_s=timeout_s,
+                       memory_bytes=int(pp.BUDGETS.evidence_memory_gb * 1e9))
+    if result.status == "complete":
+        path = run_dir / "ledger.json"
+        data = json.loads(path.read_text())
+        if data.get("status") != "supervision_pending" or data.get("supervisor_pid") != os.getpid():
+            raise RunRefused("no matching supervised completion ledger")
+        data.update(status="complete", finished=_now(), wall_s=result.elapsed_s,
+                    peak_gb=result.peak_bytes / 1e9)
+        Ledger(path, data).save(deadline=deadline)
+    print(f"supervision {result.status}, elapsed {result.elapsed_s:.3f} s, "
+          f"sampled peak RSS {result.peak_bytes} bytes",
+          file=sys.stdout if result.status == "complete" else sys.stderr)
+    if result.status == "interrupted":
+        return 130
+    return 0 if result.status == "complete" else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--_supervised-child", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--mode", choices=("dry-run", "rehearsal", "final"))
     ap.add_argument("--workers", type=int, default=pp.P8_EXECUTION.workers)
     ap.add_argument("--run-dir", type=Path, default=None)
@@ -912,12 +966,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.mode is None:
         ap.error("--mode is required unless --verify is given")
     try:
+        resources = None
         if args.mode == "final":
             refuse_real_final_under_test("final", pc.run_task)
             if args.expect_manifest is None or args.expect_code is None:
                 raise RunRefused("final mode needs --expect-manifest and --expect-code")
             require_clean_tree()  # before any seed is authorised
             plan = final_plan()
+            if args.workers != pp.P8_EXECUTION.workers:
+                raise RunRefused("final execution requires the frozen worker count")
+            if not args._supervised_child:
+                run_dir = args.run_dir or EVIDENCE / f"m11-p8-{final_attempt_key()}"
+                return _run_under_supervision(argv, run_dir)
+            resources = await_supervisor()
         elif args.mode == "rehearsal":
             plan = rehearsal_plan(args.draws, args.refits)
         else:
@@ -926,7 +987,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                    if plan.mode == "final" else DEFAULT_RUN_DIRS[plan.mode])
         out = execute(plan, run_dir, args.workers, registry=args.registry,
                       expect_manifest=args.expect_manifest, expect_code=args.expect_code,
-                      output=args.output)
+                      output=args.output, resources=resources)
     except (pp.ProtocolNotReady, RunRefused) as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
