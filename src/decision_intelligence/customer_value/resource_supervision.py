@@ -51,6 +51,8 @@ class MonitorUnavailable(RuntimeError):
 class DarwinRSS:
     """Sample the dedicated execution group and the supervising process via libproc."""
 
+    lib: ctypes.CDLL
+
     def __init__(self) -> None:
         if sys.platform != "darwin":
             raise MonitorUnavailable("resource supervision requires macOS libproc")
