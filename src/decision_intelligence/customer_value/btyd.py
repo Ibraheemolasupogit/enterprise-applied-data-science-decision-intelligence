@@ -336,24 +336,67 @@ def fit_gamma_gamma(n: FloatArray, S: FloatArray, L: FloatArray) -> ComponentFit
 
 
 # --- Gauss-Jacobi for Beta weights (Golub-Welsch) ----------------------------------------------
+def beta_jacobi(a: FloatArray, b: FloatArray, n: int) -> tuple[FloatArray, FloatArray]:
+    """Jacobi matrix on [0, 1], directly in the positive Beta shapes (batched).
+
+    Avoid forming a-1/b-1 and then recovering a+b by cancellation. The first off-diagonal
+    analytically cancels the removable (a+b-1) factor; the remaining factors are positive.
+    Factored ratios also avoid squaring tiny shapes. No shape or node count is changed.
+    """
+    a, b = np.asarray(a, dtype=np.float64), np.asarray(b, dtype=np.float64)
+    total = a + b
+    if n < 1 or a.ndim != 1 or a.shape != b.shape or not np.all(
+            np.isfinite(total) & (a > 0.0) & (b > 0.0)):
+        raise ValueError("Beta quadrature needs positive finite shapes and sum, and n >= 1")
+    diag = np.empty((a.size, n))
+    diag[:, 0] = a / total
+    j = np.arange(1, n, dtype=np.float64)[None, :]
+    aa, bb, tt = a[:, None], b[:, None], total[:, None]
+    diag[:, 1:] = ((j + aa) / (2 * j + tt) * ((j - 1) + tt) / ((2 * j - 1) + tt)
+                   + j / ((2 * j - 1) + tt) * ((j - 1) + bb) / ((2 * j - 2) + tt))
+    off = np.empty((a.size, n - 1))
+    if n > 1:
+        off[:, 0] = np.sqrt(a / total) * np.sqrt(b / total) / np.sqrt(total + 1)
+        j = j[:, 1:]
+        # sqrt each ratio before multiplying: preserve subnormal positive shapes.
+        off[:, 1:] = (np.sqrt(j / ((2 * j - 2) + tt))
+                      * np.sqrt(((j - 1) + aa) / ((2 * j - 2) + tt))
+                      * np.sqrt(((j - 1) + bb) / ((2 * j - 1) + tt))
+                      * np.sqrt(((j - 2) + tt) / ((2 * j - 3) + tt)))
+    return diag, off
+
+
 @lru_cache(maxsize=8192)
 def beta_nodes(a: float, b: float, n: int = E4_JACOBI_NODES) -> tuple[FloatArray, FloatArray]:
     """Nodes on ``[0, 1]`` and weights with ``sum w f(p) ~= E[f(P)]``, ``P ~ Beta(a, b)``:
     the Jacobi weight ``(1-y)^(b-1) (1+y)^(a-1)`` on ``[-1, 1]``, ``p = (1+y) / 2``."""
-    al, be = b - 1.0, a - 1.0
-    i = np.arange(n, dtype=np.float64)
-    s = 2.0 * i + al + be
-    diag = np.empty(n)
-    diag[0] = (be - al) / (al + be + 2.0)
-    diag[1:] = (be * be - al * al) / (s[1:] * (s[1:] + 2.0))
-    j = i[1:]
-    sj = 2.0 * j + al + be
-    off = np.sqrt(4.0 * j * (j + al) * (j + be) * (j + al + be) / (sj * sj * (sj + 1.0)
-                                                                    * (sj - 1.0)))
-    y, v = linalg.eigh_tridiagonal(diag, off)
+    reflected = a > b
+    lo, hi = (b, a) if reflected else (a, b)
+    diag, off = beta_jacobi(np.array([lo]), np.array([hi]), n)
+    # STEV retains small first-row eigenvector components (hence small boundary weights).
+    pn, v = linalg.eigh_tridiagonal(diag[0], off[0], lapack_driver="stev")
     w = np.asarray(v[0, :], dtype=np.float64) ** 2
-    return (np.asarray((1.0 + y) / 2.0, dtype=np.float64),
-            np.asarray(w / w.sum(), dtype=np.float64))
+    # A symmetric eigensolver can place an endpoint a few ulps outside its support.
+    pn, w = np.clip(pn, 0.0, 1.0), w / w.sum()
+    if reflected:
+        pn, w = 1.0 - pn[::-1], w[::-1]
+    return np.asarray(pn, dtype=np.float64), np.asarray(w, dtype=np.float64)
+
+
+def purchase_window(p: FloatArray, k: FloatArray, rate: FloatArray, left: FloatArray,
+                    right: FloatArray) -> FloatArray:
+    """(A(left)-A(right))/p, including its continuous value k*(right-left)/rate at p=0.
+
+    Factor log1p(z)/z and (1-exp(-u))/u instead of dividing a cancelled difference by p.
+    This also handles positive p so small that z underflows. Inputs follow NumPy broadcasting.
+    """
+    start_rate = rate + p * left
+    z = p * (right - left) / start_rate
+    logz = np.log1p(z)
+    log_ratio = np.divide(logz, z, out=np.ones_like(z), where=z != 0.0)
+    u = k * logz
+    return np.asarray(np.exp(-k * np.log1p(p * left / rate)) * special.exprel(-u)
+                      * log_ratio * k * ((right - left) / start_rate), dtype=np.float64)
 
 
 # --- conditional expectations ---------------------------------------------------------------------
@@ -366,26 +409,42 @@ class Conditional:
     """``(n, H)``: expected purchases in month ``C + j``."""
 
 
+def bgnbd_alive(k: FloatArray, a: FloatArray | float, b: FloatArray | float,
+                observed_rate: FloatArray, last_purchase_rate: FloatArray,
+                x: FloatArray) -> FloatArray:
+    """Compute BG/NBD P(alive at T) from log-odds, preserving representable subnormals."""
+    denom = b + np.where(x > 0, x - 1.0, 0.0)
+    # The mantissas have a safe ratio even when the natural-scale ratio overflows,
+    # or when two nearly equal logarithms would lose precision for tiny shapes.
+    a_mantissa, a_exponent = np.frexp(a)
+    b_mantissa, b_exponent = np.frexp(denom)
+    log_shape_ratio = (np.log(a_mantissa / b_mantissa)
+                       + (a_exponent - b_exponent) * math.log(2.0))
+    log_odds = (log_shape_ratio
+                + k * (np.log(observed_rate) - np.log(last_purchase_rate)))
+    return np.asarray(np.exp(-np.logaddexp(0.0, np.where(x > 0, log_odds, -np.inf))),
+                      dtype=np.float64)
+
+
 def bgnbd_conditional(params: tuple[float, ...], x: FloatArray, t_x: FloatArray, T: FloatArray,
                       edges: FloatArray, *, nodes: int = E4_JACOBI_NODES) -> Conditional:
     r, alpha, a, b = params
     x, t_x, T = (np.asarray(v, dtype=np.float64) for v in (x, t_x, T))
     k = r + x
-    with np.errstate(divide="ignore", over="ignore"):
-        odds = np.where(x > 0, a / (b + np.where(x > 0, x, 1.0) - 1.0)
-                        * np.exp(k * (np.log(alpha + T) - np.log(alpha + t_x))), 0.0)
-    p_alive = 1.0 / (1.0 + odds)
+    p_alive = bgnbd_alive(k, a, b, alpha + T, alpha + t_x, x)
     m = edges.size
     a_e = np.zeros((x.size, m))
-    a_over_p = np.zeros((x.size, m))
+    purchases = np.zeros((x.size, m - 1))
     for xv in np.unique(x):
         sel = x == xv
         pn, w = beta_nodes(float(a), float(b + xv), nodes)
-        base = (1.0 + pn[None, :, None] * edges[None, None, :] / (alpha + T[sel])[:, None, None])
-        A = base ** (-k[sel][:, None, None])  # (c, nodes, m)
+        rate = (alpha + T[sel])[:, None, None]
+        power = k[sel][:, None, None]
+        p = pn[None, :, None]
+        A = np.exp(-power * np.log1p(p * edges[None, None, :] / rate))
         a_e[sel] = np.einsum("j,cjm->cm", w, A)
-        a_over_p[sel] = np.einsum("j,cjm->cm", w / pn, A)
-    purchases = p_alive[:, None] * (a_over_p[:, :-1] - a_over_p[:, 1:])
+        step = purchase_window(p, power, rate, edges[None, None, :-1], edges[None, None, 1:])
+        purchases[sel] = p_alive[sel, None] * np.einsum("j,cjm->cm", w, step)
     return Conditional(np.asarray(p_alive, dtype=np.float64),
                        np.asarray(p_alive * a_e[:, 0], dtype=np.float64),
                        np.asarray(purchases, dtype=np.float64))

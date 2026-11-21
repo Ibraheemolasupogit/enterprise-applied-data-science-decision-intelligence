@@ -34,6 +34,7 @@ import numpy as np
 import pandas as pd
 from scipy import special, stats
 
+from decision_intelligence.common.failure_trace import TracedTaskError, failure_trace
 from decision_intelligence.customer_value import btyd
 from decision_intelligence.customer_value import contractual as ct
 from decision_intelligence.customer_value import heuristic as he
@@ -89,25 +90,38 @@ def purchases_scenario(seed: int, scale: float = 1.0) -> gen.PurchasesScenario:
 def beta_nodes_batch(a: np.ndarray, b: np.ndarray, n: int = btyd.E4_JACOBI_NODES
                      ) -> tuple[np.ndarray, np.ndarray]:
     """``btyd.beta_nodes`` for many ``(a, b)`` at once (same Jacobi matrix, batched solver)."""
-    al, be = b - 1.0, a - 1.0
-    i = np.arange(n, dtype=np.float64)
-    s = 2.0 * i[None, :] + (al + be)[:, None]
-    diag = np.empty((a.size, n))
-    diag[:, 0] = (be - al) / (al + be + 2.0)
-    diag[:, 1:] = ((be * be - al * al)[:, None]) / (s[:, 1:] * (s[:, 1:] + 2.0))
-    j = i[1:][None, :]
-    sj = 2.0 * j + (al + be)[:, None]
-    off = np.sqrt(4.0 * j * (j + al[:, None]) * (j + be[:, None]) * (j + (al + be)[:, None])
-                  / (sj * sj * (sj + 1.0) * (sj - 1.0)))
+    pn, _, w = _beta_nodes_pair(a, b, n)
+    return pn, w
+
+
+def _beta_nodes_pair(a: np.ndarray, b: np.ndarray, n: int
+                     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Keep both coordinates p and 1-p: reflection avoids subtracting a tiny upper tail from 1.
+
+    The eigensolve is oriented toward the smaller shape. This is the exact reflected Beta rule,
+    with the same node count, not a limiting distribution or a replacement shape.
+    """
+    reflected = a > b
+    lo, hi = np.minimum(a, b), np.maximum(a, b)
+    diag, off = btyd.beta_jacobi(lo, hi, n)
     mat = np.zeros((a.size, n, n))
     idx = np.arange(n)
     mat[:, idx, idx] = diag
     mat[:, idx[1:], idx[:-1]] = off
     mat[:, idx[:-1], idx[1:]] = off
-    y, v = np.linalg.eigh(mat)
+    pn, v = np.linalg.eigh(mat)
     w = v[:, 0, :] ** 2
-    return (np.asarray((1.0 + y) / 2.0, dtype=np.float64),
-            np.asarray(w / w.sum(axis=1, keepdims=True), dtype=np.float64))
+    # Dense solvers can lose tiny boundary weights when an eigenvalue reaches an endpoint.
+    # Recompute those rows with the scalar tridiagonal solver, retaining the same n-node rule.
+    boundary = np.any((pn <= 0.0) | (pn >= 1.0), axis=1) | (lo + hi == hi)
+    for d in np.flatnonzero(boundary):
+        pn[d], w[d] = btyd.beta_nodes(float(lo[d]), float(hi[d]), n)
+    pn = np.clip(pn, 0.0, 1.0)
+    qn = 1.0 - pn
+    pn, qn = (np.where(reflected[:, None], qn[:, ::-1], pn),
+              np.where(reflected[:, None], pn[:, ::-1], qn))
+    w = np.where(reflected[:, None], w[:, ::-1], w)
+    return pn, qn, np.asarray(w / w.sum(axis=1, keepdims=True), dtype=np.float64)
 
 
 E4_ACCELERATED_MIN_A = pp.E4_ACCELERATED_MIN_A
@@ -126,29 +140,40 @@ def e4_window_purchases(params: np.ndarray, x: np.ndarray, t_x: np.ndarray, T: n
     if not np.all(np.isfinite(params)) or np.any(params <= 0.0):
         raise ValueError("BG/NBD parameter draws must be finite and positive")
     r, alpha, a, b = (params[:, k][:, None] for k in range(4))
-    k = r + x[None, :]
-    with np.errstate(divide="ignore", over="ignore"):
-        odds = np.where(x[None, :] > 0,
-                        a / (b + np.where(x > 0, x, 1.0)[None, :] - 1.0)
-                        * np.exp(k * (np.log(alpha + T[None, :]) - np.log(alpha + t_x[None, :]))),
-                        0.0)
-    p_alive = 1.0 / (1.0 + odds)
+    p_alive = btyd.bgnbd_alive(r + x, a, b, alpha + T, alpha + t_x, x)
     window = np.empty_like(p_alive)
-    pn0, w0 = beta_nodes_batch(params[:, 2], params[:, 3])
+    pn0, qn0, w0 = _beta_nodes_pair(params[:, 2], params[:, 3], btyd.E4_JACOBI_NODES)
     small_a = params[:, 2] < min_a
     for xv in np.unique(x):
         cols = np.flatnonzero(x == xv)
         den = params[:, 1][:, None] + T[cols][None, :]
         kk = (params[:, 0] + xv)[:, None, None]
-        ratio = np.exp(special.betaln(params[:, 2], params[:, 3])
-                       - special.betaln(params[:, 2], params[:, 3] + xv))
-        pn, w = pn0.copy(), w0 * (1.0 - pn0) ** xv * ratio[:, None]
         original = np.ones(params.shape[0], dtype=bool) if xv > max_x else small_a
+        # If the complementary coordinate underflows, reweighting loses its boundary mass.
+        # Use the same per-count rule, without modifying a shape or the A14 threshold.
+        original = original | ((xv > 0) & np.any(qn0 == 0.0, axis=1))
+        pn, w = pn0.copy(), w0.copy()
+        if xv > 0:
+            use = np.flatnonzero(~original)
+            with np.errstate(invalid="ignore", over="ignore", under="ignore"):
+                ratio = np.exp(special.betaln(params[use, 2], params[use, 3])
+                               - special.betaln(params[use, 2], params[use, 3] + xv))
+                unscaled = w0[use] * qn0[use] ** xv
+                candidate = unscaled * ratio[:, None]
+            # A lost or subnormal intermediate can erase mass before the ratio restores it.
+            # Use the same Beta(a, b+x) rule directly when reweighting cannot be trusted.
+            tiny = np.finfo(np.float64).tiny
+            lost = (w0[use] > 0) & ((unscaled < tiny) | (candidate == 0))
+            usable = ((ratio >= tiny) & np.isfinite(ratio)
+                      & np.all(np.isfinite(candidate) & ~lost, axis=1)
+                      & np.any(candidate > 0, axis=1))
+            w[use[usable]] = candidate[usable]
+            original[use[~usable]] = True
         for d in np.flatnonzero(original):  # the original per-count Gauss-Jacobi rule
             pn[d], w[d] = btyd.beta_nodes(float(params[d, 2]), float(params[d, 3] + xv))
-        a0 = (1.0 + pn[:, None, :] * e0 / den[:, :, None]) ** (-kk)
-        ah = (1.0 + pn[:, None, :] * eh / den[:, :, None]) ** (-kk)
-        window[:, cols] = np.einsum("dj,dcj->dc", w / pn, a0 - ah)
+        step = btyd.purchase_window(pn[:, None, :], kk, den[:, :, None],
+                                    np.asarray(e0), np.asarray(eh))
+        window[:, cols] = np.einsum("dj,dcj->dc", w, step)
     return p_alive * window, p_alive
 
 
@@ -335,6 +360,8 @@ def _coverage_rows(setting: str, model: str, interval: str, lo: np.ndarray, hi: 
                    y: np.ndarray, segment: np.ndarray, decile: np.ndarray, level: float
                    ) -> list[dict[str, Any]]:
     ok = np.isfinite(lo) & np.isfinite(hi) & np.isfinite(y)
+    if model == "E4" and not ok.all():
+        raise ValueError("R2 E4 coverage requires finite interval bounds and targets")
     cov = (y >= lo) & (y <= hi) & ok
     out = [{"setting": setting, "model": model, "interval": interval, "level": level,
             "group": "all", "covered": int(cov.sum()), "n": int(ok.sum())}]
@@ -408,7 +435,11 @@ def r2_draw(seed: int, n_draws: int = PARAMETRIC_DRAWS) -> dict[str, Any]:
     real = h["realised"].reindex(sim.index).to_numpy(np.float64)
     mu = po.purchases_oracle(pur, 30, W).frame["oracle"].reindex(sim.index).to_numpy(np.float64)
     seg = e4.frame["segment"].to_numpy()
-    dec = pm.decile_groups(e4.frame["prediction"].to_numpy(np.float64))
+    point = e4.frame["prediction"].to_numpy(np.float64)
+    if not (np.isfinite(point).all() and np.isfinite(sim.expected).all()
+            and np.isfinite(sim.outcome).all()):
+        raise ValueError("R2 E4 coverage requires finite predictions and simulation draws")
+    dec = pm.decile_groups(point)
     for level in LEVELS:
         rows += _coverage_rows(setting, "E4", "parameter vs oracle",
                                *sim.interval(level, outcome=False), mu, seg, dec, level)
@@ -718,8 +749,11 @@ def run_task(task: Task) -> dict[str, Any]:
     try:
         out = _dispatch(task)
     except Exception as exc:
-        raise RuntimeError(f"task {task.study} seed {task.seed} scale {task.scale:g} refits "
-                           f"{task.refits}: {type(exc).__name__}: {exc}") from exc
+        error = TracedTaskError(f"task {task.study} seed {task.seed} scale {task.scale:g} "
+                                f"refits {task.refits}: {type(exc).__name__}")
+        error.failure_trace = failure_trace(exc)
+        error.failure_trace[0]["relation"] = "cause"
+        raise error from exc
     out.update({"task": task, "seconds": time.perf_counter() - t0, "pid": os.getpid()})
     return out
 

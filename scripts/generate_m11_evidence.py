@@ -52,6 +52,10 @@ from typing import Any  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
+from decision_intelligence.common.failure_trace import (  # noqa: E402
+    TracedTaskError,
+    failure_trace,
+)
 from decision_intelligence.customer_value import predictive_cases as pc  # noqa: E402
 from decision_intelligence.customer_value import predictive_protocol as pp  # noqa: E402
 
@@ -501,7 +505,9 @@ def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_
         ledger.finish("interrupted", phase=phase)
         raise
     except BaseException as exc:
-        ledger.finish("failed", phase=phase, error=f"{type(exc).__name__}: {exc}")
+        # Exception messages can contain outcomes. Only our task wrapper has a safe message.
+        error = str(exc) if isinstance(exc, TracedTaskError) else type(exc).__name__
+        ledger.finish("failed", phase=phase, error=error, failure_trace=failure_trace(exc))
         raise
     ledger.finish("complete", wall_s=wall, peak_gb=mon.peak_gb)
     return files[0]
@@ -809,7 +815,8 @@ def main(argv: Sequence[str] | None = None) -> int:
               file=sys.stderr)
         return 130
     except Exception as exc:  # noqa: BLE001 - any failed phase aborts the run
-        print(f"failed: {type(exc).__name__}: {exc}; recorded in the ledger; no record "
+        error = str(exc) if isinstance(exc, TracedTaskError) else type(exc).__name__
+        print(f"failed: {error}; recorded in the ledger; no record "
               "written", file=sys.stderr)
         return 1
     print(f"wrote {out}")

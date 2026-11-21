@@ -116,7 +116,7 @@ def test_a_failing_task_names_its_study_and_seed(monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setattr(pc, "r3_draw", boom)
     with pytest.raises(RuntimeError, match=r"task R3 seed 6708 scale 0\.5 refits 0: "
-                                           r"ValueError: p <= 0"):
+                                           r"ValueError$"):
         pc.run_task(pc.Task("R3", 6708, 0.5))
 
 
