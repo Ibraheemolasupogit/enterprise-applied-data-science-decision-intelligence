@@ -70,6 +70,9 @@ DRY_RUN_SEED_START = 6200
 """Dry run: main analysis 6200; R1/R2/R3 draw r uses 6201 + r; REFIT draw r uses 6301 + r."""
 REGISTRY_DIR = EVIDENCE / "m11-p8-attempts"
 """Repository-level attempt registry (tracked in Git; one reservation per attempt)."""
+A15_ATTEMPT_KEY = "final-a15"
+"""Candidate key only. The protocol must separately authorise it before it can be used."""
+HISTORICAL_FINAL_KEYS = ("final", "final-a14")
 RAW_DIR = "raw"
 """Per-run subdirectory for raw pickled results (Git-ignored; SHA-256 kept in the ledger)."""
 REHEARSAL_SEED_START = 6400
@@ -147,8 +150,15 @@ def final_plan() -> SeedPlan:
                     _study("R3").scales, pp.CLUSTERED_INFERENCE.refit_bootstrap_resamples)
 
 
-def resolve_fresh_seed(plan: SeedPlan) -> int:
+def resolve_fresh_seed(plan: SeedPlan, *, ledger: Ledger | None = None) -> int:
     if plan.mode == "final":
+        required = [("verify", "done"), ("main", "started"), ("main", "done"),
+                    ("repeated_sampling", "started"), ("repeated_sampling", "done"),
+                    ("m10_comparability", "started"), ("m10_comparability", "done")]
+        if (ledger is None or ledger.data.get("status") != "started" or not plan.fresh_step
+                or ledger.data.get("reservation") != final_attempt_key()
+                or [(e["phase"], e["state"]) for e in ledger.data.get("events", [])] != required):
+            raise RunRefused("fresh seed requires the active final ledger after M10 comparability")
         return pp.authorise_seed("fresh", confirm_single_final_run=True)
     seed = REHEARSAL_SEED_START + 2
     check_development_seeds([seed])
@@ -306,7 +316,7 @@ class AttemptRegistry:
     concurrent attempts exactly one succeeds), and a hash-chained ``attempts.log`` written under
     an exclusive lock. Before any reservation the whole registry is validated: an altered,
     deleted or unlogged entry, or a broken chain, refuses every further attempt. The final run's
-    key is fixed (``final``), so no other output directory can rerun the reserved seeds."""
+    key is fixed by the protocol, regardless of output directory."""
 
     GENESIS = "0" * 64
 
@@ -336,22 +346,30 @@ class AttemptRegistry:
             return []
         problems: list[str] = []
         prev, logged = self.GENESIS, {}
+        if self.log.is_symlink():
+            return ["attempts.log is a symlink"]
         lines = self.log.read_text().splitlines() if self.log.exists() else []
         for i, line in enumerate(lines):
             try:
                 rec = json.loads(line)
-                ok = rec["prev"] == prev and rec["hash"] == self._chain(
-                    prev, rec["key"], rec["entry_sha256"], rec["time"])
+                key = rec["key"]
+                ok = (isinstance(key, str) and bool(key) and Path(key).name == key
+                      and rec["prev"] == prev and rec["hash"] == self._chain(
+                          prev, key, rec["entry_sha256"], rec["time"]))
             except (ValueError, KeyError, TypeError):
                 ok = False
             if not ok:
                 problems.append(f"attempts.log line {i + 1}: broken hash chain")
                 break
             prev = rec["hash"]
+            if rec["key"] in logged:
+                problems.append(f"reservation {rec['key']}: duplicate chain entry")
             logged[rec["key"]] = rec["entry_sha256"]
         for key, sha in logged.items():
             f = self.root / f"{key}.json"
-            if not f.exists():
+            if f.is_symlink():
+                problems.append(f"reservation {key}: entry is a symlink")
+            elif not f.is_file():
                 problems.append(f"reservation {key}: entry deleted")
             elif _sha256(f) != sha:
                 problems.append(f"reservation {key}: entry altered")
@@ -360,7 +378,8 @@ class AttemptRegistry:
                 problems.append(f"reservation {f.stem}: entry not in attempts.log")
         return problems
 
-    def reserve(self, key: str, info: dict[str, Any]) -> str:
+    def reserve(self, key: str, info: dict[str, Any], *,
+                preflight: Callable[[], None] | None = None) -> str:
         """Reserve ``key`` once; returns the entry's SHA-256. Refuses a tampered registry or a
         key already reserved (whatever the output directory)."""
         self.root.mkdir(parents=True, exist_ok=True)
@@ -369,6 +388,8 @@ class AttemptRegistry:
             problems = self.validate()
             if problems:
                 raise RunRefused(f"attempt registry tampered: {problems}")
+            if preflight is not None:
+                preflight()
             path = self.root / f"{key}.json"
             try:
                 fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
@@ -420,16 +441,91 @@ def reservation_key(plan: SeedPlan) -> str:
     return f"{plan.mode}-{digest[:16]}"
 
 
+def _evidence_walk_error(exc: OSError) -> None:
+    raise RunRefused("cannot scan the evidence directory") from exc
+
+
 def prior_final_attempts(evidence_root: Path) -> list[Path]:
     """Any ledger of a final run under ``evidence_root`` (whatever its directory)."""
-    found = []
-    for f in evidence_root.rglob("ledger.json"):
+    found: list[Path] = []
+    if not evidence_root.exists():
+        return found  # legacy temporary run directories can start empty
+    for parent, dirs, files in os.walk(evidence_root, onerror=_evidence_walk_error):
+        if RAW_DIR in dirs:
+            dirs.remove(RAW_DIR)
+        if "ledger.json" not in files:
+            continue
+        f = Path(parent) / "ledger.json"
         try:
-            if json.loads(f.read_text()).get("mode") == "final":
+            if f.is_symlink() or json.loads(f.read_text()).get("mode") == "final":
                 found.append(f)
-        except (OSError, ValueError):
+        except (OSError, ValueError, AttributeError):
             found.append(f)  # unreadable: treated as an attempt
     return found
+
+
+def a15_gate_applies() -> bool:
+    return any(amendment.id == "A15" for amendment in pp.PROTOCOL_AMENDMENTS)
+
+
+def verify_a15_history(evidence_root: Path, reg: AttemptRegistry) -> None:
+    """Check pinned historical metadata under the reservation lock. Raw results stay closed."""
+    expected = {f"m11-p8-{key}/ledger.json": key for key in HISTORICAL_FINAL_KEYS}
+    allowed = authorised_failed_attempts()
+    if allowed.keys() != expected.keys():
+        raise RunRefused("A15 requires both historical ledger pins")
+    for rel, key in expected.items():
+        ledger_path = evidence_root / rel
+        entry_path = reg.root / f"{key}.json"
+        for path in (ledger_path, entry_path):
+            if path.resolve() != path.absolute() or not path.is_file():
+                raise RunRefused(f"historical evidence missing or redirected: {path}")
+        ledger_bytes, entry_bytes = ledger_path.read_bytes(), entry_path.read_bytes()
+        if hashlib.sha256(ledger_bytes).hexdigest() != allowed[rel]:
+            raise RunRefused(f"historical ledger altered: {rel}")
+        try:
+            led, entry = json.loads(ledger_bytes), json.loads(entry_bytes)
+            matches = (
+                (led["mode"], led["status"], led["phase"], led["reservation"])
+                == ("final", "failed", "repeated_sampling", key)
+                and led["reservation_sha256"] == hashlib.sha256(entry_bytes).hexdigest()
+                and (entry["key"], entry["mode"]) == (key, "final")
+                # The historical absolute path belongs to the checkout that ran the attempt.
+                and Path(entry["run_dir"]).name == ledger_path.parent.name
+                and all(entry[d] == led[d] for d in ("manifest_digest", "code_digest"))
+            )
+        except (ValueError, TypeError, KeyError):
+            matches = False
+        if not matches:
+            raise RunRefused(f"historical failure or consumed reservation does not match: {key}")
+        if evidence_root == EVIDENCE.resolve():
+            for path, content in ((ledger_path, ledger_bytes), (entry_path, entry_bytes)):
+                relpath = path.relative_to(REPO.resolve())
+                committed = subprocess.run(["git", "show", f"HEAD:{relpath.as_posix()}"],
+                                           cwd=REPO, capture_output=True, check=False)
+                if committed.returncode != 0 or committed.stdout != content:
+                    raise RunRefused(f"historical evidence differs from HEAD: {relpath}")
+    historical_dirs = {(evidence_root / rel).parent for rel in expected}
+    for parent, dirs, _ in os.walk(evidence_root, onerror=_evidence_walk_error):
+        if RAW_DIR in dirs:
+            dirs.remove(RAW_DIR)  # Never scan protected raw directories.
+        for directory in dirs:
+            if (Path(parent) / directory).is_symlink():
+                raise RunRefused("redirected directory under canonical evidence root")
+            if (directory.startswith("m11-p8-final")
+                    and Path(parent) / directory not in historical_dirs):
+                raise RunRefused("unexpected final-attempt directory")
+    actual = {p.relative_to(evidence_root).as_posix() for p in prior_final_attempts(evidence_root)}
+    if actual != expected.keys():
+        raise RunRefused("unexpected or duplicate final-attempt ledger evidence")
+    for path in reg.root.glob("*.json"):
+        try:
+            entry = json.loads(path.read_bytes())
+            is_final = entry["mode"] == "final"
+        except (ValueError, TypeError, KeyError) as exc:
+            raise RunRefused(f"invalid registry entry: {path.name}") from exc
+        if is_final and path.stem not in HISTORICAL_FINAL_KEYS:
+            raise RunRefused(f"unexpected final reservation: {path.stem}")
 
 
 def _store(run_dir: Path, ledger: Ledger, phase: str, results: Any) -> None:
@@ -450,21 +546,45 @@ def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_
             output: Path | None = None, report_fn: ReportFn | None = None) -> Path:
     """Run every phase in order (``PHASES``); returns the record path. Order of safeguards:
     protocol verification (final: approved digests, nothing pending, clean Git working tree),
-    (final) no prior final ledger anywhere, repository-level reservation, per-directory
-    ledger. A failure or interruption is recorded and the run is
-    never resumed."""
+    final-attempt evidence checks under the reservation lock for A15, then the per-directory
+    ledger. A failure or interruption is recorded and the run is never resumed."""
     refuse_real_final_under_test(plan.mode, fn)
     verify_protocol(plan, expect_manifest, expect_code)
-    if plan.mode == "final":
+    reg = AttemptRegistry(registry)
+    key = reservation_key(plan)
+    preflight = None
+    if plan.mode == "final" and a15_gate_applies():
+        root = evidence_root.resolve()
+        canonical_registry = root / REGISTRY_DIR.name
+        canonical_run = root / f"m11-p8-{A15_ATTEMPT_KEY}"
+        if key != A15_ATTEMPT_KEY:
+            raise RunRefused("A15 requires a separately authorised, new final-a15 reservation key")
+        if (fn is pc.run_task and root != EVIDENCE.resolve()
+                or registry.absolute() != evidence_root.absolute() / REGISTRY_DIR.name
+                or registry.resolve() != canonical_registry
+                or run_dir.absolute() != evidence_root.absolute() / canonical_run.name
+                or run_dir.resolve() != canonical_run or output is not None):
+            raise RunRefused("A15 requires the canonical registry and final-a15 output directory")
+        if not canonical_registry.is_dir():
+            raise RunRefused("canonical registry is missing")
+        if plan.m10_comparability is None or not plan.fresh_step:
+            raise RunRefused("A15 requires M10 comparability followed by the fresh phase")
+        reg, run_dir = AttemptRegistry(canonical_registry), canonical_run
+
+        def verify_candidate() -> None:
+            if run_dir.exists() or run_dir.is_symlink():
+                raise RunRefused("final-a15 output directory already exists and cannot be reused")
+            verify_a15_history(root, reg)
+
+        preflight = verify_candidate
+    elif plan.mode == "final":
         prior = unauthorised_final_attempts(evidence_root)
         if prior:
             raise RunRefused(f"a final run was already attempted: {prior} (only an amendment "
                              "can authorise a new attempt)")
-    reg = AttemptRegistry(registry)
-    key = reservation_key(plan)
     entry_sha = reg.reserve(key, {"run_dir": str(run_dir), "mode": plan.mode,
                                   "manifest_digest": pp.protocol_digest(),
-                                  "code_digest": pp.protocol_code_digest()})
+                                  "code_digest": pp.protocol_code_digest()}, preflight=preflight)
     ledger = Ledger.create(run_dir, {**protocol_header(plan, workers),
                                      "registry": str(registry), "reservation": key,
                                      "reservation_sha256": entry_sha})
@@ -490,7 +610,7 @@ def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_
                 _store(run_dir, ledger, phase, results["m10_comparability"])
             if plan.fresh_step:
                 phase = "fresh"
-                fresh = resolve_fresh_seed(plan)
+                fresh = resolve_fresh_seed(plan, ledger=ledger)
                 ledger.event(phase, "seed consumed", seed=fresh)  # before any use: once only
                 results["fresh"] = run_tasks([pc.Task("MAIN", fresh)], 1, fn)
                 _store(run_dir, ledger, phase, results["fresh"])

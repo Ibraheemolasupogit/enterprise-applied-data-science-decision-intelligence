@@ -147,7 +147,8 @@ def failed_attempt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Pat
     """A temporary repository state like the real one: a failed final ledger and the 'final'
     reservation."""
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
-    monkeypatch.setattr(GEN, "resolve_fresh_seed", lambda plan: 6009)  # never reserved
+    monkeypatch.setattr(GEN, "resolve_fresh_seed", lambda plan, **kw: 6009)  # never reserved
+    monkeypatch.setattr(GEN, "a15_gate_applies", lambda: False)  # historical replay only
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # historical fake A14 only
     ledger = tmp_path / "m11-p8-final" / "ledger.json"
     ledger.parent.mkdir()

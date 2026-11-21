@@ -6,10 +6,12 @@ only; no reserved seed is generated or used."""
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sys
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -362,7 +364,8 @@ def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
                                                       monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # synthetic authorised state only
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
-    monkeypatch.setattr(GEN, "resolve_fresh_seed", lambda plan: 6004)  # never a reserved seed
+    monkeypatch.setattr(GEN, "resolve_fresh_seed", lambda plan, **kw: 6004)  # development only
+    monkeypatch.setattr(GEN, "a15_gate_applies", lambda: False)  # historical replay only
     rec = Recorder()
     _final(tmp_path, fn=rec)
     assert [t.study for t in rec.calls][0] == "MAIN" and rec.calls[-1].seed == 6004
@@ -389,3 +392,180 @@ def test_a15_execution_hold_refuses_even_with_matching_digests(
         GEN.final_plan()
     assert rec.calls == []
     assert not (tmp_path / "registry").exists() and not (tmp_path / "final").exists()
+
+
+@pytest.fixture
+def candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+    """A simulated future approval in a temporary tree. All task seeds are development seeds."""
+    root = tmp_path / "evidence"
+    registry = root / GEN.REGISTRY_DIR.name
+    reg = GEN.AttemptRegistry(registry)
+    pins = []
+    for key in ("final", "final-a14"):
+        directory = root / f"m11-p8-{key}"
+        directory.mkdir(parents=True)
+        meta = {"mode": "final", "manifest_digest": "fixture", "code_digest": "fixture"}
+        sha = reg.reserve(key, {**meta, "run_dir": str(directory)})
+        ledger = directory / "ledger.json"
+        ledger.write_text(json.dumps({**meta, "status": "failed", "phase": "repeated_sampling",
+                                      "reservation": key, "reservation_sha256": sha}))
+        pins.append((ledger.relative_to(root).as_posix(),
+                     hashlib.sha256(ledger.read_bytes()).hexdigest()))
+    monkeypatch.setattr(pp, "P8_FAILED_ATTEMPTS", tuple(pins))
+    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", "final-a15")
+    monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())
+    monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
+    monkeypatch.setattr(pp, "authorise_seed",
+                        lambda *a, **kw: pytest.fail("unexpected seed access"))
+    return root, registry, root / "m11-p8-final-a15"
+
+
+def _candidate(paths: tuple[Path, Path, Path], rec: Recorder) -> Path:
+    root, registry, run = paths
+    out: Path = GEN.execute(_fake_final(), run, 1, fn=rec, report_fn=_stub_report,
+                            registry=registry, evidence_root=root,
+                            expect_manifest=pp.protocol_digest(),
+                            expect_code=pp.protocol_code_digest())
+    return out
+
+
+@pytest.mark.parametrize("damage, message", [
+    ("missing", "missing or redirected"),
+    ("altered", "ledger altered"),
+    ("wrong_state", "failure or consumed reservation does not match"),
+    ("wrong_reservation", "failure or consumed reservation does not match"),
+    ("duplicate", "unexpected or duplicate"),
+    ("redirected", "redirected directory"),
+    ("unregistered", "unexpected or duplicate"),
+    ("missing_reservation", "entry deleted"),
+    ("unexpected_reservation", "unexpected final reservation"),
+    ("duplicate_chain", "duplicate chain entry"),
+])
+def test_a15_refuses_incomplete_or_unexpected_history(
+        candidate: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch,
+        damage: str, message: str) -> None:
+    root, registry, run = candidate
+    ledger = root / "m11-p8-final-a14" / "ledger.json"
+    if damage == "missing":
+        ledger.unlink()
+    elif damage == "altered":
+        ledger.write_bytes(ledger.read_bytes() + b" ")
+    elif damage in {"wrong_state", "wrong_reservation"}:
+        record = json.loads(ledger.read_bytes())
+        field, value = ("status", "complete") if damage == "wrong_state" else (
+            "reservation_sha256", "0" * 64)
+        record[field] = value
+        ledger.write_text(json.dumps(record))
+        pins = dict(pp.P8_FAILED_ATTEMPTS)
+        pins[ledger.relative_to(root).as_posix()] = hashlib.sha256(ledger.read_bytes()).hexdigest()
+        monkeypatch.setattr(pp, "P8_FAILED_ATTEMPTS", tuple(pins.items()))
+    elif damage in {"duplicate", "unregistered"}:
+        extra = root / "other" / "ledger.json"
+        extra.parent.mkdir()
+        extra.write_bytes(ledger.read_bytes() if damage == "duplicate" else b'{"mode":"final"}')
+    elif damage == "redirected":
+        (root / "copy").symlink_to(ledger.parent, target_is_directory=True)
+    elif damage == "missing_reservation":
+        (registry / "final-a14.json").unlink()
+    elif damage == "unexpected_reservation":
+        GEN.AttemptRegistry(registry).reserve("other", {"mode": "final"})
+    else:
+        path = registry / "attempts.log"
+        last = json.loads(path.read_text().splitlines()[-1])
+        last["prev"] = last["hash"]
+        last["hash"] = GEN.AttemptRegistry._chain(
+            last["prev"], last["key"], last["entry_sha256"], last["time"])
+        with path.open("a") as out:
+            out.write(json.dumps(last) + "\n")
+    rec = Recorder()
+    with pytest.raises(GEN.RunRefused, match=message):
+        _candidate(candidate, rec)
+    assert rec.calls == [] and not run.exists() and not (registry / "final-a15.json").exists()
+
+
+@pytest.mark.parametrize("key", ("final", "final-a14"))
+def test_a15_refuses_historical_keys_and_output_directories(
+        candidate: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch, key: str) -> None:
+    root, registry, run = candidate
+    rec = Recorder()
+    with pytest.raises(GEN.RunRefused, match="canonical registry and final-a15 output"):
+        _candidate((root, registry, root / f"m11-p8-{key}"), rec)
+    with pytest.raises(GEN.RunRefused, match="canonical registry and final-a15 output"):
+        _candidate((root, root / "alternate-registry", run), rec)
+    # "final" is already invalid in validate_protocol. Both historical keys must be refused.
+    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", key)
+    with pytest.raises(GEN.RunRefused, match="new final-a15 reservation key|protocol invalid"):
+        _candidate(candidate, rec)
+    assert rec.calls == [] and not run.exists() and not (registry / "final-a15.json").exists()
+    assert not (root / "alternate-registry").exists()
+
+
+def test_a15_refuses_existing_output_without_a_ledger(candidate: tuple[Path, Path, Path]) -> None:
+    _, registry, run = candidate
+    run.mkdir()
+    rec = Recorder()
+    with pytest.raises(GEN.RunRefused, match="output directory already exists"):
+        _candidate(candidate, rec)
+    assert rec.calls == [] and not (registry / "final-a15.json").exists()
+
+
+def test_a15_concurrent_candidates_dispatch_once_and_authorise_fresh_last(
+        candidate: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    _, registry, run = candidate
+    recs = [Recorder(), Recorder()]
+    barrier = threading.Barrier(2)
+    history = []
+
+    def fresh(purpose: str, *, confirm_single_final_run: bool = False) -> int:
+        assert purpose == "fresh" and confirm_single_final_run
+        assert (registry / "final-a15.json").is_file()
+        history.extend((e["phase"], e["state"]) for e in _ledger(run)["events"])
+        return 6004
+
+    def contender(rec: Recorder) -> str:
+        barrier.wait(timeout=10)
+        try:
+            _candidate(candidate, rec)
+        except GEN.RunRefused:
+            return "refused"
+        return "completed"
+
+    monkeypatch.setattr(pp, "authorise_seed", fresh)
+    with pytest.raises(GEN.RunRefused, match="after M10 comparability"):
+        GEN.resolve_fresh_seed(_fake_final())
+    early = GEN.Ledger(run / "ledger.json",
+                       {"status": "started", "reservation": "final-a15",
+                        "events": [{"phase": "main", "state": "done"}]})
+    with pytest.raises(GEN.RunRefused, match="after M10 comparability"):
+        GEN.resolve_fresh_seed(_fake_final(), ledger=early)
+    with ThreadPoolExecutor(2) as pool:
+        assert sorted(pool.map(contender, recs)) == ["completed", "refused"]
+    assert GEN.AttemptRegistry(registry).validate() == []
+    winner, loser = sorted(recs, key=lambda rec: len(rec.calls), reverse=True)
+    assert loser.calls == [] and winner.calls[-1].seed == 6004
+    assert [call.study for call in winner.calls[-2:]] == ["M10", "MAIN"]
+    assert history[-1] == ("m10_comparability", "done") and len(history) == 7
+    led = _ledger(run)
+    assert sum(e["state"] == "seed consumed" for e in led["events"]) == 1
+    with pytest.raises(GEN.RunRefused, match="after M10 comparability"):
+        GEN.resolve_fresh_seed(_fake_final(), ledger=GEN.Ledger(run / "ledger.json", led))
+
+
+@pytest.mark.parametrize("exc,status", [
+    (RuntimeError, "failed"), (KeyboardInterrupt, "interrupted")])
+def test_a15_failure_consumes_key_even_if_output_is_moved(
+        candidate: tuple[Path, Path, Path], tmp_path: Path,
+        exc: type[BaseException], status: str) -> None:
+    _, registry, run = candidate
+    with pytest.raises(exc, match="M10 failed"):
+        _candidate(candidate, Recorder("M10", exc))
+    led = _ledger(run)
+    assert led["status"] == status and led["phase"] == "m10_comparability"
+    assert all(e["phase"] != "fresh" for e in led["events"])
+    reservation = (registry / "final-a15.json").read_bytes()
+    run.rename(tmp_path / "moved")  # synthetic fixture only
+    rec = Recorder()
+    with pytest.raises(GEN.RunRefused, match="unexpected final reservation: final-a15"):
+        _candidate(candidate, rec)
+    assert rec.calls == [] and not run.exists()
+    assert (registry / "final-a15.json").read_bytes() == reservation
