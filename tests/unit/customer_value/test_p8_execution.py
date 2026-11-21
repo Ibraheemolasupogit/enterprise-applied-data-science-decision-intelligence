@@ -330,6 +330,7 @@ def _final(tmp_path: Path, run: str = "final", fn: Any = None) -> Path:
 
 def test_final_mode_requires_a_clean_working_tree(tmp_path: Path,
                                                   monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # exercise the clean-tree guard
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: ["?? untracked.txt"])
     rec = Recorder()
     with pytest.raises(GEN.RunRefused, match="not clean"):
@@ -359,6 +360,7 @@ def test_a_real_final_run_can_never_start_inside_the_tests(tmp_path: Path,
 
 def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
                                                       monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # synthetic authorised state only
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
     monkeypatch.setattr(GEN, "resolve_fresh_seed", lambda plan: 6004)  # never a reserved seed
     rec = Recorder()
@@ -375,3 +377,15 @@ def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
     (tmp_path / "final" / "ledger.json").unlink()  # even without the ledger: the registry
     with pytest.raises(GEN.RunRefused, match="already exists"):
         _final(tmp_path, run="third")
+
+
+def test_a15_execution_hold_refuses_even_with_matching_digests(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
+    rec = Recorder()
+    with pytest.raises(GEN.RunRefused, match="protocol items are pending"):
+        _final(tmp_path, fn=rec)
+    with pytest.raises(pp.ProtocolNotReady, match="pending"):
+        GEN.final_plan()
+    assert rec.calls == []
+    assert not (tmp_path / "registry").exists() and not (tmp_path / "final").exists()

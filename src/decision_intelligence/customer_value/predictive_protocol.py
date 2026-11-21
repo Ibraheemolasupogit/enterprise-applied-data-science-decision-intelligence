@@ -18,11 +18,10 @@ design and its three scientific amendments are encoded as follows:
 
 **Stage.** This is the P0 protocol as amended through P8 (:data:`PROTOCOL_STAGE`; A12, drafted
 at the P8 preflight, fixes the P8 design). Items that must be closed before any main-seed
-evaluation are listed in :data:`PENDING_BEFORE_MAIN` (empty since A13, which closed the P8
-dry-run item of A12; A12 closed the repeated-sampling preflight and the oracle numerics were
-pinned at P2 in :data:`ORACLE_NUMERICS`); :func:`authorise_seed` refuses the main and fresh
-seeds while any item is pending. Every change made after P0 and before any main-seed evaluation
-is recorded in :data:`PROTOCOL_AMENDMENTS`.
+evaluation are listed in :data:`PENDING_BEFORE_MAIN`. A13 closed the P8 dry-run item.
+A15 holds further execution pending separate owner authorisation. :func:`authorise_seed`
+refuses the main and fresh seeds while any item is pending. Amendments and their timing
+are recorded in :data:`PROTOCOL_AMENDMENTS`.
 
 **Integrity.** :func:`protocol_digest` hashes every protocol value; :func:`protocol_code_digest`
 hashes the exact bytes of this module and of the decision logic in :mod:`.model_selection` and
@@ -820,10 +819,16 @@ P8_APPROVED_DRY_RUN = (
     "472ded23d1eb6583c7f45c2c296143745691a6c1210cb2f19f0f6efdaec84816; 10 draws per study, "
     "wall 3.0 min, peak 2.31 GB, extrapolated full size 141 min (ceiling 180)")
 """Amendment A13 (owner approval of the P8 dry-run record)."""
-P8_FAILED_ATTEMPTS = (("m11-p8-final/ledger.json",
-                       "cd7c8391347df2f9a2cf802161f35a0cb6a9a889b29c8fce3825a22ebe5902a9"),)
-"""Amendment A14: failed final ledgers (path relative to docs/evidence, SHA-256) that may exist
-when the authorised new attempt starts."""
+P8_FAILED_ATTEMPTS = (
+    ("m11-p8-final/ledger.json",
+     "cd7c8391347df2f9a2cf802161f35a0cb6a9a889b29c8fce3825a22ebe5902a9"),
+    ("m11-p8-final-a14/ledger.json",
+     "74a0cdd66175ab19f5ecf0dddef08114230713897d5f968d6295df390b678008"),
+)
+"""Preserved failed final ledgers (path relative to docs/evidence, SHA-256).
+
+Recognition of a failed ledger does not authorise resumption or a new attempt.
+"""
 P8_FAILED_ATTEMPT_RECORD = (
     "First final attempt (reservation 'final', registry entry sha256 e5dc98f0402381f5c7308327"
     "8ca2cf140e6cf76fb77a3b6e5c5641f724c6ad04; ledger m11-p8-final/ledger.json), started "
@@ -857,6 +862,7 @@ E4_ACCELERATED_SMALL_A = (
     "asserted) uses it, never a point prediction, primary comparison, selection or gate")
 """Amendment A14."""
 P8_FINAL_ATTEMPT_KEY = "final-a14"
+"""The last configured reservation is consumed. A15 grants no new reservation."""
 P8_RETRY_RULE = (
     "Exactly one new final attempt: reservation P8_FINAL_ATTEMPT_KEY in docs/evidence/"
     "m11-p8-attempts and run directory docs/evidence/m11-p8-final-a14, on the same seed plan as "
@@ -865,7 +871,7 @@ P8_RETRY_RULE = (
     "those in P8_FAILED_ATTEMPTS with unchanged SHA-256. The failed attempt's ledger, raw "
     "results and reservation are kept unchanged as evidence and its main-seed results are never "
     "inspected. P8_SINGLE_ATTEMPT otherwise stands: no further attempt without a new amendment")
-"""Amendment A14 (owner approval, 2026-11-20)."""
+"""Historical A14 rule (owner approval, 2026-11-20). Its single retry was consumed."""
 
 # --- P8: confirmatory tests, repeated sampling, execution (amendment A12) -----------------------
 PC_TEST = (
@@ -1017,9 +1023,10 @@ P8_EXECUTION = P8Execution(
 """Amendment A12; memory is bounded by BUDGETS.evidence_memory_gb (measured 3.1 GB)."""
 
 # --- stage gate ---------------------------------------------------------------------------------
-PENDING_BEFORE_MAIN: tuple[str, ...] = ()
-"""Amendment A13 closed the last item (the P8 dry-run item of A12): the main and fresh seeds are
-available through :func:`authorise_seed` (the fresh seed with ``confirm_single_final_run``)."""
+PENDING_BEFORE_MAIN: tuple[str, ...] = (
+    "A15 execution hold: separate owner authorisation and a verified single-use gate are required",
+)
+"""Final execution remains prohibited after A15 amendment approval."""
 PILOT_FINDINGS_SCOPE = (
     "P0 pilot findings use the M10 generator only. They are final for m10_contractual and were "
     "PROVISIONAL for signals_contractual and purchases_noncontractual (60-month runs of the M10 "
@@ -1041,10 +1048,8 @@ class Amendment:
     inspected (implied by ``before_main_seed``; recorded separately since A14)."""
 
 
-AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14",)
-"""The only amendments made after a main-seed computation (A14: after the failed first final
-attempt computed the main-seed analysis, before any outcome was inspected). Every other
-amendment precedes any main-seed computation (``validate_protocol`` enforces both)."""
+AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14", "A15")
+"""A14 followed the first main computation. A15 followed both completed main computations."""
 
 
 PROTOCOL_AMENDMENTS = (
@@ -1177,9 +1182,21 @@ PROTOCOL_AMENDMENTS = (
               "byte-identically with the correction, and the small-a fallback changes no "
               "coverage outcome",
               before_outcome_inspection=True),
+    Amendment("A15", "P8", "2026-11-21", False,
+              "Correct E4 Beta quadrature and its continuous window integrand, accelerated "
+              "Beta reweighting and BG/NBD alive probabilities. Refuse nonfinite E4 R2 coverage "
+              "inputs and retain outcome-free failure trace locations. Preserve all frozen "
+              "statistical specifications and A14 protections. Both final reservations "
+              "remain consumed. Final execution is held pending separate owner authorisation.",
+              "Synthetic fixtures reproduce the numerical defects. The historical final-a14 "
+              "crash cause remains unconfirmed. Both failed attempts completed main before A15. "
+              "The owner confirmed outcome blindness across both attempts. The first main "
+              "pickle was previously read as bytes for SHA-256 verification, without "
+              "deserialisation or outcome inspection. Both ledgers and reservations "
+              "are preserved.",
+              before_outcome_inspection=True),
 )
-"""Every protocol change after the P0 commit (82e3ebd), all made before any main-seed
-evaluation; the main seed has never been authorised."""
+"""Protocol changes since P0 (82e3ebd), with their relation to computation and inspection."""
 
 
 class ProtocolNotReady(RuntimeError):

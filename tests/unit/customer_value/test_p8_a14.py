@@ -148,6 +148,7 @@ def failed_attempt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Pat
     reservation."""
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
     monkeypatch.setattr(GEN, "resolve_fresh_seed", lambda plan: 6009)  # never reserved
+    monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # historical fake A14 only
     ledger = tmp_path / "m11-p8-final" / "ledger.json"
     ledger.parent.mkdir()
     ledger.write_text(json.dumps({"mode": "final", "status": "failed",
@@ -251,8 +252,10 @@ def test_historical_final_attempts_are_consumed_and_no_retry_is_authorised() -> 
         assert record["reservation_sha256"] == hashlib.sha256(reservation).hexdigest()
 
     # Both keys already exist in the validated registry and can never be reserved again.
-    # The only configured key is one of those consumed keys, and the retry gate refuses
-    # the unallowlisted A14 ledger before reaching reservation.
+    # A15 recognises both historical failures and still retains an independent execution hold.
     assert GEN.final_attempt_key() == "final-a14" and GEN.final_attempt_key() in final_keys
-    assert GEN.unauthorised_final_attempts(GEN.EVIDENCE) == [
-        GEN.EVIDENCE / "m11-p8-final-a14" / "ledger.json"]
+    assert GEN.authorised_failed_attempts() == {
+        f"{directory}/ledger.json": sha for directory, sha in histories.values()}
+    assert GEN.unauthorised_final_attempts(GEN.EVIDENCE) == []
+    with pytest.raises(GEN.RunRefused, match="protocol items are pending"):
+        GEN.verify_protocol(_fake_final(), pp.protocol_digest(), pp.protocol_code_digest())
