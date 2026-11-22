@@ -12,7 +12,6 @@ import json
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -268,19 +267,20 @@ def test_development_plans_never_touch_reserved_seeds() -> None:
 
 
 @pytest.fixture
-def synthetic_execution_approval(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Model the future approval in memory for tests that need to pass the hold."""
-    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", (
-        *pp.PROTOCOL_AMENDMENTS[:-1],
-        replace(pp.PROTOCOL_AMENDMENTS[-1], before_outcome_inspection=True),
-    ))
+def synthetic_launch_approval(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Open the hold in memory for temporary fixtures with fake draws."""
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())
 
 
-@pytest.mark.usefixtures("synthetic_execution_approval")
-def test_final_plan_maps_studies_to_their_reserved_blocks() -> None:
-    """Seed mapping only (nothing is generated): the gate is opened in this process alone."""
+def test_final_plan_maps_studies_to_their_reserved_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Check the frozen mapping without generating data or resolving the actual main seed."""
+    def synthetic_main(purpose: str) -> int:
+        assert purpose == "main"
+        return 6000
+
+    monkeypatch.setattr(pp, "authorise_seed", synthetic_main)
     plan = GEN.final_plan()
+    assert plan.main == 6000
     st = {s.id: s for s in pp.REPEATED_SAMPLING}
     for k in ("R1", "R2", "R3", "REFIT"):
         assert plan.draws[k] == list(range(st[k].seed_start, st[k].seed_start
@@ -340,7 +340,7 @@ def _final(tmp_path: Path, run: str = "final", fn: Any = None) -> Path:
     return out
 
 
-@pytest.mark.usefixtures("synthetic_execution_approval")
+@pytest.mark.usefixtures("synthetic_launch_approval")
 def test_final_mode_requires_a_clean_working_tree(tmp_path: Path,
                                                   monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: ["?? untracked.txt"])
@@ -370,7 +370,7 @@ def test_a_real_final_run_can_never_start_inside_the_tests(tmp_path: Path,
     assert not (tmp_path / "registry").exists() and not (tmp_path / "final").exists()
 
 
-@pytest.mark.usefixtures("synthetic_execution_approval")
+@pytest.mark.usefixtures("synthetic_launch_approval")
 def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
                                                       monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
@@ -392,27 +392,37 @@ def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
         _final(tmp_path, run="third")
 
 
-def test_a16_execution_hold_refuses_before_reservation_even_with_matching_digests(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_live_launch_hold_refuses_before_supervision_and_reservation(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert pp.PENDING_BEFORE_MAIN
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
+    monkeypatch.setattr(GEN, "refuse_real_final_under_test", lambda *a: None)
     monkeypatch.setattr(GEN.AttemptRegistry, "reserve",
                         lambda *args, **kwargs: pytest.fail("reservation reached"))
+    monkeypatch.setattr(GEN, "_run_under_supervision", lambda *a: pytest.fail("supervisor reached"))
+    monkeypatch.setattr(GEN, "await_supervisor", lambda: pytest.fail("supervised dispatch reached"))
     assert GEN.a15_gate_applies()
     assert GEN.final_attempt_key() == GEN.A15_ATTEMPT_KEY == "final-a15"
     run = f"m11-p8-{GEN.final_attempt_key()}"
     rec = Recorder()
+    monkeypatch.setattr(pc, "run_task", rec)
+    args = ["--mode", "final", "--workers", str(pp.P8_EXECUTION.workers),
+            "--run-dir", str(tmp_path / run), "--registry", str(tmp_path / "registry"),
+            "--expect-manifest", pp.protocol_digest(), "--expect-code", pp.protocol_code_digest()]
+    for extra in ([], ["--_supervised-child"]):
+        assert GEN.main([*args, *extra]) == 2
+        assert "the main seed is refused" in capsys.readouterr().err
     with pytest.raises(GEN.RunRefused, match="protocol items are pending"):
         _final(tmp_path, run=run, fn=rec)
-    with pytest.raises(pp.ProtocolNotReady, match="pending"):
-        GEN.final_plan()
     assert rec.calls == []
     assert not (tmp_path / "registry").exists() and not (tmp_path / run).exists()
 
 
 @pytest.fixture
 def candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-              synthetic_execution_approval: None) -> tuple[Path, Path, Path]:
-    """A simulated future approval in a temporary tree. All task seeds are development seeds."""
+              synthetic_launch_approval: None) -> tuple[Path, Path, Path]:
+    """A temporary candidate with pinned fixture history. Task seeds are development seeds."""
     root = tmp_path / "evidence"
     registry = root / GEN.REGISTRY_DIR.name
     reg = GEN.AttemptRegistry(registry)

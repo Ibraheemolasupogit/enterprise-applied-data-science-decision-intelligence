@@ -21,10 +21,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "9f5e20750ea790bee09cdd1cc6dbce1f678b2f2f895adf7cdae5e3f0986aba8c"
-"""SHA-256 of the protocol manifest (P0 as amended through A16). Any protocol change must update
+FROZEN_DIGEST = "e0069581e91662cd093ddc5a8c560eb0f51742dc5bf3d810b7819ff0e78e16a7"
+"""SHA-256 of the protocol manifest (P0 as amended through A17). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "987d031e4494c6cfcc88eebddc16906e3da11b34973d8f439277cd0e0a3f0bef"
+FROZEN_CODE_DIGEST = "5ca1b86bd76dcbbc31413f6ecdd02e03502da872d951078e73beb7cf75c5a6fb"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -146,10 +146,6 @@ def test_seed_gate_refuses_main_and_fresh_while_items_are_pending() -> None:
 
 def test_seed_gate_logic_once_nothing_is_pending(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())
-    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", (
-        *pp.PROTOCOL_AMENDMENTS[:-1],
-        replace(pp.PROTOCOL_AMENDMENTS[-1], before_outcome_inspection=True),
-    ))
     monkeypatch.setattr(pp, "MAIN_SEED", 6000)
     monkeypatch.setattr(pp, "FRESH_SEED", 6001)
     assert pp.authorise_seed("main") == 6000
@@ -691,7 +687,7 @@ def test_p8_amendment_a14_records_the_failure_fixes_e4_and_authorises_one_retry(
     from decision_intelligence.customer_value import predictive_cases as pc
     ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
     assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12",
-                   "A13", "A14", "A15", "A16"]
+                   "A13", "A14", "A15", "A16", "A17"]
     a14 = next(a for a in pp.PROTOCOL_AMENDMENTS if a.id == "A14")
     # A14 followed the failed attempt's main-seed computation but preceded any inspection
     assert (a14.stage, a14.date) == ("P8", "2026-11-20")
@@ -752,12 +748,12 @@ def test_p8_amendment_a14_records_the_failure_fixes_e4_and_authorises_one_retry(
 
 
 def test_amendment_timing_is_recorded_truthfully() -> None:
-    """A14 followed the first main computation. A15 and A16 followed both."""
+    """A14 followed the first main computation. A15 through A17 followed both."""
     timing = {a.id: (a.before_main_seed, a.before_outcome_inspection)
               for a in pp.PROTOCOL_AMENDMENTS}
     assert timing == {**{f"A{i}": (True, True) for i in range(1, 14)},
-                      "A14": (False, True), "A15": (False, True), "A16": (False, None)}
-    assert pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION == ("A14", "A15", "A16")
+                      **{f"A{i}": (False, True) for i in range(14, 18)}}
+    assert pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION == ("A14", "A15", "A16", "A17")
     assert pp.validate_protocol() == []
 
 
@@ -772,25 +768,36 @@ def test_a15_records_outcome_blindness() -> None:
     assert "without deserialisation or outcome inspection" in a15.reason
 
 
-def test_a16_configures_candidate_and_holds_reserved_seed_authorisation() -> None:
-    a16 = pp.PROTOCOL_AMENDMENTS[-1]
+def test_a17_retains_a_protocol_hold_pending_separate_launch_approval() -> None:
+    a16, a17 = pp.PROTOCOL_AMENDMENTS[-2:]
     assert (a16.id, a16.stage, a16.date) == ("A16", "P8", "2026-11-21")
-    assert "The owner approved configuration only." in a16.reason
-    assert "Confirmation of continued outcome blindness is pending." in a16.reason
-    assert "docs/evidence/m11-p8-final-a15/" in a16.change
+    assert "Retain the execution hold." in a16.change
+    assert "was pending at A16 and recorded under A17" in a16.reason
+    assert (a17.id, a17.stage, a17.date) == ("A17", "P8", "2026-11-22")
+    assert "attempts remain uninspected" in a17.reason
+    assert "Approval covers hold-release configuration only." in a17.reason
+    assert "green CI on the exact release commit" in a17.reason
+    assert "a passing final host preflight" in a17.reason
+    assert "separate explicit owner authorisation for a single launch" in a17.reason
+    assert "docs/evidence/m11-p8-final-a15/" in a17.change
     assert pp.P8_FINAL_ATTEMPT_KEY == "final-a15"
     assert pp.PENDING_BEFORE_MAIN == (
-        "A16 execution hold: configuration only; separate owner execution authorisation, "
-        "outcome-blindness confirmation and verified preflight are required",)
-    with pytest.raises(pp.ProtocolNotReady, match="pending"):
+        "A17 launch hold: separate explicit owner authorisation for final-a15 is pending",)
+    assert pp.validate_protocol() == []
+    with pytest.raises(pp.ProtocolNotReady, match="the main seed is refused"):
         pp.authorise_seed("main")
-    with pytest.raises(pp.ProtocolNotReady, match="pending"):
+    with pytest.raises(pp.ProtocolNotReady, match="the fresh seed is refused"):
         pp.authorise_seed("fresh", confirm_single_final_run=True)
 
 
 def test_unconfirmed_a16_still_blocks_seeds_if_hold_is_cleared(
         monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())
+    historical = pp.PROTOCOL_AMENDMENTS[:-1]
+    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", (
+        *historical[:-1], replace(historical[-1], before_outcome_inspection=None),
+    ))
+    monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", ("A14", "A15", "A16"))
     problems = pp.validate_protocol()
     assert "amendments require confirmed outcome blindness before execution" in problems
     with pytest.raises(pp.ProtocolNotReady, match="outcome-blindness confirmation"):
@@ -816,7 +823,7 @@ def test_validate_protocol_guards_amendment_timing(monkeypatch: pytest.MonkeyPat
         amends[idx["A15"]] = replace(amends[idx["A15"]], before_outcome_inspection=None)
     elif breakage == "unlisted_exception":
         monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", ())
-    else:  # a new amendment incorrectly claims to precede main after A14–A16
-        amends.append(replace(amends[idx["A12"]], id="A17"))
+    else:  # a new amendment incorrectly claims to precede main after A14–A17
+        amends.append(replace(amends[idx["A12"]], id="A18"))
     monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", tuple(amends))
     assert pp.validate_protocol() != []

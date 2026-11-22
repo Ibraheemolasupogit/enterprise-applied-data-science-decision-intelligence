@@ -19,9 +19,13 @@ design and its three scientific amendments are encoded as follows:
 **Stage.** This is the P0 protocol as amended through P8 (:data:`PROTOCOL_STAGE`; A12, drafted
 at the P8 preflight, fixes the P8 design). Items that must be closed before any main-seed
 evaluation are listed in :data:`PENDING_BEFORE_MAIN`. A13 closed the P8 dry-run item.
-A16 configures the candidate attempt and retains the execution hold. :func:`authorise_seed`
-refuses the main and fresh seeds while any item or outcome-blindness confirmation is pending.
-Amendments and their timing are recorded in :data:`PROTOCOL_AMENDMENTS`.
+A16 configured the candidate attempt under an execution hold. A17 records the owner's
+confirmation of continued outcome blindness and retains an enforced launch hold. Releasing
+that hold requires separate owner launch approval. Dispatch also requires green CI on the
+exact release commit and a passing final host preflight.
+:func:`authorise_seed` refuses the main and fresh seeds while any item or outcome-blindness
+confirmation is pending. Amendments and their timing are recorded in
+:data:`PROTOCOL_AMENDMENTS`.
 
 **Integrity.** :func:`protocol_digest` hashes every protocol value; :func:`protocol_code_digest`
 hashes the exact bytes of this module and of the decision logic in :mod:`.model_selection` and
@@ -862,7 +866,7 @@ E4_ACCELERATED_SMALL_A = (
     "asserted) uses it, never a point prediction, primary comparison, selection or gate")
 """Amendment A14."""
 P8_FINAL_ATTEMPT_KEY = "final-a15"
-"""A16 candidate key. The execution hold prevents using it for a reservation."""
+"""The single candidate key configured by A16. A17 requires separate launch approval."""
 P8_RETRY_RULE = (
     "Exactly one new final attempt: reservation final-a14 in docs/evidence/"
     "m11-p8-attempts and run directory docs/evidence/m11-p8-final-a14, on the same seed plan as "
@@ -1024,10 +1028,9 @@ P8_EXECUTION = P8Execution(
 
 # --- stage gate ---------------------------------------------------------------------------------
 PENDING_BEFORE_MAIN: tuple[str, ...] = (
-    "A16 execution hold: configuration only; separate owner execution authorisation, "
-    "outcome-blindness confirmation and verified preflight are required",
+    "A17 launch hold: separate explicit owner authorisation for final-a15 is pending",
 )
-"""Final execution remains prohibited after A16 configuration approval."""
+"""Block reserved-seed access and final reservation pending separate launch approval."""
 PILOT_FINDINGS_SCOPE = (
     "P0 pilot findings use the M10 generator only. They are final for m10_contractual and were "
     "PROVISIONAL for signals_contractual and purchases_noncontractual (60-month runs of the M10 "
@@ -1047,11 +1050,11 @@ class Amendment:
     before_outcome_inspection: bool | None = True
     """True: made before any main-seed, fresh-seed, coverage-block or refit-block outcome was
     inspected (implied by ``before_main_seed``; recorded separately since A14).
-    None records a pending confirmation for the held A16 configuration."""
+    None denoted a pending confirmation in the held A16 configuration."""
 
 
-AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14", "A15", "A16")
-"""A14 followed the first main computation. A15 and A16 followed both."""
+AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14", "A15", "A16", "A17")
+"""A14 followed the first main computation. A15 through A17 followed both."""
 
 
 PROTOCOL_AMENDMENTS = (
@@ -1205,8 +1208,24 @@ PROTOCOL_AMENDMENTS = (
               "(final and final-a14).",
               "The owner approved configuration only. Reservation creation, reserved-seed "
               "generation and dispatch require separate owner execution authorisation. "
-              "Confirmation of continued outcome blindness is pending.",
-              before_outcome_inspection=None),
+              "Confirmation of continued outcome blindness was pending at A16 and recorded "
+              "under A17.",
+              before_outcome_inspection=True),
+    Amendment("A17", "P8", "2026-11-22", False,
+              "Retain a fail-closed launch hold for the sole proposed final-a15 attempt in "
+              "docs/evidence/m11-p8-final-a15/ with registry docs/evidence/m11-p8-attempts. "
+              "Preserve the frozen study, A15 execution safeguards, resource limits and "
+              "both pinned failures. The final and final-a14 reservations are permanently "
+              "consumed. The A14 retry is exhausted.",
+              "The owner confirmed the protected statistical outcomes from both failed "
+              "attempts remain uninspected. The owner accepted the unconfirmed A14 failure "
+              "cause, residual A15 numerical precision risks, possible transient RSS peaks "
+              "between samples and the possibility of exceeding the 180-minute ceiling. "
+              "Approval covers hold-release configuration only. Reservation creation, "
+              "reserved-seed data generation and dispatch require green CI on the exact "
+              "release commit, a passing final host preflight and separate explicit owner "
+              "authorisation for a single launch.",
+              before_outcome_inspection=True),
 )
 """Protocol changes since P0 (82e3ebd), with their relation to computation and inspection."""
 
