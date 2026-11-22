@@ -1,5 +1,34 @@
 # M11 P8 — final-a15 execution authorisation
 
+## A18 launch control
+
+A18 prepares an independently enforced launch gate. The owner must separately approve the
+exact, clean release commit after successful Python 3.11 and 3.12 CI and a passing immediate
+host preflight. The A15-era activation proposal below is historical.
+
+On the designated Mac, the runner expects three files under `/private/etc/m11-p8/`.
+Host administration must establish this root-controlled directory and its trust anchor
+with the owner's public signing key. The operator should run as an unprivileged user.
+Directories and files must be root-owned and readable by the operator, with no group or
+other writes, symlinks or ACLs that grant untrusted writers access.
+
+| File | Required contents |
+|---|---|
+| `allowed_signers` | OpenSSH allowed-signers entry for the owner's public key and principal `m11-p8-owner` |
+| `final-a15.json` | Exact release binding and preflight attestation as described below |
+| `final-a15.json.sig` | Owner's detached OpenSSH signature over the exact JSON bytes in namespace `m11-p8-final-a15` |
+
+The JSON fields are `commit` (full SHA), `manifest_sha256`, `code_sha256`, `runner_sha256`,
+`supervisor_sha256`, `host_uuid` (lowercase `IOPlatformUUID`), `attempt` (`final-a15`),
+`registry` and `output` (absolute canonical paths), and `ci_run_id` (GitHub Actions run ID
+as a decimal string). All are strings. The additional field `host_preflight_passed` must
+be JSON `true`. The owner verifies CI and preflight before signing. The runner verifies the
+signature and live binding locally and makes no remote CI or host-preflight query.
+
+Keep the approval available through the fresh phase because seed authorisation is checked
+again there. The final attempt remains single-use through the existing registry. Remove the
+approval when the attempt closes or if the owner withdraws approval before dispatch.
+
 **PROPOSED — NOT AUTHORISED**
 
 **NO-GO for dispatch.** A15 is active at protocol stage `P8-amended`. Its numerical

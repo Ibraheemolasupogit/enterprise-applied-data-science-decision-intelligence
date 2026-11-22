@@ -239,9 +239,9 @@ def test_digest_mismatch_and_final_requirements_refuse_before_any_reservation(
                                                            "R3": [6002], "REFIT": [6003]},
                               (0.5, 1.0, 2.0), 2)
     with pytest.raises(GEN.RunRefused, match="--expect-manifest"):
-        GEN.verify_protocol(fake_final, None, None)
+        GEN.verify_protocol(fake_final.mode, None, None)
     with pytest.raises(GEN.RunRefused, match="pending"):
-        GEN.verify_protocol(fake_final, pp.protocol_digest(), pp.protocol_code_digest())
+        GEN.verify_protocol(fake_final.mode, pp.protocol_digest(), pp.protocol_code_digest())
     with pytest.raises(pp.ProtocolNotReady):
         GEN.final_plan()
     assert GEN.main(["--mode", "final", "--run-dir", str(tmp_path / "run"),
@@ -268,8 +268,8 @@ def test_development_plans_never_touch_reserved_seeds() -> None:
 
 @pytest.fixture
 def synthetic_launch_approval(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Open the hold in memory for temporary fixtures with fake draws."""
-    monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())
+    """Stub approval verification in temporary fixtures with fake draws."""
+    monkeypatch.setattr(pp, "require_launch_approval", lambda **kwargs: None)
 
 
 def test_final_plan_maps_studies_to_their_reserved_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -392,12 +392,15 @@ def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
         _final(tmp_path, run="third")
 
 
-def test_live_launch_hold_refuses_before_supervision_and_reservation(
+def test_missing_launch_approval_refuses_before_supervision_and_reservation(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
 ) -> None:
-    assert pp.PENDING_BEFORE_MAIN
+    assert pp.PENDING_BEFORE_MAIN == ()
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
     monkeypatch.setattr(GEN, "refuse_real_final_under_test", lambda *a: None)
+    monkeypatch.setattr(GEN.launch_approval, "_APPROVAL_DIR", tmp_path / "missing-approval")
+    monkeypatch.setattr(GEN, "EVIDENCE", tmp_path)
+    monkeypatch.setattr(GEN, "REGISTRY_DIR", tmp_path / "registry")
     monkeypatch.setattr(GEN.AttemptRegistry, "reserve",
                         lambda *args, **kwargs: pytest.fail("reservation reached"))
     monkeypatch.setattr(GEN, "_run_under_supervision", lambda *a: pytest.fail("supervisor reached"))
@@ -406,16 +409,17 @@ def test_live_launch_hold_refuses_before_supervision_and_reservation(
     assert GEN.final_attempt_key() == GEN.A15_ATTEMPT_KEY == "final-a15"
     run = f"m11-p8-{GEN.final_attempt_key()}"
     rec = Recorder()
-    monkeypatch.setattr(pc, "run_task", rec)
+    cli_rec = Recorder()
+    monkeypatch.setattr(pc, "run_task", cli_rec)
     args = ["--mode", "final", "--workers", str(pp.P8_EXECUTION.workers),
             "--run-dir", str(tmp_path / run), "--registry", str(tmp_path / "registry"),
             "--expect-manifest", pp.protocol_digest(), "--expect-code", pp.protocol_code_digest()]
     for extra in ([], ["--_supervised-child"]):
         assert GEN.main([*args, *extra]) == 2
-        assert "the main seed is refused" in capsys.readouterr().err
-    with pytest.raises(GEN.RunRefused, match="protocol items are pending"):
+        assert "owner" in capsys.readouterr().err
+    with pytest.raises(pp.ProtocolNotReady, match="owner"):
         _final(tmp_path, run=run, fn=rec)
-    assert rec.calls == []
+    assert rec.calls == [] and cli_rec.calls == []
     assert not (tmp_path / "registry").exists() and not (tmp_path / run).exists()
 
 
@@ -451,6 +455,28 @@ def _candidate(paths: tuple[Path, Path, Path], rec: Recorder) -> Path:
                             expect_manifest=pp.protocol_digest(),
                             expect_code=pp.protocol_code_digest())
     return out
+
+
+def test_revoked_approval_refuses_under_the_reservation_lock(
+        candidate: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    _, registry, run = candidate
+    reg = GEN.AttemptRegistry(registry)
+    chain = reg.log.read_bytes()
+
+    def check_approval(*, require_clean: bool = True) -> None:
+        if require_clean:
+            assert not reg.lock.exists()
+        else:
+            assert reg.lock.is_file()
+            raise pp.ProtocolNotReady("owner launch approval was withdrawn")
+
+    monkeypatch.setattr(pp, "require_launch_approval", check_approval)
+    rec = Recorder()
+    with pytest.raises(pp.ProtocolNotReady, match="withdrawn"):
+        _candidate(candidate, rec)
+    assert rec.calls == [] and not run.exists()
+    assert not reg.lock.exists() and not (registry / "final-a15.json").exists()
+    assert reg.log.read_bytes() == chain
 
 
 @pytest.mark.parametrize("damage, message", [

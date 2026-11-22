@@ -20,16 +20,17 @@ design and its three scientific amendments are encoded as follows:
 at the P8 preflight, fixes the P8 design). Items that must be closed before any main-seed
 evaluation are listed in :data:`PENDING_BEFORE_MAIN`. A13 closed the P8 dry-run item.
 A16 configured the candidate attempt under an execution hold. A17 records the owner's
-confirmation of continued outcome blindness and retains an enforced launch hold. Releasing
-that hold requires separate owner launch approval. Dispatch also requires green CI on the
-exact release commit and a passing final host preflight.
+confirmation of continued outcome blindness. A18 replaces the static launch hold with
+verification of separate owner approval for the exact release and designated host. The
+owner issues approval after green CI and a passing immediate host preflight.
 :func:`authorise_seed` refuses the main and fresh seeds while any item or outcome-blindness
 confirmation is pending. Amendments and their timing are recorded in
 :data:`PROTOCOL_AMENDMENTS`.
 
 **Integrity.** :func:`protocol_digest` hashes every protocol value; :func:`protocol_code_digest`
 hashes the exact bytes of this module and of the decision logic in :mod:`.model_selection` and
-:mod:`.precision`. Tests pin both, so any change is a visible, reviewable diff that must be
+:mod:`.precision` and :mod:`.launch_approval`. Tests pin both, so any change is a visible,
+reviewable diff that must be
 disclosed in the M11 evidence. Generator parameters are pinned by
 :data:`SCENARIO_PARAMETER_DIGESTS` (checked against the generators by a test). P0 pilot
 findings are final only for the M10 scenario (:data:`PILOT_FINDINGS_SCOPE`).
@@ -48,6 +49,10 @@ from pathlib import Path
 from typing import Any
 
 from decision_intelligence.customer_value import protocol as m10
+from decision_intelligence.customer_value.launch_approval import (
+    LaunchApprovalError,
+    require_owner_approval,
+)
 
 PROTOCOL_ID = "M11-predictive-ltv"
 PROTOCOL_STAGE = "P8-amended"
@@ -96,7 +101,9 @@ AUTHORISE_ALLOWED_FILES = {
 }
 """The only files that may call :func:`authorise_seed` for each purpose; calls must pass the
 purpose as a literal string."""
-PROTOCOL_CODE_FILES = ("predictive_protocol.py", "model_selection.py", "precision.py")
+PROTOCOL_CODE_FILES = (
+    "predictive_protocol.py", "model_selection.py", "precision.py", "launch_approval.py",
+)
 """Files whose exact bytes are pinned by :func:`protocol_code_digest` (the manifest digest
 covers values; this covers the decision logic)."""
 
@@ -1027,10 +1034,8 @@ P8_EXECUTION = P8Execution(
 """Amendment A12; memory is bounded by BUDGETS.evidence_memory_gb (measured 3.1 GB)."""
 
 # --- stage gate ---------------------------------------------------------------------------------
-PENDING_BEFORE_MAIN: tuple[str, ...] = (
-    "A17 launch hold: separate explicit owner authorisation for final-a15 is pending",
-)
-"""Block reserved-seed access and final reservation pending separate launch approval."""
+PENDING_BEFORE_MAIN: tuple[str, ...] = ()
+"""A18 requires independent owner approval before reserved-seed access and reservation."""
 PILOT_FINDINGS_SCOPE = (
     "P0 pilot findings use the M10 generator only. They are final for m10_contractual and were "
     "PROVISIONAL for signals_contractual and purchases_noncontractual (60-month runs of the M10 "
@@ -1053,8 +1058,8 @@ class Amendment:
     None denoted a pending confirmation in the held A16 configuration."""
 
 
-AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14", "A15", "A16", "A17")
-"""A14 followed the first main computation. A15 through A17 followed both."""
+AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14", "A15", "A16", "A17", "A18")
+"""A14 followed the first main computation. A15 through A18 followed both."""
 
 
 PROTOCOL_AMENDMENTS = (
@@ -1226,6 +1231,16 @@ PROTOCOL_AMENDMENTS = (
               "release commit, a passing final host preflight and separate explicit owner "
               "authorisation for a single launch.",
               before_outcome_inspection=True),
+    Amendment("A18", "P8", "2026-11-22", False,
+              "Replace the static A17 launch hold with a fail-closed check for detached "
+              "owner approval of one final-a15 launch. Bind approval to the exact release "
+              "commit, green CI run, protocol digests, runner and supervisor hashes, "
+              "designated Mac and canonical registry and output paths. Preserve the "
+              "frozen study, A15 safeguards and both consumed attempts.",
+              "The owner approved release preparation only, with previously confirmed "
+              "outcome blindness. A signed launch approval requires separate explicit "
+              "owner authorisation after green CI and a passing immediate host preflight.",
+              before_outcome_inspection=True),
 )
 """Protocol changes since P0 (82e3ebd), with their relation to computation and inspection."""
 
@@ -1234,11 +1249,21 @@ class ProtocolNotReady(RuntimeError):
     """A reserved seed was requested before the protocol allows it."""
 
 
+def require_launch_approval(*, require_clean: bool = True) -> None:
+    """Verify approval against the release containing this protocol."""
+    try:
+        require_owner_approval(Path(__file__).resolve().parents[3], attempt=P8_FINAL_ATTEMPT_KEY,
+                               manifest=protocol_digest(), code=protocol_code_digest(),
+                               require_clean=require_clean)
+    except LaunchApprovalError as exc:
+        raise ProtocolNotReady(str(exc)) from exc
+
+
 def authorise_seed(purpose: str, *, confirm_single_final_run: bool = False) -> int:
     """The only sanctioned way to obtain a reserved seed.
 
     ``pilot`` is always allowed (planning). ``main`` requires no pending protocol items and
-    confirmed outcome-blindness timing for every amendment.
+    confirmed outcome-blindness timing for every amendment and verified owner launch approval.
     ``fresh`` additionally requires ``confirm_single_final_run=True``.
     """
     if purpose == "pilot":
@@ -1250,11 +1275,11 @@ def authorise_seed(purpose: str, *, confirm_single_final_run: bool = False) -> i
                                f"the {purpose} seed is refused")
     if any(a.before_outcome_inspection is not True for a in PROTOCOL_AMENDMENTS):
         raise ProtocolNotReady("outcome-blindness confirmation is required")
-    if purpose == "main":
-        return MAIN_SEED
-    if not confirm_single_final_run:
+    if purpose == "fresh" and not confirm_single_final_run:
         raise ProtocolNotReady("the fresh seed is evaluated once, last; confirm explicitly")
-    return FRESH_SEED
+    # The fresh phase runs after the approved reservation has changed the working tree.
+    require_launch_approval(require_clean=purpose == "main")
+    return MAIN_SEED if purpose == "main" else FRESH_SEED
 
 
 # --- integrity ------------------------------------------------------------------------------------

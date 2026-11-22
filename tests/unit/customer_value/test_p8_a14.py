@@ -149,9 +149,10 @@ def failed_attempt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Pat
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
     monkeypatch.setattr(GEN, "resolve_fresh_seed", lambda plan, **kw: 6009)  # never reserved
     monkeypatch.setattr(GEN, "a15_gate_applies", lambda: False)  # historical replay only
+    monkeypatch.setattr(pp, "require_launch_approval", lambda: None)
     monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS",
                         tuple(a for a in pp.PROTOCOL_AMENDMENTS if a.id not in (
-                            "A15", "A16", "A17")))
+                            "A15", "A16", "A17", "A18")))
     monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", ("A14",))
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # historical fake A14 only
     ledger = tmp_path / "m11-p8-final" / "ledger.json"

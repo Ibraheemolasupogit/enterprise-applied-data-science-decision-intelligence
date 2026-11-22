@@ -58,6 +58,10 @@ from decision_intelligence.common.failure_trace import (  # noqa: E402
     TracedTaskError,
     failure_trace,
 )
+from decision_intelligence.customer_value import (  # noqa: E402
+    launch_approval,
+    resource_supervision,
+)
 from decision_intelligence.customer_value import predictive_cases as pc  # noqa: E402
 from decision_intelligence.customer_value import predictive_protocol as pp  # noqa: E402
 from decision_intelligence.customer_value.resource_supervision import (  # noqa: E402
@@ -308,17 +312,23 @@ def require_clean_tree() -> None:
                          f"{dirty[:3]}); commit first: the final run starts from a commit")
 
 
-def verify_protocol(plan: SeedPlan, expect_manifest: str | None, expect_code: str | None
+def verify_protocol(mode: str, expect_manifest: str | None, expect_code: str | None
                     ) -> None:
     problems = pp.validate_protocol()
     if problems:
         raise RunRefused(f"protocol invalid: {problems}")
-    if plan.mode == "final":
+    if mode == "final":
         if expect_manifest is None or expect_code is None:
             raise RunRefused("final mode needs --expect-manifest and --expect-code")
         if pp.PENDING_BEFORE_MAIN:
             raise RunRefused("protocol items are pending")
         require_clean_tree()
+        source = REPO / "src" / "decision_intelligence" / "customer_value"
+        for module, filename in ((pp, "predictive_protocol.py"),
+                                 (launch_approval, "launch_approval.py"),
+                                 (resource_supervision, "resource_supervision.py")):
+            if Path(module.__file__).resolve() != source / filename:
+                raise RunRefused("final launch must import its controls from this checkout")
     for name, want, got in (("manifest", expect_manifest, pp.protocol_digest()),
                             ("code", expect_code, pp.protocol_code_digest())):
         if want is not None and want != got:
@@ -557,19 +567,30 @@ def _store(run_dir: Path, ledger: Ledger, phase: str, results: Any) -> None:
 ReportFn = Callable[[SeedPlan, dict[str, Any], dict[str, Any], Path, "Path | None"], list[Path]]
 
 
+def require_final_target(root: Path, registry: Path, run_dir: Path, output: Path | None) -> None:
+    canonical_registry = root / REGISTRY_DIR.name
+    canonical_run = root / f"m11-p8-{A15_ATTEMPT_KEY}"
+    if (registry.absolute() != canonical_registry or registry.resolve() != canonical_registry
+            or run_dir.absolute() != canonical_run or run_dir.resolve() != canonical_run
+            or output is not None):
+        raise RunRefused("A15 requires the canonical registry and final-a15 output directory")
+
+
 def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_task,
             registry: Path = REGISTRY_DIR, evidence_root: Path = EVIDENCE,
             expect_manifest: str | None = None, expect_code: str | None = None,
             output: Path | None = None, report_fn: ReportFn | None = None,
             resources: SupervisedChild | None = None) -> Path:
     """Run every phase in order (``PHASES``); returns the record path. Order of safeguards:
-    protocol verification (final: approved digests, nothing pending, clean Git working tree),
-    final-attempt evidence checks under the reservation lock for A15, then the per-directory
-    ledger. A failure or interruption is recorded and the run is never resumed."""
+    protocol and launch approval verification, final-attempt evidence and approval checks
+    under the reservation lock, then the per-directory ledger. A failure or interruption is
+    recorded and the run is never resumed."""
     refuse_real_final_under_test(plan.mode, fn)
-    verify_protocol(plan, expect_manifest, expect_code)
+    verify_protocol(plan.mode, expect_manifest, expect_code)
     if plan.mode == "final" and fn is pc.run_task and resources is None:
         raise RunRefused("final execution requires the external resource supervisor")
+    if plan.mode == "final":
+        pp.require_launch_approval()
     reg = AttemptRegistry(registry)
     key = reservation_key(plan)
     preflight = None
@@ -579,12 +600,9 @@ def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_
         canonical_run = root / f"m11-p8-{A15_ATTEMPT_KEY}"
         if key != A15_ATTEMPT_KEY:
             raise RunRefused("A15 requires a separately authorised, new final-a15 reservation key")
-        if (fn is pc.run_task and root != EVIDENCE.resolve()
-                or registry.absolute() != evidence_root.absolute() / REGISTRY_DIR.name
-                or registry.resolve() != canonical_registry
-                or run_dir.absolute() != evidence_root.absolute() / canonical_run.name
-                or run_dir.resolve() != canonical_run or output is not None):
+        if evidence_root.absolute() != root or (fn is pc.run_task and root != EVIDENCE):
             raise RunRefused("A15 requires the canonical registry and final-a15 output directory")
+        require_final_target(root, registry, run_dir, output)
         if not canonical_registry.is_dir():
             raise RunRefused("canonical registry is missing")
         if plan.m10_comparability is None or not plan.fresh_step:
@@ -595,6 +613,8 @@ def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_
             if run_dir.exists() or run_dir.is_symlink():
                 raise RunRefused("final-a15 output directory already exists and cannot be reused")
             verify_a15_history(root, reg)
+            # The checkout was checked clean before acquiring the untracked registry lock.
+            pp.require_launch_approval(require_clean=False)
 
         preflight = verify_candidate
     elif plan.mode == "final":
@@ -969,14 +989,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         resources = None
         if args.mode == "final":
             refuse_real_final_under_test("final", pc.run_task)
-            if args.expect_manifest is None or args.expect_code is None:
-                raise RunRefused("final mode needs --expect-manifest and --expect-code")
-            require_clean_tree()  # before any seed is authorised
-            plan = final_plan()
+            verify_protocol("final", args.expect_manifest, args.expect_code)
             if args.workers != pp.P8_EXECUTION.workers:
                 raise RunRefused("final execution requires the frozen worker count")
+            run_dir = args.run_dir or EVIDENCE / f"m11-p8-{final_attempt_key()}"
+            require_final_target(EVIDENCE, args.registry, run_dir, args.output)
+            plan = final_plan()
             if not args._supervised_child:
-                run_dir = args.run_dir or EVIDENCE / f"m11-p8-{final_attempt_key()}"
                 return _run_under_supervision(argv, run_dir)
             resources = await_supervisor()
         elif args.mode == "rehearsal":
