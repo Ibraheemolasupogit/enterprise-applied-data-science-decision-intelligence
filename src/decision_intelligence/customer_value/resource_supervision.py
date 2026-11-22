@@ -20,6 +20,9 @@ _PEAK_FD = "_M11_P8_SUPERVISOR_FD"
 _RSS = struct.Struct("=Q")
 _GO = b"\x01"
 _POLL_S = 0.05
+_EXIT_RECHECK_S = 0.002
+_PROC_FLAG_INEXIT = 0x04
+_SZOMB = 5
 _STOP_GRACE_S = 1.0
 _HEARTBEAT_S = 1.0
 
@@ -88,22 +91,36 @@ class DarwinRSS:
         size = self.lib.proc_pidinfo(pid, 4, 0, buf, len(buf))
         if size == len(buf):
             return int(_RSS.unpack_from(buf, _RSS.size)[0])
-        if size == 0 and ctypes.get_errno() == errno.ESRCH:
-            raise ProcessLookupError
-        raise MonitorUnavailable("cannot inspect execution RSS")
+        error = ctypes.get_errno()
+        if size == 0 and error == errno.ESRCH:
+            raise ProcessLookupError(error, "PROC_PIDTASKINFO")
+        raise MonitorUnavailable(f"cannot inspect execution RSS (size={size}, errno={error})")
 
-    def _exited(self, pid: int, group: int) -> bool:
+    def _exited(self, pid: int, group: int, *, retry_until: float = 0.0) -> bool:
         # PROC_PIDTBSDINFO with a nonzero arg includes zombies. These have no task RSS
         # but can remain in PROC_PGRP_ONLY until their parent reaps them.
         buf = ctypes.create_string_buffer(136)
-        size = self.lib.proc_pidinfo(pid, 3, 1, buf, len(buf))
-        if size == len(buf):
-            _, status, _, found_pid = struct.unpack_from("=IIII", buf)
-            if found_pid == pid and status == 5:  # SZOMB
+        while True:
+            ctypes.set_errno(0)
+            size = self.lib.proc_pidinfo(pid, 3, 1, buf, len(buf))
+            exiting = False
+            if size == len(buf) and ctypes.get_errno() == 0:
+                flags, status, _, found_pid = struct.unpack_from("=IIII", buf)
+                if found_pid == pid:
+                    if status == _SZOMB:
+                        return True
+                    exiting = bool(flags & _PROC_FLAG_INEXIT)
+            if pid not in self._members(group):
                 return True
-        return pid not in self._members(group)
+            remaining = retry_until - time.monotonic()
+            if not exiting or remaining <= 0:
+                return False
+            # Darwin can stop serving task info before reporting SZOMB. INEXIT is
+            # grounds to recheck within the sample's deadline, never to skip RSS.
+            time.sleep(min(_EXIT_RECHECK_S, remaining))
 
     def __call__(self, group: int, root_alive: bool) -> tuple[int, bool]:
+        retry_until = time.monotonic() + _POLL_S
         members = self._members(group)
         if root_alive and group not in members:
             # The root may have exited since poll; prove it is gone before accepting the sample.
@@ -118,9 +135,10 @@ class DarwinRSS:
         for pid in members:
             try:
                 rss = self._rss(pid)
-            except (ProcessLookupError, MonitorUnavailable):
-                if not self._exited(pid, group):
-                    raise MonitorUnavailable("cannot inspect a listed execution process") from None
+            except (ProcessLookupError, MonitorUnavailable) as exc:
+                deadline = retry_until if isinstance(exc, ProcessLookupError) else 0.0
+                if not self._exited(pid, group, retry_until=deadline):
+                    raise MonitorUnavailable("cannot inspect a listed execution process") from exc
             else:
                 total += rss
                 live = True

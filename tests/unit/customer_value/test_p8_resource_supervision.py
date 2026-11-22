@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import importlib.util
 import json
 import os
 import signal
+import struct
 import subprocess
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from decision_intelligence.customer_value import resource_supervision as resources
 from decision_intelligence.customer_value.resource_supervision import (
     DarwinRSS,
+    MonitorUnavailable,
     SupervisionResult,
     supervise,
 )
@@ -26,6 +32,7 @@ import os
 import subprocess
 import sys
 import time
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
 from decision_intelligence.customer_value.resource_supervision import await_supervisor
@@ -33,7 +40,7 @@ from scripts import generate_m11_evidence as gen
 
 
 def draw(task):
-    if mode == "worker" and task.study == "R2":
+    if mode in {"worker", "worker_without_registry"} and task.study == "R2":
         os._exit(41)
     return {"study": task.study}
 
@@ -69,6 +76,15 @@ if __name__ == "__main__":
             str(root / "grandchild_ready"), str(root / "grandchild_survived")])
         (root / "child_pid").write_text(str(child.pid))
         child.wait()
+    elif mode == "worker_without_registry":
+        os.environ["TEST_P8_MODE"] = mode
+        tasks = [gen.pc.Task(study, seed)
+                 for study, seed in (("R2", 6750), ("R3", 6751), ("R3", 6752))]
+        try:
+            gen.run_supervised_tasks(tasks, 3, draw)
+        except BrokenProcessPool:
+            (root / "worker_failure").touch()
+            raise
     else:
         # Make arguments available in spawn workers without running the main block there.
         os.environ["TEST_P8_MODE"] = mode
@@ -90,6 +106,65 @@ def command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 def _ledger(tmp_path: Path):
     return json.loads((tmp_path / "run" / "ledger.json").read_text())
+
+
+@pytest.mark.parametrize(
+    "task_errno, last_state, expected",
+    [(errno.ESRCH, "zombie", True), (errno.ESRCH, "reaped", True),
+     (errno.ESRCH, "still_exiting", False), (errno.ESRCH, "live", False),
+     (errno.ESRCH, "wrong_pid", False), (errno.ESRCH, "short_reply", False),
+     (errno.EPERM, "zombie", False)],
+)
+def test_task_info_exit_race_requires_verified_exit(
+        monkeypatch: pytest.MonkeyPatch, task_errno: int, last_state: str,
+        expected: bool) -> None:
+    sampler = DarwinRSS.__new__(DarwinRSS)
+    clock = [0.0]
+    bsd_calls = 0
+    exiting_pid, live_pid, group = 200, 201, 202
+
+    def sleep(seconds: float) -> None:
+        clock[0] += seconds
+
+    def members(_group: int) -> set[int]:
+        return {live_pid} if last_state == "reaped" and bsd_calls >= 2 else {
+            live_pid, exiting_pid}
+
+    def pidinfo(pid, flavor, arg, buf, size):
+        nonlocal bsd_calls
+        if flavor == 4:
+            if pid == exiting_pid:
+                ctypes.set_errno(task_errno)
+                return 0
+            struct.pack_into("=Q", buf, 8, 200 if pid == live_pid else 100)
+            return size
+        assert (pid, flavor, arg, size) == (exiting_pid, 3, 1, 136)
+        bsd_calls += 1
+        if last_state == "reaped" and bsd_calls >= 2:
+            ctypes.set_errno(errno.ESRCH)
+            return 0
+        if last_state == "short_reply":
+            return 12
+        flags = 0 if last_state == "live" else 4
+        status = 5 if last_state == "wrong_pid" or (
+            last_state == "zombie" and bsd_calls >= 2) else 2
+        pid = exiting_pid + 10 if last_state == "wrong_pid" else exiting_pid
+        struct.pack_into("=IIII", buf, 0, flags, status, 0, pid)
+        return size
+
+    monkeypatch.setattr(sampler, "lib", SimpleNamespace(proc_pidinfo=pidinfo), raising=False)
+    monkeypatch.setattr(sampler, "_members", members)
+    monkeypatch.setattr(resources, "time", SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    if expected:
+        assert sampler(group, False) == (300, True)
+        assert bsd_calls == 2 and 0 < clock[0] < resources._POLL_S
+    else:
+        with pytest.raises(MonitorUnavailable, match="cannot inspect a listed execution process"):
+            sampler(group, False)
+        if last_state == "still_exiting":
+            assert bsd_calls > 1 and clock[0] == pytest.approx(resources._POLL_S)
+        else:
+            assert bsd_calls == 1 and clock[0] == 0
 
 
 @HOST
@@ -177,6 +252,15 @@ def test_abrupt_worker_death_aborts_without_completing_or_retrying(tmp_path, com
         "failed", "repeated_sampling", "BrokenProcessPool")
     assert [e["phase"] for e in ledger["events"]].count("repeated_sampling") == 1
     assert not (tmp_path / "reporting").exists()
+
+
+@HOST
+def test_native_supervisor_reports_worker_crash_without_a_reservation(tmp_path, command):
+    result = supervise(command("worker_without_registry"), timeout_s=15,
+                       memory_bytes=4_000_000_000)
+    assert result.status == "child_failure" and result.returncode == 1
+    assert (tmp_path / "worker_failure").is_file()
+    assert not (tmp_path / "registry").exists()
 
 
 def test_initial_monitor_failure_does_not_open_gate(tmp_path, command, capsys):
