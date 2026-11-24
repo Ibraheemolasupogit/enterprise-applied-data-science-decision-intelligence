@@ -657,12 +657,48 @@ def fit_cells(model: str, status: pd.DataFrame, *, boundary_exception: bool = Tr
     return CellFits(model, cells, pooled, used, pooled_used)
 
 
+def _conditional_paid_log_domain(model: str, theta: FloatArray, age: FloatArray,
+                                 steps: FloatArray) -> FloatArray:
+    """Evaluate the conditional ratio directly for finite draws outside the fitted box."""
+    _check(model)
+    # These limits occur in log odds, zero ages, or hazards whose final probability
+    # rounds to zero or one. No natural-scale parameter needs to be representable.
+    with np.errstate(over="ignore", under="ignore", divide="ignore"):
+        if model == "E1":
+            # One beta-product factor per month: (beta + age + k) / (alpha + beta + age + k).
+            log_beta_age = np.logaddexp(theta[1], np.log(age[:, None] + (steps - 1.0)))
+            log_month = -np.logaddexp(0.0, theta[0] - log_beta_age)
+            return np.asarray(np.exp(np.cumsum(log_month, axis=1)), dtype=np.float64)
+
+        log_b, log_v = theta
+        log_bv = log_b + log_v
+        if not math.isfinite(log_bv):
+            # A same-sign overflow of finite logs either makes b negligible or v so
+            # large that even log1p(b*v*j) / v rounds to zero.
+            return np.ones((age.size, steps.size), dtype=np.float64)
+        log_age = np.log(age[:, None])
+        log_steps = np.log(steps)
+        # x = b*v*j / (1 + b*v*age); the conditional cumulative hazard is log1p(x)/v.
+        log_x = log_steps - np.logaddexp(-log_bv, log_age)
+        log_abv = log_age + log_bv
+        log_rate = (np.where(log_abv > 0, -log_v - log_age, log_b)
+                    - np.log1p(np.exp(-np.abs(log_abv))))
+        # For log(x) < -37, log1p(x)/x rounds to 1. Cancelling v analytically
+        # in x/v also preserves the geometric limit when x itself underflows.
+        log_hazard = np.where(log_x < -37.0, log_rate + log_steps,
+                              np.log(np.logaddexp(0.0, log_x)) - log_v)
+        return np.asarray(np.exp(-np.exp(log_hazard)), dtype=np.float64)
+
+
 def conditional_paid(model: str, log_params: FloatArray, age: FloatArray, horizon: int
                      ) -> FloatArray:
     """``P(month age + j paid | month age paid) = S(age + j) / S(age)``, ``j = 1 .. horizon``;
     shape ``(n, horizon)``."""
     a0 = np.asarray(age, dtype=np.float64)
     j = np.arange(1, horizon + 1, dtype=np.float64)
+    t0, t1 = log_params
+    if (abs(t0) > LOG_BOX or abs(t1) > LOG_BOX) and math.isfinite(t0) and math.isfinite(t1):
+        return _conditional_paid_log_domain(model, log_params, a0, j)
     base = log_survival(model, log_params, a0)[0]
     ahead = log_survival(model, log_params, (a0[:, None] + j[None, :]).ravel()
                          )[0].reshape(-1, horizon)

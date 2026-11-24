@@ -16,7 +16,7 @@ from types import SimpleNamespace
 import pytest
 from scripts import generate_m11_evidence as runner
 from scripts import prepare_m11_p8_a19 as renderer
-from scripts import prepare_m11_p8_a20 as adoption
+from scripts import prepare_m11_p8_a21 as adoption
 
 from decision_intelligence.customer_value import (
     launch_approval,
@@ -163,18 +163,18 @@ def test_truncated_journal_fails_closed(tmp_path):
         os.close(fd)
 
 
-def test_a20_identity_alone_does_not_activate_successor(monkeypatch):
-    assert p8_candidate.A20_ATTEMPT == "final-a20"
-    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", pp.PROTOCOL_AMENDMENTS[:19])
+def test_a21_identity_alone_does_not_activate_successor(monkeypatch):
+    assert p8_candidate.A21_ATTEMPT == "final-a21"
+    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", pp.PROTOCOL_AMENDMENTS[:20])
     monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION",
-                        pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION[:6])
-    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", p8_candidate.A20_ATTEMPT)
+                        pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION[:7])
+    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", p8_candidate.A21_ATTEMPT)
     with pytest.raises(pp.ProtocolNotReady, match="has not been adopted"):
         pp.require_successor_amendment()
-    draft = replace(pp.PROTOCOL_AMENDMENTS[-1], id="A20", before_outcome_inspection=None)
+    draft = replace(pp.PROTOCOL_AMENDMENTS[-1], id="A21", before_outcome_inspection=None)
     monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", (*pp.PROTOCOL_AMENDMENTS, draft))
     monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION",
-                        (*pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION, "A20"))
+                        (*pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION, "A21"))
     with pytest.raises(pp.ProtocolNotReady, match="has not been adopted"):
         pp.require_successor_amendment()
     adopted = replace(draft, before_outcome_inspection=True)
@@ -182,15 +182,15 @@ def test_a20_identity_alone_does_not_activate_successor(monkeypatch):
     pp.require_successor_amendment()
 
 
-def test_a20_adoption_patch_preserves_frozen_science_and_projects_both_pins(tmp_path):
-    runbook = renderer.REPO / "docs/milestones/m11-p8-a20-owner-runbook.md"
+def test_a21_adoption_patch_preserves_frozen_science_and_projects_both_pins(tmp_path):
+    runbook = renderer.REPO / "docs/milestones/m11-p8-a21-proposal.md"
     text = runbook.read_text()
     assert f"**Change.** {adoption.CHANGE}" in text
     assert f"**Reason.** {adoption.REASON}" in text
-    if pp.P8_FINAL_ATTEMPT_KEY == "final-a20":
+    if pp.P8_FINAL_ATTEMPT_KEY == "final-a21":
         assert pp.PROTOCOL_AMENDMENTS[-1].change == adoption.CHANGE
         assert pp.PROTOCOL_AMENDMENTS[-1].reason == adoption.REASON
-        with pytest.raises(ValueError, match="held A19"):
+        with pytest.raises(ValueError, match="held A20"):
             adoption.prepare_patch("2099-12-31")
         return
 
@@ -212,20 +212,20 @@ def test_a20_adoption_patch_preserves_frozen_science_and_projects_both_pins(tmp_
         "P8_FINAL_ATTEMPT_KEY", "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", "PROTOCOL_AMENDMENTS",
     }
     assert after["PROTOCOL_AMENDMENTS"][:-1] == before["PROTOCOL_AMENDMENTS"]
-    assert after["P8_FINAL_ATTEMPT_KEY"] == "final-a20"
+    assert after["P8_FINAL_ATTEMPT_KEY"] == "final-a21"
     pins = (tmp_path / renderer.TEST_PATH).read_text()
     for constant, digest in (("FROZEN_DIGEST", "protocol_digest"),
                              ("CANDIDATE_CODE_DIGEST", "protocol_code_digest")):
         assert re.search(rf'^{constant} = "{fixture[digest]()}"$', pins, re.MULTILINE)
 
 
-def test_adopted_a20_still_requires_separate_signed_approval(tmp_path, monkeypatch):
-    if pp.P8_FINAL_ATTEMPT_KEY != "final-a20":
-        record = replace(pp.PROTOCOL_AMENDMENTS[-1], id="A20")
-        monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", "final-a20")
+def test_adopted_a21_still_requires_separate_signed_approval(tmp_path, monkeypatch):
+    if pp.P8_FINAL_ATTEMPT_KEY != "final-a21":
+        record = replace(pp.PROTOCOL_AMENDMENTS[-1], id="A21")
+        monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", "final-a21")
         monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", (*pp.PROTOCOL_AMENDMENTS, record))
         monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION",
-                            (*pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION, "A20"))
+                            (*pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION, "A21"))
     pp.require_successor_amendment()
     monkeypatch.setattr(p8_candidate.sys, "platform", "darwin")
     monkeypatch.setattr(launch_approval, "_APPROVAL_DIR", tmp_path)
@@ -268,6 +268,63 @@ def test_a20_pins_a19_startup_failure_and_refuses_a_used_successor(tmp_path, mon
     assert p8_candidate.verify_a19_consumption(private) == "b" * 64
 
 
+def test_a21_binds_failed_a20_metadata_without_opening_raw(tmp_path, monkeypatch, p8_layout):
+    history_pin = "history-fixture"
+    monkeypatch.setattr(type(p8_layout), "history_manifest", lambda self: ({}, history_pin))
+    a19 = p8_candidate.A19_ATTEMPT
+    a20 = p8_candidate.A20_ATTEMPT
+    a21 = p8_candidate.A21_ATTEMPT
+    claim_sha = "1" * 64
+    run_dir = p8_layout.run_dir(a20)
+    run_dir.mkdir(mode=0o700)
+    raw = run_dir / "raw"
+    raw.mkdir()
+    (raw / "unused.pkl").write_bytes(b"fixture")
+    rows = [
+        {"attempt": key, "state": state, "sha256": digest, "payload": payload}
+        for key, state, digest, payload in (
+            (a19, "consumed", "a" * 64, {
+                "manifest_digest": p8_candidate._A19_MANIFEST,
+                "code_digest": p8_candidate._A19_CODE,
+                "history_manifest_sha256": history_pin,
+                "run_dir": str(p8_layout.run_dir(a19)), "approval_sha256": "c" * 64}),
+            (a19, "terminal", "b" * 64, {"status": "child_failure", "returncode": 2}),
+            (a20, "consumed", claim_sha, {
+                "manifest_digest": p8_candidate._A20_MANIFEST,
+                "code_digest": p8_candidate._A20_CODE, "history_manifest_sha256": history_pin,
+                "run_dir": str(run_dir), "approval_sha256": "d" * 64}),
+            (a20, "terminal", "2" * 64, {"status": "child_failure", "returncode": 1}),
+        )
+    ]
+
+    @contextmanager
+    def read_only(_path):
+        yield SimpleNamespace(records=lambda: rows)
+
+    monkeypatch.setattr(p8_journal, "open_journal", read_only)
+    entry = {k: v for k, v in rows[2]["payload"].items() if k != "approval_sha256"}
+    entry.update(mode="final", claim_sha256=claim_sha)
+    entry_sha = runner.AttemptRegistry(p8_layout.registry).reserve(a20, entry)
+    ledger = run_dir / "ledger.json"
+    data = {"mode": "final", "status": "failed", "phase": "repeated_sampling",
+            "error": "task R2 fixture: OverflowError", "reservation": a20,
+            "reservation_sha256": entry_sha, "claim_sha256": claim_sha,
+            "manifest_digest": entry["manifest_digest"], "code_digest": entry["code_digest"]}
+    ledger.write_text(json.dumps(data))
+    runner._require_private_available(p8_layout, p8_layout.run_dir(a21))
+    binding = p8_candidate.verify_a20_consumption(p8_layout, require_unused=True)
+    assert binding == {"a19_journal_tip_sha256": "b" * 64, "a20_journal_tip_sha256": "2" * 64,
+                       "a20_ledger_sha256": runner._sha256(ledger),
+                       "a20_reservation_sha256": entry_sha}
+    rows.append({"attempt": a21, "state": "consumed"})
+    with pytest.raises(launch_approval.LaunchApprovalError, match="already consumed"):
+        p8_candidate.verify_a20_consumption(p8_layout, require_unused=True)
+    data["claim_sha256"] = "wrong"
+    ledger.write_text(json.dumps(data))
+    with pytest.raises(launch_approval.LaunchApprovalError, match="does not match"):
+        p8_candidate.verify_a20_consumption(p8_layout)
+
+
 _SIGNED_PROBE = """
 import os, sys
 from pathlib import Path
@@ -285,7 +342,7 @@ runner.p8_private.open_private_evidence = lambda repo: SimpleNamespace(
     run_dir=lambda key: root / key)
 runner._require_private_available = lambda layout, path: None
 runner.verify_successor_history = lambda private: "fixture-history"
-runner.p8_candidate.verify_a19_consumption = lambda *a, **kw: "fixture-tip"
+runner.p8_candidate.verify_a20_consumption = lambda *a, **kw: {"tip": "fixture-tip"}
 runner.launch_approval._APPROVAL_DIR = root
 runner.launch_approval._trusted_path = lambda *a, **kw: None
 runner.p8_candidate.release_binding = lambda *a, **kw: {"attempt": attempt}
@@ -372,7 +429,7 @@ def test_real_fixture_signature_rejects_payload_and_namespace_replay(tmp_path):
     p8_candidate._verify_signature(tmp_path, original, payload.read_bytes())
     with pytest.raises(subprocess.CalledProcessError):
         p8_candidate._verify_signature(tmp_path, original, payload.read_bytes() + b" ")
-    replay = p8_candidate.A20_ATTEMPT
+    replay = p8_candidate.A21_ATTEMPT
     shutil.copyfile(tmp_path / f"{original}.json.sig", tmp_path / f"{replay}.json.sig")
     with pytest.raises(subprocess.CalledProcessError):
         p8_candidate._verify_signature(tmp_path, replay, payload.read_bytes())

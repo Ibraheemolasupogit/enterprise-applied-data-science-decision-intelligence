@@ -1222,19 +1222,49 @@ def _consume_and_supervise(journal: p8_journal.Journal, attempt: str, command: S
     return 130 if status == "interrupted" else (0 if status == "complete" else 1)
 
 
+
+def _bounded_staging_mode(path: Path) -> str:
+    """Read staging metadata without following symlinks or accepting oversized files."""
+    import stat
+
+    limit = 1_048_576
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+
+    with os.fdopen(fd, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
+            raise RunRefused("invalid or oversized staging metadata")
+
+        body = stream.read(limit + 1)
+        if len(body) > limit:
+            raise RunRefused("staging metadata exceeds size ceiling")
+
+    data = json.loads(body)
+    if not isinstance(data, dict):
+        raise RunRefused("invalid staging metadata object")
+    mode = data.get("mode")
+    if not isinstance(mode, str):
+        raise RunRefused("invalid staging metadata mode")
+    return mode
+
+
 def _require_private_available(layout: p8_private.PrivateEvidence, run_dir: Path) -> None:
     registry = AttemptRegistry(layout.registry)
-    if (registry.validate() or run_dir.exists() or prior_final_attempts(layout.staging)
-            or any(json.loads(path.read_bytes())["mode"] == "final"
+    prior_keys = {p8_candidate.A20_ATTEMPT} if run_dir == layout.run_dir(
+        p8_candidate.A21_ATTEMPT) else set()
+    prior_ledgers = {layout.run_dir(key) / "ledger.json" for key in prior_keys}
+    if (registry.validate() or run_dir.exists()
+            or set(prior_final_attempts(layout.staging)) != prior_ledgers
+            or any(path.stem not in prior_keys and _bounded_staging_mode(path) == "final"
                    for path in registry.root.glob("*.json"))):
-        raise RunRefused("private registry is invalid or a successor already exists")
+        raise RunRefused("private history or registry is invalid, or a successor already exists")
 
 
 _PREFLIGHT_ERRORS = {
     21: "native supervisor handshake failed",
     22: "dedicated worker identity or private staging check failed",
     23: "worker cannot verify .git/index; restore root-owned worker-readable permissions",
-    24: "worker could not verify the pinned historical records or unused A20 journal state",
+    24: "worker could not verify the pinned historical records or unused A21 journal state",
     25: "worker rejected the immutable release, Git status or signed launch binding",
 }
 
@@ -1256,7 +1286,7 @@ def _preflight_child() -> int:
         p8_immutable.verify_git_index(REPO)
         stage = 24
         verify_successor_history(private)
-        p8_candidate.verify_a19_consumption(private, require_unused=True)
+        p8_candidate.verify_a20_consumption(private, require_unused=True)
         stage = 25
         p8_candidate.require_owner_approval(
             REPO, attempt=attempt, manifest=pp.protocol_digest(), code=pp.protocol_code_digest(),
@@ -1272,7 +1302,7 @@ def _require_pre_dispatch(private: p8_private.PrivateEvidence, uid: int, gid: in
     if os.geteuid() != 0 or uid == 0:
         raise RunRefused("signed preflight requires root and a dedicated unprivileged worker")
     _require_private_available(private, private.run_dir(final_attempt_key()))
-    p8_candidate.verify_a19_consumption(private, require_unused=True)
+    p8_candidate.verify_a20_consumption(private, require_unused=True)
     result = supervise([sys.executable, "-I", "-B", str(Path(__file__).resolve()),
                         "--_preflight-child"], timeout_s=120,
                        memory_bytes=int(pp.BUDGETS.evidence_memory_gb * 1e9),

@@ -121,7 +121,7 @@ def test_partial_pickle_writes_never_publish_a_result(tmp_path, monkeypatch):
     assert list((tmp_path / "raw").iterdir()) == []
 
 
-@pytest.mark.parametrize("attempt", ["final", "final-a14", "final-a15", "final-a19"])
+@pytest.mark.parametrize("attempt", ["final", "final-a14", "final-a15", "final-a19", "final-a20"])
 def test_all_consumed_identities_refuse(attempt):
     with pytest.raises(runner.RunRefused, match="permanently consumed"):
         runner.require_successor_identity(attempt)
