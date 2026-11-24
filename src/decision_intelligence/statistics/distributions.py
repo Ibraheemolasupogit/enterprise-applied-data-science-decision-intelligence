@@ -207,7 +207,7 @@ def ks_distance(sample: ArrayLike, cdf: Callable[[FloatArray], FloatArray]) -> f
     theoretical = np.asarray(cdf(ordered), dtype=np.float64)
     upper = np.arange(1, n + 1) / n - theoretical
     lower = theoretical - np.arange(0, n) / n
-    return float(max(np.max(upper), np.max(lower)))
+    return max(float(np.max(upper)), float(np.max(lower)))
 
 
 # ---------------------------------------------------------------------------

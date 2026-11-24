@@ -67,6 +67,7 @@ def test_actual_spawn_transport_retains_origin_without_remote_text() -> None:
     assert "unknown study" not in json.dumps(trace) + str(caught.value)
 
 
+@pytest.mark.usefixtures("p8_layout")
 def test_failure_ledger_and_cli_do_not_log_exception_payloads(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
         ) -> None:

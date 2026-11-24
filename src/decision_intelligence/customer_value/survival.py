@@ -250,6 +250,7 @@ def build_design(frame: pd.DataFrame, tier: str, weights: np.ndarray | None = No
     raw = probe.raw(frame)
     std = Standardiser.fit(raw, raw_cols, weights=w)
     z = std.transform(raw, raw_cols)
+    del raw
     cols: list[str] = []
     dups: list[str] = []
     kept_z: list[np.ndarray] = []
@@ -297,29 +298,35 @@ def fit_hazard(features: pd.DataFrame, n_paid: np.ndarray, horizon: int, tier: s
     """Fit E3's hazard on landmark rows ``features`` (registry features + ``tenure_months``)
     with window outcomes ``n_paid``."""
     pm = person_months(n_paid, features["tenure_months"].to_numpy(), horizon)
-    rows = features.iloc[pm.row].reset_index(drop=True)
+    # Expand only the design columns. The landmark ID, labels and excluded covariates
+    # have no role in fitting the person-month design.
+    used = [name for name in feature_names("contractual", tier) if name not in exclude]
+    rows = features[used].iloc[pm.row].reset_index(drop=True)
     raw_band = tenure_band(pm.age)
     n_bands = len(pp.TENURE_BAND_EDGES)
     ev_band = np.bincount(raw_band[pm.event], minlength=n_bands)
     band_map = merge_bands(ev_band)
     group = band_map[raw_band]
+    events = pm.event
+    del pm, raw_band
     n_groups = int(band_map.max()) + 1
     design = build_design(rows, tier, exclude=exclude)
     X = np.column_stack([band_basis(group, n_groups), design.matrix(rows)])
+    del rows, group
     mask = np.r_[np.zeros(n_groups, dtype=bool), np.ones(len(design.columns), dtype=bool)]
     rules = pp.STATUS_RULES
-    res = fit_penalised_logistic(X, pm.event.astype(np.float64), penalty=penalty,
+    res = fit_penalised_logistic(X, events.astype(np.float64), penalty=penalty,
                                  penalised=mask, gradient_tolerance=rules.gradient_tolerance,
                                  relative_change_tolerance=rules.relative_change_tolerance)
-    n_events = int(pm.event.sum())
+    n_events = int(events.sum())
     d = FitDiagnostics(
-        has_data=pm.row.size > 0 and n_events > 0, converged=res.converged,
+        has_data=events.size > 0 and n_events > 0, converged=res.converged,
         finite_likelihood=math.isfinite(res.log_likelihood),
         separated_without_penalty=res.separated,
         hessian_positive_definite=res.hessian_positive_definite, n_events=n_events,
         n_parameters=X.shape[1])
     status, reasons = classify_fit(d)
-    return HazardFit(design, band_map, band_labels(band_map), res, int(pm.row.size), n_events,
+    return HazardFit(design, band_map, band_labels(band_map), res, int(events.size), n_events,
                      status, reasons)
 
 
@@ -419,6 +426,7 @@ def _fit_at_validation(tables: EconomicsTables, cutoff: int, horizon: int, tier:
     landmarks = pp.tuning_landmarks(cutoff, horizon)
     stack, n = _landmark_data(tables, lv, horizon, tier, policy, landmarks)
     fit = fit_hazard(stack, n, horizon, tier, penalty, exclude)
+    del stack, n
     view = view_at(tables, lv)
     feats = contractual_features(view, lv, tier, policy)
     contrib = fit_contribution(view, lv, policy)
@@ -448,9 +456,10 @@ def fit_e3(tables: EconomicsTables, cutoff: int, horizon: int, tier: str,
         lam, source, records = float(penalty), "given", ()
     stack, n = _landmark_data(tables, cutoff, horizon, tier, policy, None)
     fit = fit_hazard(stack, n, horizon, tier, lam, exclude_features)
+    landmarks = tuple(int(v) for v in np.unique(stack["landmark"]))
+    del stack, n
     return E3Model(tier, cutoff, horizon, lam, source, records, fit,
-                   fit_contribution(tables, cutoff, policy),
-                   tuple(int(v) for v in np.unique(stack["landmark"])))
+                   fit_contribution(tables, cutoff, policy), landmarks)
 
 
 @dataclass(frozen=True)

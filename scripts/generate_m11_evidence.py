@@ -9,17 +9,12 @@ One orchestrator, three modes (``P8_DRY_RUN``):
   ``PENDING_BEFORE_MAIN`` is non-empty), every ``REPEATED_SAMPLING`` study at its declared size;
   requires ``--expect-manifest`` and ``--expect-code`` equal to the live protocol digests.
 
-**Single attempt.** Every attempt first takes a reservation in the repository-level
-:class:`AttemptRegistry` (``docs/evidence/m11-p8-attempts``; atomic, hash-chained, validated
-before every reservation); the final run's key is fixed, so no other output directory can
-rerun the reserved seeds, and final mode also refuses if any final ledger exists under
-``docs/evidence``. The run directory's ``ledger.json`` is then created exclusively. A failed or
-interrupted run is recorded and can never restart silently or move to replacement seeds. Seeds
-are fixed by the plan before any computation; the fresh seed is authorised only at the last
-phase and recorded in the ledger before it is used. Raw pickled results go to ``RUN_DIR/raw``
-(Git-ignored) with their SHA-256 in the ledger; the repository evidence is the record,
-``summary.json`` and CSV tables, written only when every phase is complete. ``--verify RUN_DIR``
-re-checks a run (``--no-raw`` for a clone without raw results).
+**Private execution.** A privileged supervisor validates the owner-pinned private history,
+commits the consumption claim, and starts an unprivileged worker. The worker keeps the
+execution ledger, raw pickles and reports in private staging. The fresh seed is authorised
+and recorded only in the last analysis phase. The protected journal holds terminal receipts.
+``--verify RUN_DIR`` re-checks an existing run. ``--export-reviewed ID`` separately stages
+an explicitly pinned development resource summary for public review.
 
     python scripts/generate_m11_evidence.py --mode dry-run
 """
@@ -40,16 +35,21 @@ import math  # noqa: E402
 import multiprocessing as mp  # noqa: E402
 import pickle  # noqa: E402
 import platform  # noqa: E402
+import stat  # noqa: E402
 import subprocess  # noqa: E402
 import sys  # noqa: E402
+import tempfile  # noqa: E402
 import threading  # noqa: E402
 import time  # noqa: E402
 from collections.abc import Callable, Sequence  # noqa: E402
 from concurrent.futures import ProcessPoolExecutor  # noqa: E402
-from contextlib import nullcontext  # noqa: E402
+from contextlib import closing, nullcontext  # noqa: E402
 from dataclasses import asdict, dataclass, field  # noqa: E402
 from pathlib import Path  # noqa: E402
 from typing import Any  # noqa: E402
+
+if sys.flags.isolated:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
@@ -60,6 +60,11 @@ from decision_intelligence.common.failure_trace import (  # noqa: E402
 )
 from decision_intelligence.customer_value import (  # noqa: E402
     launch_approval,
+    p8_candidate,
+    p8_immutable,
+    p8_journal,
+    p8_private,
+    p8_scheduler,
     resource_supervision,
 )
 from decision_intelligence.customer_value import predictive_cases as pc  # noqa: E402
@@ -72,9 +77,6 @@ from decision_intelligence.customer_value.resource_supervision import (  # noqa:
 
 REPO = Path(__file__).resolve().parents[1]
 EVIDENCE = REPO / "docs" / "evidence"
-DEFAULT_RUN_DIRS = {"dry-run": EVIDENCE / "m11-p8-dry-run",
-                    "rehearsal": EVIDENCE / "m11-p8-rehearsal",
-                    "final": EVIDENCE / "m11-p8-final"}
 DRY_RUN_DRAWS = 10
 DRY_RUN_REFITS = 20
 DRY_RUN_SEED_START = 6200
@@ -232,7 +234,8 @@ def run_supervised_tasks(tasks: Sequence[pc.Task], workers: int, fn: TaskFn
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
 def _now() -> str:
@@ -277,10 +280,12 @@ class Ledger:
         self.save()
 
 
-def protocol_header(plan: SeedPlan, workers: int) -> dict[str, Any]:
+def protocol_header(plan: SeedPlan, workers: int, *, signed_checkout: bool = False
+                    ) -> dict[str, Any]:
     return {"mode": plan.mode, "protocol_stage": pp.PROTOCOL_STAGE,
             "manifest_digest": pp.protocol_digest(), "code_digest": pp.protocol_code_digest(),
-            "pending_before_main": list(pp.PENDING_BEFORE_MAIN), "git": git_state(),
+            "pending_before_main": list(pp.PENDING_BEFORE_MAIN),
+            "git": git_state(signed_checkout=signed_checkout),
             "plan": {**asdict(plan), "draws": {k: [v[0], v[-1], len(v)]
                                                for k, v in plan.draws.items()}},
             "workers": workers, "python": sys.version.split()[0], "numpy": np.__version__}
@@ -312,7 +317,8 @@ def require_clean_tree() -> None:
                          f"{dirty[:3]}); commit first: the final run starts from a commit")
 
 
-def verify_protocol(mode: str, expect_manifest: str | None, expect_code: str | None
+def verify_protocol(mode: str, expect_manifest: str | None, expect_code: str | None,
+                    *, signed_checkout: bool = False
                     ) -> None:
     problems = pp.validate_protocol()
     if problems:
@@ -322,12 +328,18 @@ def verify_protocol(mode: str, expect_manifest: str | None, expect_code: str | N
             raise RunRefused("final mode needs --expect-manifest and --expect-code")
         if pp.PENDING_BEFORE_MAIN:
             raise RunRefused("protocol items are pending")
-        require_clean_tree()
+        if not signed_checkout:
+            require_clean_tree()
         source = REPO / "src" / "decision_intelligence" / "customer_value"
         for module, filename in ((pp, "predictive_protocol.py"),
                                  (launch_approval, "launch_approval.py"),
+                                 (p8_candidate, "p8_candidate.py"),
+                                 (p8_immutable, "p8_immutable.py"),
+                                 (p8_journal, "p8_journal.py"),
+                                 (p8_private, "p8_private.py"),
+                                 (p8_scheduler, "p8_scheduler.py"),
                                  (resource_supervision, "resource_supervision.py")):
-            if Path(module.__file__).resolve() != source / filename:
+            if module.__file__ is None or Path(module.__file__).resolve() != source / filename:
                 raise RunRefused("final launch must import its controls from this checkout")
     for name, want, got in (("manifest", expect_manifest, pp.protocol_digest()),
                             ("code", expect_code, pp.protocol_code_digest())):
@@ -501,6 +513,40 @@ def verify_a15_history(evidence_root: Path, reg: AttemptRegistry) -> None:
     allowed = authorised_failed_attempts()
     if allowed.keys() != expected.keys():
         raise RunRefused("A15 requires both historical ledger pins")
+    _verify_history(evidence_root, reg, expected, allowed)
+
+
+def verify_successor_history(private: p8_private.PrivateEvidence) -> str:
+    """Require the intact three-attempt chain for a successor, including the incomplete A15."""
+    manifest, owner_pin = private.history_manifest()
+    reg = AttemptRegistry(private.history_registry)
+    problems = reg.validate()
+    if problems:
+        raise RunRefused(f"attempt registry tampered: {problems}")
+    if not reg.log.is_file() or _sha256(reg.log) != p8_candidate.HISTORY_CHAIN_SHA256:
+        raise RunRefused("consumed attempt chain differs from the successor history pin")
+    lines = reg.log.read_bytes().splitlines(keepends=True)
+    prefix = hashlib.sha256(b"".join(lines[:-1])).hexdigest()
+    if prefix != p8_candidate.HISTORY_PREFIX_SHA256:
+        raise RunRefused("consumed attempt chain prefix differs from the history pin")
+    if manifest != {
+        "schema": 1,
+        "chain_sha256": p8_candidate.HISTORY_CHAIN_SHA256,
+        "chain_prefix_sha256": prefix,
+        "chain_tip": json.loads(lines[-1])["hash"],
+        "attempts": {key: {"ledger_sha256": ledger, "reservation_sha256": entry}
+                     for key, (ledger, entry) in p8_candidate.HISTORICAL_PINS.items()},
+    }:
+        raise RunRefused("owner manifest does not match the consumed attempt history")
+    expected = {f"m11-p8-{key}/ledger.json": key for key in p8_candidate.HISTORICAL_PINS}
+    _verify_history(private.history, reg, expected,
+                    {rel: p8_candidate.HISTORICAL_PINS[key][0] for rel, key in expected.items()},
+                    successor=True)
+    return owner_pin
+
+
+def _verify_history(evidence_root: Path, reg: AttemptRegistry, expected: dict[str, str],
+                    allowed: dict[str, str], *, successor: bool = False) -> None:
     for rel, key in expected.items():
         ledger_path = evidence_root / rel
         entry_path = reg.root / f"{key}.json"
@@ -512,20 +558,27 @@ def verify_a15_history(evidence_root: Path, reg: AttemptRegistry) -> None:
             raise RunRefused(f"historical ledger altered: {rel}")
         try:
             led, entry = json.loads(ledger_bytes), json.loads(entry_bytes)
+            entry_sha = hashlib.sha256(entry_bytes).hexdigest()
+            if key == A15_ATTEMPT_KEY:
+                last = led["events"][-1]
+                stopped = (led["status"], last["phase"], last["state"]) == (
+                    "started", "repeated_sampling", "started")
+            else:
+                stopped = (led["status"], led["phase"]) == ("failed", "repeated_sampling")
             matches = (
-                (led["mode"], led["status"], led["phase"], led["reservation"])
-                == ("final", "failed", "repeated_sampling", key)
-                and led["reservation_sha256"] == hashlib.sha256(entry_bytes).hexdigest()
+                stopped and (led["mode"], led["reservation"]) == ("final", key)
+                and led["reservation_sha256"] == entry_sha
+                and (not successor or entry_sha == p8_candidate.HISTORICAL_PINS[key][1])
                 and (entry["key"], entry["mode"]) == (key, "final")
                 # The historical absolute path belongs to the checkout that ran the attempt.
                 and Path(entry["run_dir"]).name == ledger_path.parent.name
                 and all(entry[d] == led[d] for d in ("manifest_digest", "code_digest"))
             )
-        except (ValueError, TypeError, KeyError):
+        except (ValueError, TypeError, KeyError, IndexError):
             matches = False
         if not matches:
             raise RunRefused(f"historical failure or consumed reservation does not match: {key}")
-        if evidence_root == EVIDENCE.resolve():
+        if not successor and evidence_root == EVIDENCE.resolve():
             for path, content in ((ledger_path, ledger_bytes), (entry_path, entry_bytes)):
                 relpath = path.relative_to(REPO.resolve())
                 committed = subprocess.run(["git", "show", f"HEAD:{relpath.as_posix()}"],
@@ -535,6 +588,8 @@ def verify_a15_history(evidence_root: Path, reg: AttemptRegistry) -> None:
     historical_dirs = {(evidence_root / rel).parent for rel in expected}
     for parent, dirs, _ in os.walk(evidence_root, onerror=_evidence_walk_error):
         if RAW_DIR in dirs:
+            if successor:
+                raise RunRefused("private history replica must contain metadata only")
             dirs.remove(RAW_DIR)  # Never scan protected raw directories.
         for directory in dirs:
             if (Path(parent) / directory).is_symlink():
@@ -551,7 +606,7 @@ def verify_a15_history(evidence_root: Path, reg: AttemptRegistry) -> None:
             is_final = entry["mode"] == "final"
         except (ValueError, TypeError, KeyError) as exc:
             raise RunRefused(f"invalid registry entry: {path.name}") from exc
-        if is_final and path.stem not in HISTORICAL_FINAL_KEYS:
+        if is_final and path.stem not in expected.values():
             raise RunRefused(f"unexpected final reservation: {path.stem}")
 
 
@@ -560,107 +615,149 @@ def _store(run_dir: Path, ledger: Ledger, phase: str, results: Any) -> None:
     raw = run_dir / RAW_DIR
     raw.mkdir(exist_ok=True)
     path = raw / f"{phase}.pkl"
-    path.write_bytes(pickle.dumps(results, protocol=pickle.HIGHEST_PROTOCOL))
+    staged = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=raw, prefix=f".{phase}-", delete=False) as stream:
+            staged = Path(stream.name)
+            pickle.dump(results, stream, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(staged, path)
+    finally:
+        if staged is not None:
+            staged.unlink(missing_ok=True)
     ledger.event(phase, "done", file=f"{RAW_DIR}/{path.name}", sha256=_sha256(path))
+
+
+def _hybrid_results(run_dir: Path, tasks: Sequence[pc.Task], fn: TaskFn) -> list[dict[str, Any]]:
+    """Spool while workers are live. Rebuild the legacy list after all pools exit."""
+    with tempfile.TemporaryFile(dir=run_dir) as spool:
+        with closing(p8_scheduler.hybrid_tasks(tasks, fn)) as results:
+            for result, task in zip(results, tasks, strict=True):
+                if "task" in result and result["task"] != task:
+                    raise RunRefused("repeated-sampling result differs from the ordered task plan")
+                pickle.dump(result, spool, protocol=pickle.HIGHEST_PROTOCOL)
+        spool.seek(0)
+        return [pickle.load(spool) for _ in tasks]
+
+
+def _inline_task(task: pc.Task, fn: TaskFn) -> list[dict[str, Any]]:
+    return [fn(task)]
 
 
 ReportFn = Callable[[SeedPlan, dict[str, Any], dict[str, Any], Path, "Path | None"], list[Path]]
 
 
-def require_final_target(root: Path, registry: Path, run_dir: Path, output: Path | None) -> None:
+def require_final_target(root: Path, registry: Path, run_dir: Path, output: Path | None,
+                         *, attempt: str = A15_ATTEMPT_KEY) -> None:
     canonical_registry = root / REGISTRY_DIR.name
-    canonical_run = root / f"m11-p8-{A15_ATTEMPT_KEY}"
+    canonical_run = root / f"m11-p8-{attempt}"
     if (registry.absolute() != canonical_registry or registry.resolve() != canonical_registry
             or run_dir.absolute() != canonical_run or run_dir.resolve() != canonical_run
             or output is not None):
-        raise RunRefused("A15 requires the canonical registry and final-a15 output directory")
+        raise RunRefused(f"requires the canonical registry and {attempt} output directory")
+
+
+def require_successor_identity(attempt: str) -> None:
+    try:
+        p8_candidate.require_new_identity(attempt)
+    except launch_approval.LaunchApprovalError as exc:
+        raise RunRefused(str(exc)) from exc
 
 
 def execute(plan: SeedPlan, run_dir: Path, workers: int, *, fn: TaskFn = pc.run_task,
             registry: Path = REGISTRY_DIR, evidence_root: Path = EVIDENCE,
             expect_manifest: str | None = None, expect_code: str | None = None,
             output: Path | None = None, report_fn: ReportFn | None = None,
-            resources: SupervisedChild | None = None) -> Path:
-    """Run every phase in order (``PHASES``); returns the record path. Order of safeguards:
-    protocol and launch approval verification, final-attempt evidence and approval checks
-    under the reservation lock, then the per-directory ledger. A failure or interruption is
-    recorded and the run is never resumed."""
+            resources: SupervisedChild | None = None,
+            private: p8_private.PrivateEvidence | None = None) -> Path:
+    """Execute only a validated development plan. Governed execution has its own entry point."""
     refuse_real_final_under_test(plan.mode, fn)
+    if plan.mode not in ("dry-run", "rehearsal"):
+        raise RunRefused("governed execution cannot accept a supplied plan or callbacks")
+    seeds = [plan.main, *(seed for block in plan.draws.values() for seed in block)]
+    if plan.m10_comparability is not None:
+        seeds.append(plan.m10_comparability)
+    check_development_seeds(seeds)
     verify_protocol(plan.mode, expect_manifest, expect_code)
-    if plan.mode == "final" and fn is pc.run_task and resources is None:
-        raise RunRefused("final execution requires the external resource supervisor")
-    if plan.mode == "final":
-        pp.require_launch_approval()
-    reg = AttemptRegistry(registry)
     key = reservation_key(plan)
-    preflight = None
-    if plan.mode == "final" and a15_gate_applies():
-        root = evidence_root.resolve()
-        canonical_registry = root / REGISTRY_DIR.name
-        canonical_run = root / f"m11-p8-{A15_ATTEMPT_KEY}"
-        if key != A15_ATTEMPT_KEY:
-            raise RunRefused("A15 requires a separately authorised, new final-a15 reservation key")
-        if evidence_root.absolute() != root or (fn is pc.run_task and root != EVIDENCE):
-            raise RunRefused("A15 requires the canonical registry and final-a15 output directory")
-        require_final_target(root, registry, run_dir, output)
-        if not canonical_registry.is_dir():
-            raise RunRefused("canonical registry is missing")
-        if plan.m10_comparability is None or not plan.fresh_step:
-            raise RunRefused("A15 requires M10 comparability followed by the fresh phase")
-        reg, run_dir = AttemptRegistry(canonical_registry), canonical_run
+    fixture = fn is not pc.run_task and bool(os.environ.get("PYTEST_CURRENT_TEST"))
+    if private is not None or not fixture:
+        private = private or p8_private.open_private_evidence(REPO)
+        private.check_target(key, run_dir, registry, output)
+        if run_dir.exists():
+            raise RunRefused("private run directory already exists and cannot be reused")
+    else:
+        for path in (run_dir, registry, output):
+            if path is not None:
+                p8_private.require_outside_checkout(path, REPO)
+    entry = _reserve(plan, run_dir, workers, registry, key, private=private)
+    return _execute_phases(plan, run_dir, workers, entry, fn, report_fn or write_report,
+                           output, resources)
 
-        def verify_candidate() -> None:
-            if run_dir.exists() or run_dir.is_symlink():
-                raise RunRefused("final-a15 output directory already exists and cannot be reused")
-            verify_a15_history(root, reg)
-            # The checkout was checked clean before acquiring the untracked registry lock.
-            pp.require_launch_approval(require_clean=False)
 
-        preflight = verify_candidate
-    elif plan.mode == "final":
-        prior = unauthorised_final_attempts(evidence_root)
-        if prior:
-            raise RunRefused(f"a final run was already attempted: {prior} (only an amendment "
-                             "can authorise a new attempt)")
-    entry_sha = reg.reserve(key, {"run_dir": str(run_dir), "mode": plan.mode,
-                                  "manifest_digest": pp.protocol_digest(),
-                                  "code_digest": pp.protocol_code_digest()}, preflight=preflight)
-    ledger = Ledger.create(run_dir, {**protocol_header(plan, workers),
-                                     "registry": str(registry), "reservation": key,
-                                     "reservation_sha256": entry_sha})
+def _reserve(plan: SeedPlan, run_dir: Path, workers: int, registry: Path, key: str, *,
+             private: p8_private.PrivateEvidence | None = None,
+             claim: dict[str, Any] | None = None) -> Ledger:
+    entry = {"run_dir": str(run_dir), "mode": plan.mode, "manifest_digest": pp.protocol_digest(),
+             "code_digest": pp.protocol_code_digest()}
+    if claim is not None:
+        entry.update(claim_sha256=claim["sha256"],
+                     history_manifest_sha256=claim["payload"]["history_manifest_sha256"])
+    entry_sha = AttemptRegistry(registry).reserve(key, entry)
+    if private is not None:
+        run_dir.mkdir(mode=0o700)
+    header = {**protocol_header(plan, workers, signed_checkout=claim is not None),
+              "registry": str(registry),
+              "reservation": key, "reservation_sha256": entry_sha}
+    if claim is not None:
+        header["claim_sha256"] = claim["sha256"]
+    return Ledger.create(run_dir, header)
+
+
+def _execute_phases(plan: SeedPlan, run_dir: Path, workers: int, ledger: Ledger,
+                    fn: TaskFn, report_fn: ReportFn, output: Path | None,
+                    resources: SupervisedChild | None) -> Path:
+    """Compute phases after the caller has established a durable reservation."""
     ledger.event("verify", "done")
     phase = "main"
     t0 = time.perf_counter()
     results: dict[str, Any] = {}
+    hybrid = resources is not None and workers == 3
+    isolated = p8_scheduler.isolated_task if hybrid else _inline_task
     try:
         with (nullcontext(resources) if resources is not None else MemoryMonitor()) as mon:
             ledger.event(phase, "started", seed=plan.main)
-            results["main"] = run_tasks([pc.Task("MAIN", plan.main)], 1, fn)
+            results["main"] = isolated(pc.Task("MAIN", plan.main), fn)
             _store(run_dir, ledger, phase, results["main"])
             phase = "repeated_sampling"
             tasks = study_tasks(plan)
             ledger.event(phase, "started", tasks=len(tasks))
-            dispatch = run_supervised_tasks if resources is not None and workers > 1 else run_tasks
-            results["repeated_sampling"] = dispatch(tasks, workers, fn)
+            if hybrid:
+                results["repeated_sampling"] = _hybrid_results(run_dir, tasks, fn)
+            else:
+                dispatch = (run_supervised_tasks if resources is not None and workers > 1
+                            else run_tasks)
+                results["repeated_sampling"] = dispatch(tasks, workers, fn)
             _store(run_dir, ledger, phase, results["repeated_sampling"])
             if plan.m10_comparability is not None:
                 phase = "m10_comparability"
                 ledger.event(phase, "started", seed=plan.m10_comparability)
-                results["m10_comparability"] = run_tasks(
-                    [pc.Task("M10", plan.m10_comparability)], 1, fn)
+                results["m10_comparability"] = isolated(pc.Task("M10", plan.m10_comparability), fn)
                 _store(run_dir, ledger, phase, results["m10_comparability"])
             if plan.fresh_step:
                 phase = "fresh"
                 fresh = resolve_fresh_seed(plan, ledger=ledger)
                 ledger.event(phase, "seed consumed", seed=fresh)  # before any use: once only
-                results["fresh"] = run_tasks([pc.Task("MAIN", fresh)], 1, fn)
+                results["fresh"] = isolated(pc.Task("MAIN", fresh), fn)
                 _store(run_dir, ledger, phase, results["fresh"])
             phase = "record"
             wall = time.perf_counter() - t0
             perf: dict[str, Any] = {"wall": wall, "peak_gb": mon.peak_gb, "workers": workers}
             if resources is not None:
                 perf["resource_snapshot"] = "before report generation"
-            files = (report_fn or write_report)(plan, results, perf, run_dir, output)
+            if hybrid:
+                perf["r2_workers"] = 2
+                perf["r2_pool_tasks"] = 2
+            files = report_fn(plan, results, perf, run_dir, output)
             ledger.event(phase, "done", files=[
                 {"file": str(f.relative_to(run_dir)) if f.is_relative_to(run_dir) else str(f),
                  "sha256": _sha256(f)} for f in files])
@@ -687,6 +784,34 @@ def _check_file(run_dir: Path, name: str, sha: str, label: str, require: bool) -
     return [] if _sha256(f) == sha else [f"{label}: {f.name} altered"]
 
 
+def phase_sequence_ok(data: dict[str, Any]) -> bool:
+    try:
+        plan, events = data["plan"], data["events"]
+        expected = [("verify", "done"), ("main", "started"), ("main", "done"),
+                    ("repeated_sampling", "started"), ("repeated_sampling", "done")]
+        if plan["m10_comparability"] is not None:
+            expected.extend([("m10_comparability", "started"), ("m10_comparability", "done")])
+        if data.get("mode") == "final" and (not plan["fresh_step"]
+                                           or plan["m10_comparability"] is None):
+            return False
+        if plan["fresh_step"]:
+            expected.extend([("fresh", "seed consumed"), ("fresh", "done")])
+        expected.append(("record", "done"))
+        return [(event["phase"], event["state"]) for event in events] == expected
+    except (TypeError, KeyError):
+        return False
+
+
+def _phase_digest(data: dict[str, Any]) -> str:
+    fixed = {k: data[k] for k in (
+        "mode", "plan", "events", "registry", "reservation", "reservation_sha256", "claim_sha256")}
+    return hashlib.sha256(json.dumps(fixed, sort_keys=True).encode()).hexdigest()
+
+
+def _journal_path() -> Path:
+    return launch_approval._APPROVAL_DIR / "consumption.jsonl"
+
+
 def verify_run(run_dir: Path, *, require_raw: bool = True) -> list[str]:
     """Problems with a run: incomplete status or phases, altered or missing files, and a
     reservation that is missing or differs from the ledger. ``require_raw=False`` accepts a
@@ -696,6 +821,32 @@ def verify_run(run_dir: Path, *, require_raw: bool = True) -> list[str]:
         return ["no ledger"]
     led = json.loads(path.read_text())
     problems = [] if led.get("status") == "complete" else [f"status {led.get('status')}"]
+    if not phase_sequence_ok(led):
+        problems.append("invalid phase sequence or fresh consumption")
+        return problems
+    identity = run_dir.name.removeprefix("m11-p8-")
+    governed = ((identity.startswith("final-") and identity not in p8_candidate.HISTORICAL_PINS)
+                or (led.get("mode") == "final"
+                    and led.get("reservation") not in p8_candidate.HISTORICAL_PINS))
+    if governed and not led.get("claim_sha256"):
+        return [*problems, "protected supervisor receipt missing or mismatched"]
+    if governed or led.get("claim_sha256"):
+        try:
+            with p8_journal.open_journal(_journal_path()) as journal:
+                confirmed = any(
+                    row["state"] == "terminal"
+                    and row["attempt"] == led["reservation"]
+                    and row["payload"]["status"] == "complete"
+                    and row["payload"]["claim_sha256"] == led["claim_sha256"]
+                    and row["payload"]["phase_sha256"] == _phase_digest(led)
+                    for row in journal.records())
+        except (OSError, p8_journal.JournalError, launch_approval.LaunchApprovalError,
+                TypeError, KeyError):
+            confirmed = False
+        if not confirmed:
+            return [*problems, "protected supervisor receipt missing or mismatched"]
+        if led["status"] == "supervision_pending":
+            problems = []
     done = {e["phase"]: e for e in led["events"] if e["state"] == "done"}
     needed = ["verify", "main", "repeated_sampling", "record"]
     if led["plan"]["m10_comparability"] is not None:
@@ -769,11 +920,12 @@ def table(frame: pd.DataFrame, digits: int = 4) -> str:
     return "\n".join([head, sep, *body])
 
 
-def git_state() -> str:
+def git_state(*, signed_checkout: bool = False) -> str:
     try:
-        head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, check=True,
+        git = (["/usr/bin/git", "-c", f"safe.directory={REPO}"] if signed_checkout else ["git"])
+        head = subprocess.run([*git, "rev-parse", "--short", "HEAD"], cwd=REPO, check=True,
                               capture_output=True, text=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain"], cwd=REPO, check=True,
+        dirty = subprocess.run([*git, "status", "--porcelain"], cwd=REPO, check=True,
                                capture_output=True, text=True).stdout.strip().splitlines()
         return f"{head} + {len(dirty)} uncommitted or untracked paths" if dirty else head
     except (OSError, subprocess.CalledProcessError):
@@ -849,6 +1001,10 @@ def render(plan: SeedPlan, results: dict[str, Any], perf: dict[str, Any]) -> str
     if "resource_snapshot" in perf:
         lines += ["The report's resource figures are a pre-report snapshot. The external "
                   "supervisor measures through report and ledger completion.", ""]
+    if "r2_pool_tasks" in perf:
+        lines += ["Hybrid execution uses isolated main, M10 and fresh analyses, with two workers "
+                  "per fresh R2 pair and three workers in other studies. The extrapolation "
+                  "assumes a uniform pool size across studies.", ""]
     lines += ["## 2. Primary comparisons (PC_TEST, PC_DEFINITIONS; Holm across PC1-PC5)", "",
               f"PC3 comparator by cutoff: {a['main']['pc3_comparator']}.", "",
               table(_tests_table(a, a["main"]["tests"], True)), "",
@@ -938,12 +1094,24 @@ def write_report(plan: SeedPlan, results: dict[str, Any], perf: dict[str, Any], 
     return files
 
 
-def _run_under_supervision(argv: Sequence[str], run_dir: Path) -> int:
+def _run_under_supervision(argv: Sequence[str], run_dir: Path, *,
+                           private: p8_private.PrivateEvidence | None = None) -> int:
+    receipt_dir = None
+    if private is not None:
+        private.check_target(run_dir.name.removeprefix("m11-p8-"), run_dir, private.registry, None)
+        receipt_dir = private.supervisor_dir()
     timeout_s = pp.BUDGETS.evidence_ceiling_min * 60
     deadline = time.monotonic() + timeout_s
     result = supervise([sys.executable, str(Path(__file__).resolve()), *argv,
                         "--_supervised-child"], timeout_s=timeout_s,
                        memory_bytes=int(pp.BUDGETS.evidence_memory_gb * 1e9))
+    if receipt_dir is not None:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=receipt_dir,
+                                         prefix=f"{run_dir.name}-", suffix=".pending") as receipt:
+            json.dump({**asdict(result), "run": run_dir.name, "reported_at": _now()}, receipt)
+            receipt.write("\n")
+            receipt.flush()
+            os.link(receipt.name, Path(receipt.name).with_suffix(".json"))
     if result.status == "complete":
         path = run_dir / "ledger.json"
         data = json.loads(path.read_text())
@@ -960,6 +1128,124 @@ def _run_under_supervision(argv: Sequence[str], run_dir: Path) -> int:
     return 0 if result.status == "complete" else 1
 
 
+def _pending_ledger(run_dir: Path, worker_uid: int) -> dict[str, Any]:
+    """Accept bounded metadata only and never follow a worker-controlled symlink."""
+    directory = os.open(run_dir, os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fd = os.open("ledger.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+        with os.fdopen(fd, "rb") as stream:
+            info = os.fstat(fd)
+            if (not stat.S_ISREG(info.st_mode) or info.st_uid != worker_uid or info.st_nlink != 1
+                    or info.st_size > 1_048_576):
+                raise RunRefused("invalid pending ledger file")
+            body = stream.read(1_048_577)
+        if len(body) > 1_048_576:
+            raise RunRefused("pending ledger exceeds size ceiling")
+        data = json.loads(body, object_pairs_hook=launch_approval._unique_fields)
+        if not isinstance(data, dict):
+            raise RunRefused("invalid pending ledger object")
+        return data
+    finally:
+        os.close(directory)
+
+
+def _consume_and_supervise(journal: p8_journal.Journal, attempt: str, command: Sequence[str],
+                           run_dir: Path, history_pin: str, *, timeout_s: float,
+                           memory_bytes: int, approval_sha256: str,
+                           credentials: tuple[int, int] | None = None) -> int:
+    """Commit a claim before dispatch and a terminal receipt before certification."""
+    claim = journal.append(attempt, "consumed", {
+        "supervisor_pid": os.getpid(), "run_dir": str(run_dir),
+        "manifest_digest": pp.protocol_digest(), "code_digest": pp.protocol_code_digest(),
+        "history_manifest_sha256": history_pin, "approval_sha256": approval_sha256,
+        "started_at": _now(),
+    })
+    deadline = time.monotonic() + timeout_s
+    try:
+        result = supervise(command, timeout_s=timeout_s, memory_bytes=memory_bytes,
+                           credentials=credentials)
+        receipt = asdict(result)
+        if result.status == "complete":
+            candidate = _pending_ledger(run_dir, credentials[0] if credentials else os.geteuid())
+            if (candidate.get("status") != "supervision_pending"
+                    or candidate.get("supervisor_pid") != os.getpid()
+                    or candidate.get("reservation") != attempt
+                    or candidate.get("claim_sha256") != claim
+                    or not phase_sequence_ok(candidate)
+                    or result.peak_bytes > memory_bytes or result.elapsed_s > timeout_s
+                    or time.monotonic() >= deadline):
+                raise RunRefused("governed completion could not be verified")
+            receipt["phase_sha256"] = _phase_digest(candidate)
+    except KeyboardInterrupt:
+        journal.append(attempt, "terminal", {"claim_sha256": claim,
+                       "status": "interrupted", "reported_at": _now()})
+        return 130
+    except (OSError, TypeError, ValueError, KeyError, RecursionError, RunRefused,
+            launch_approval.LaunchApprovalError) as exc:
+        journal.append(attempt, "terminal", {"claim_sha256": claim,
+                       "status": "certification_failure", "reported_at": _now(),
+                       "error": type(exc).__name__})
+        raise
+    journal.append(attempt, "terminal", {
+        **receipt, "claim_sha256": claim, "reported_at": _now(),
+    })
+    print(f"supervision {result.status}, elapsed {result.elapsed_s:.3f} s, "
+          f"sampled peak RSS {result.peak_bytes} bytes")
+    return 130 if result.status == "interrupted" else (0 if result.status == "complete" else 1)
+
+
+def _require_private_available(layout: p8_private.PrivateEvidence, run_dir: Path) -> None:
+    registry = AttemptRegistry(layout.registry)
+    if (registry.validate() or run_dir.exists() or prior_final_attempts(layout.staging)
+            or any(json.loads(path.read_bytes())["mode"] == "final"
+                   for path in registry.root.glob("*.json"))):
+        raise RunRefused("private registry is invalid or a successor already exists")
+
+
+def _run_successor(args: argparse.Namespace, argv: Sequence[str]) -> int:
+    """The only governed entry. No supplied plans, draws or reporting callbacks."""
+    refuse_real_final_under_test("final", pc.run_task)
+    attempt = final_attempt_key()
+    require_successor_identity(attempt)
+    if (os.geteuid() == 0) == args._supervised_child:
+        raise RunRefused("governed execution requires a privileged supervisor and isolated worker")
+    metadata = p8_private._ROOT.lstat()
+    uid, gid = metadata.st_uid, metadata.st_gid
+    if uid == 0 or (args._supervised_child and uid != os.geteuid()):
+        raise RunRefused("private evidence requires a dedicated unprivileged worker")
+    verify_protocol("final", args.expect_manifest, args.expect_code, signed_checkout=True)
+    if args.workers != pp.P8_EXECUTION.workers:
+        raise RunRefused("final execution requires the frozen worker count")
+    private = p8_private.open_private_evidence(REPO, owner=uid)
+    run_dir = args.run_dir or private.run_dir(attempt)
+    registry = args.registry or private.registry
+    private.check_target(attempt, run_dir, registry, args.output)
+    approval_sha256 = p8_candidate.require_owner_approval(
+        REPO, attempt=attempt, manifest=pp.protocol_digest(), code=pp.protocol_code_digest(),
+        require_clean=True, supervisor_uid=uid)
+    history_pin = verify_successor_history(private)
+    if run_dir.exists() or run_dir.is_symlink():
+        raise RunRefused("private run directory already exists and cannot be reused")
+    if not args._supervised_child:
+        with p8_journal.open_journal(_journal_path(), writable=True) as journal:
+            return _consume_and_supervise(
+                journal, attempt, [sys.executable, "-I", "-B", str(Path(__file__).resolve()),
+                                   *argv, "--_supervised-child"], run_dir, history_pin,
+                timeout_s=pp.BUDGETS.evidence_ceiling_min * 60,
+                memory_bytes=int(pp.BUDGETS.evidence_memory_gb * 1e9),
+                approval_sha256=approval_sha256, credentials=(uid, gid))
+    resources = await_supervisor()
+    claim = p8_candidate.require_active_claim(REPO, attempt=attempt, manifest=pp.protocol_digest(),
+                                               code=pp.protocol_code_digest(),
+                                               approval_sha256=approval_sha256)
+    _require_private_available(private, run_dir)
+    plan = final_plan()
+    ledger = _reserve(plan, run_dir, args.workers, registry, attempt, private=private,
+                      claim=claim)
+    _execute_phases(plan, run_dir, args.workers, ledger, pc.run_task, write_report, None, resources)
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
@@ -974,11 +1260,25 @@ def main(argv: Sequence[str] | None = None) -> int:
                     help="refits per REFIT draw (dry-run and rehearsal only)")
     ap.add_argument("--expect-manifest", default=None)
     ap.add_argument("--expect-code", default=None)
-    ap.add_argument("--registry", type=Path, default=REGISTRY_DIR)
+    ap.add_argument("--registry", type=Path)
+    ap.add_argument("--export-reviewed", metavar="ID",
+                    help="stage an explicitly owner-reviewed development resource summary")
     ap.add_argument("--verify", type=Path, default=None, help="check a completed run directory")
     ap.add_argument("--no-raw", action="store_true",
                     help="with --verify: accept a clone without the raw (Git-ignored) results")
     args = ap.parse_args(argv)
+    if args.export_reviewed is not None:
+        if any((args.mode, args.verify, args.run_dir, args.registry, args.output,
+                args._supervised_child)):
+            ap.error("--export-reviewed is separate from execution and verification")
+        try:
+            staged = p8_private.export_reviewed(p8_private.open_private_evidence(REPO),
+                                                args.export_reviewed)
+        except (p8_private.PrivateEvidenceError, OSError) as exc:
+            print(f"export refused: {exc}", file=sys.stderr)
+            return 2
+        print(f"staged reviewed export {staged}")
+        return 0
     if args.verify is not None:
         problems = verify_run(args.verify, require_raw=not args.no_raw)
         print("\n".join(problems) if problems else "run verified: complete and unaltered")
@@ -986,28 +1286,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.mode is None:
         ap.error("--mode is required unless --verify is given")
     try:
-        resources = None
         if args.mode == "final":
-            refuse_real_final_under_test("final", pc.run_task)
-            verify_protocol("final", args.expect_manifest, args.expect_code)
-            if args.workers != pp.P8_EXECUTION.workers:
-                raise RunRefused("final execution requires the frozen worker count")
-            run_dir = args.run_dir or EVIDENCE / f"m11-p8-{final_attempt_key()}"
-            require_final_target(EVIDENCE, args.registry, run_dir, args.output)
-            plan = final_plan()
-            if not args._supervised_child:
-                return _run_under_supervision(argv, run_dir)
-            resources = await_supervisor()
-        elif args.mode == "rehearsal":
-            plan = rehearsal_plan(args.draws, args.refits)
-        else:
-            plan = dry_run_plan(args.draws, args.refits)
-        run_dir = args.run_dir or (EVIDENCE / f"m11-p8-{final_attempt_key()}"
-                                   if plan.mode == "final" else DEFAULT_RUN_DIRS[plan.mode])
-        out = execute(plan, run_dir, args.workers, registry=args.registry,
+            return _run_successor(args, argv)
+        plan = (rehearsal_plan(args.draws, args.refits) if args.mode == "rehearsal"
+                else dry_run_plan(args.draws, args.refits))
+        private = p8_private.open_private_evidence(REPO)
+        run_dir = args.run_dir or private.run_dir(reservation_key(plan))
+        registry = args.registry or private.registry
+        out = execute(plan, run_dir, args.workers, registry=registry,
                       expect_manifest=args.expect_manifest, expect_code=args.expect_code,
-                      output=args.output, resources=resources)
-    except (pp.ProtocolNotReady, RunRefused) as exc:
+                      output=args.output, private=private)
+    except (pp.ProtocolNotReady, RunRefused, p8_private.PrivateEvidenceError,
+            p8_journal.JournalError, launch_approval.LaunchApprovalError) as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:

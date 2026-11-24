@@ -87,6 +87,9 @@ def purchases_scenario(seed: int, scale: float = 1.0) -> gen.PurchasesScenario:
 
 
 # --- accelerated E4 simulation (E4_ACCELERATED_SIMULATION) ---------------------------------------
+_E4_WINDOW_CUSTOMER_BLOCK = 128
+
+
 def beta_nodes_batch(a: np.ndarray, b: np.ndarray, n: int = btyd.E4_JACOBI_NODES
                      ) -> tuple[np.ndarray, np.ndarray]:
     """``btyd.beta_nodes`` for many ``(a, b)`` at once (same Jacobi matrix, batched solver)."""
@@ -146,7 +149,6 @@ def e4_window_purchases(params: np.ndarray, x: np.ndarray, t_x: np.ndarray, T: n
     small_a = params[:, 2] < min_a
     for xv in np.unique(x):
         cols = np.flatnonzero(x == xv)
-        den = params[:, 1][:, None] + T[cols][None, :]
         kk = (params[:, 0] + xv)[:, None, None]
         original = np.ones(params.shape[0], dtype=bool) if xv > max_x else small_a
         # If the complementary coordinate underflows, reweighting loses its boundary mass.
@@ -171,9 +173,14 @@ def e4_window_purchases(params: np.ndarray, x: np.ndarray, t_x: np.ndarray, T: n
             original[use[~usable]] = True
         for d in np.flatnonzero(original):  # the original per-count Gauss-Jacobi rule
             pn[d], w[d] = btyd.beta_nodes(float(params[d, 2]), float(params[d, 3] + xv))
-        step = btyd.purchase_window(pn[:, None, :], kk, den[:, :, None],
-                                    np.asarray(e0), np.asarray(eh))
-        window[:, cols] = np.einsum("dj,dcj->dc", w, step)
+        # The node reduction is independent for each customer. Bound the temporary
+        # draw × customer × node arrays without splitting or reordering a reduction.
+        for start in range(0, cols.size, _E4_WINDOW_CUSTOMER_BLOCK):
+            block = cols[start:start + _E4_WINDOW_CUSTOMER_BLOCK]
+            den = params[:, 1][:, None] + T[block][None, :]
+            window[:, block] = np.einsum(
+                "dj,dcj->dc", w, btyd.purchase_window(
+                    pn[:, None, :], kk, den[:, :, None], np.asarray(e0), np.asarray(eh)))
     return p_alive * window, p_alive
 
 
@@ -374,58 +381,78 @@ def _coverage_rows(setting: str, model: str, interval: str, lo: np.ndarray, hi: 
     return out
 
 
+def _contractual_simulation_coverage(
+        setting: str, model: str, sim: ev.SimulatedValue, point: np.ndarray,
+        index: pd.Index, real: np.ndarray, mu: np.ndarray, seg: np.ndarray,
+) -> list[dict[str, Any]]:
+    if not sim.index.equals(index):
+        raise RuntimeError(f"{model}: population differs from the holdout")
+    dec = pm.decile_groups(point)
+    rows: list[dict[str, Any]] = []
+    for level in LEVELS:
+        rows += _coverage_rows(setting, model, "parameter vs oracle",
+                               *sim.interval(level, outcome=False), mu, seg, dec, level)
+        rows += _coverage_rows(setting, model, "predictive vs realised",
+                               *sim.interval(level, outcome=True, noise=True), real,
+                               seg, dec, level)
+    return rows
+
+
+def _r2_contractual_coverage(
+        sc: m10g.EconomicsScenario | gen.SignalsScenario, name: str, cutoff: int,
+        tiers: tuple[str, ...], n_draws: int, rng: np.random.Generator,
+        noise: np.random.Generator,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    preds = {m: ct.predict(m, sc, cutoff, W, POLICY) for m in ("E1", "E2")}
+    for tier in tiers:
+        setting = f"{name} C={cutoff} Tier {tier}"
+        h = lm.holdout_frame(sc, sc.config.n_months, cutoff, W, "contractual", tier, POLICY
+                             ).set_index("customer_id")
+        oracle = (orc.signals_oracle(sc, cutoff, W, tier) if isinstance(
+            sc, gen.SignalsScenario) else orc.m10_oracle(sc, cutoff, W)).frame
+        real = h["realised"].to_numpy(np.float64)
+        mu = oracle["oracle"].reindex(h.index).to_numpy(np.float64)
+        seg = h["segment"].to_numpy()
+        # Draw in the same model order. Coverage uses no RNG and reduces a simulation
+        # to counts before the next model allocates its customer-by-draw arrays.
+        if tier == "A":
+            for m in ("E1", "E2"):
+                pred = preds[m]
+                rows += _contractual_simulation_coverage(
+                    setting, m, ev.simulate_contractual(
+                        pred, n_draws, rng, residuals=ev.contribution_residuals(
+                            sc, cutoff, pred.contribution), noise_rng=noise),
+                    pred.frame["prediction"].to_numpy(np.float64), h.index, real, mu, seg)
+        e3 = sv.fit_e3(sc, cutoff, W, tier, POLICY)
+        cr = ev.e3_cr1(e3, sc)
+        rows += _contractual_simulation_coverage(
+            setting, "E3", ev.simulate_e3(
+                e3, sc, cr.cr1, n_draws, rng, residuals=ev.contribution_residuals(
+                    sc, cutoff, e3.contribution), noise_rng=noise),
+            sv.predict_e3(e3, sc).frame["prediction"].to_numpy(np.float64),
+            h.index, real, mu, seg)
+        e5 = pr.fit_e5(sc, cutoff, W, "contractual", tier, POLICY)
+        s2 = pr.fit_s2(sc, cutoff, W, "contractual", tier, POLICY, penalty=e5.penalty)
+        fr = s2.frame.reindex(h.index)
+        dec5 = pm.decile_groups(pr.predict_e5(e5, sc).frame["prediction"].reindex(h.index)
+                                .to_numpy(np.float64))
+        for level in LEVELS:
+            rows += _coverage_rows(setting, "E5 + S2", "conformal vs realised",
+                                   fr[f"lower_{level:g}"].to_numpy(),
+                                   fr[f"upper_{level:g}"].to_numpy(), real, seg, dec5, level)
+    return rows
+
+
 def r2_draw(seed: int, n_draws: int = PARAMETRIC_DRAWS) -> dict[str, Any]:
     rng, noise = _rng(seed, 1), _rng(seed, 2)
-    rows: list[dict[str, Any]] = []
     m10 = m10_scenario(seed)
     sig = signals_scenario(seed)
-    for name, sc, cutoff, tiers in (("m10_contractual", m10, 30, ("A",)),
-                                    ("signals_contractual", sig, 42, ("A", "B"))):
-        preds = {m: ct.predict(m, sc, cutoff, W, POLICY) for m in ("E1", "E2")}
-        for tier in tiers:
-            setting = f"{name} C={cutoff} Tier {tier}"
-            h = lm.holdout_frame(sc, sc.config.n_months, cutoff, W, "contractual", tier, POLICY
-                                 ).set_index("customer_id")
-            oracle = (orc.signals_oracle(sc, cutoff, W, tier) if isinstance(
-                sc, gen.SignalsScenario) else orc.m10_oracle(sc, cutoff, W)).frame
-            real = h["realised"].to_numpy(np.float64)
-            mu = oracle["oracle"].reindex(h.index).to_numpy(np.float64)
-            seg = h["segment"].to_numpy()
-            sims: dict[str, tuple[ev.SimulatedValue, np.ndarray]] = {}
-            if tier == "A":
-                for m in ("E1", "E2"):
-                    sims[m] = (ev.simulate_contractual(
-                        preds[m], n_draws, rng, residuals=ev.contribution_residuals(
-                            sc, cutoff, preds[m].contribution), noise_rng=noise),
-                        preds[m].frame["prediction"].to_numpy(np.float64))
-            e3 = sv.fit_e3(sc, cutoff, W, tier, POLICY)
-            cr = ev.e3_cr1(e3, sc)
-            sims["E3"] = (ev.simulate_e3(e3, sc, cr.cr1, n_draws, rng,
-                                         residuals=ev.contribution_residuals(sc, cutoff,
-                                                                             e3.contribution),
-                                         noise_rng=noise),
-                          sv.predict_e3(e3, sc).frame["prediction"].to_numpy(np.float64))
-            for m, (sim, point) in sims.items():
-                if not sim.index.equals(h.index):
-                    raise RuntimeError(f"{m}: population differs from the holdout")
-                dec = pm.decile_groups(point)
-                for level in LEVELS:
-                    rows += _coverage_rows(setting, m, "parameter vs oracle",
-                                           *sim.interval(level, outcome=False), mu, seg, dec,
-                                           level)
-                    rows += _coverage_rows(setting, m, "predictive vs realised",
-                                           *sim.interval(level, outcome=True, noise=True), real,
-                                           seg, dec, level)
-            e5 = pr.fit_e5(sc, cutoff, W, "contractual", tier, POLICY)
-            s2 = pr.fit_s2(sc, cutoff, W, "contractual", tier, POLICY, penalty=e5.penalty)
-            fr = s2.frame.reindex(h.index)
-            dec5 = pm.decile_groups(pr.predict_e5(e5, sc).frame["prediction"].reindex(h.index)
-                                    .to_numpy(np.float64))
-            for level in LEVELS:
-                rows += _coverage_rows(setting, "E5 + S2", "conformal vs realised",
-                                       fr[f"lower_{level:g}"].to_numpy(),
-                                       fr[f"upper_{level:g}"].to_numpy(), real, seg, dec5,
-                                       level)
+    rows = _r2_contractual_coverage(m10, "m10_contractual", 30, ("A",), n_draws, rng, noise)
+    del m10
+    rows += _r2_contractual_coverage(sig, "signals_contractual", 42, ("A", "B"),
+                                    n_draws, rng, noise)
+    del sig
     pur = purchases_scenario(seed)
     setting = "purchases_noncontractual C=30 Tier A"
     h = lm.holdout_frame(pur, pur.config.n_months, 30, W, "non_contractual", "A"
@@ -445,6 +472,7 @@ def r2_draw(seed: int, n_draws: int = PARAMETRIC_DRAWS) -> dict[str, Any]:
                                *sim.interval(level, outcome=False), mu, seg, dec, level)
         rows += _coverage_rows(setting, "E4", "predictive vs realised",
                                *sim.interval(level, outcome=True), real, seg, dec, level)
+    del sim, e4
     e5 = pr.fit_e5(pur, 30, W, "non_contractual", "A")
     s2 = pr.fit_s2(pur, 30, W, "non_contractual", "A", penalty=e5.penalty)
     fr = s2.frame.reindex(h.index)

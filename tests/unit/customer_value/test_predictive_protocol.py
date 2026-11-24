@@ -24,7 +24,7 @@ SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 FROZEN_DIGEST = "32504d5e16150720e67b240bb6a48c635f452253492306025881e591f6876697"
 """SHA-256 of the protocol manifest (P0 as amended through A18). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-FROZEN_CODE_DIGEST = "89fe5c6f05b1bd6760d5ba2951f27f956e3f7c549e99f88a7be97f82f59b8f0a"
+CANDIDATE_CODE_DIGEST = "035452c1b00bb0531d913c7aa9ea65778b4b18abdcb303055663250cdefb8d87"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -37,7 +37,7 @@ def test_protocol_digest_is_pinned() -> None:
 
 
 def test_protocol_code_digest_is_pinned() -> None:
-    assert pp.protocol_code_digest() == FROZEN_CODE_DIGEST
+    assert pp.protocol_code_digest() == CANDIDATE_CODE_DIGEST
 
 
 def test_manifest_is_canonical_and_change_sensitive(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -148,14 +148,14 @@ def test_seed_gate_logic_once_nothing_is_pending(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())
     checks: list[bool] = []
     monkeypatch.setattr(pp, "require_launch_approval",
-                        lambda *, require_clean: checks.append(require_clean))
+                        lambda *, require_clean=True: checks.append(require_clean))
     monkeypatch.setattr(pp, "MAIN_SEED", 6000)
     monkeypatch.setattr(pp, "FRESH_SEED", 6001)
     assert pp.authorise_seed("main") == 6000
     with pytest.raises(pp.ProtocolNotReady):
         pp.authorise_seed("fresh")
     assert pp.authorise_seed("fresh", confirm_single_final_run=True) == 6001
-    assert checks == [True, False]
+    assert checks == [True, True]
 
 
 def test_earlier_protocol_seeds_are_listed() -> None:
@@ -793,9 +793,9 @@ def test_a18_requires_separate_launch_approval(
     assert "release preparation only" in a18.reason
     assert pp.PENDING_BEFORE_MAIN == ()
     assert pp.validate_protocol() == []
-    with pytest.raises(pp.ProtocolNotReady, match="owner"):
+    with pytest.raises(pp.ProtocolNotReady, match="permanently consumed"):
         pp.authorise_seed("main")
-    with pytest.raises(pp.ProtocolNotReady, match="owner"):
+    with pytest.raises(pp.ProtocolNotReady, match="permanently consumed"):
         pp.authorise_seed("fresh", confirm_single_final_run=True)
 
 

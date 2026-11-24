@@ -21,6 +21,8 @@ from decision_intelligence.customer_value import predictive_cases as pc
 from decision_intelligence.customer_value import predictive_evaluation as ev
 from decision_intelligence.customer_value import predictive_protocol as pp
 
+from .p8_legacy_fixture import execute_archived
+
 REPO = Path(__file__).resolve().parents[3]
 
 
@@ -164,7 +166,7 @@ def failed_attempt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Pat
 
 
 def _attempt(tmp_path: Path, run: str, rec: Recorder | None = None) -> Path:
-    out: Path = GEN.execute(_fake_final(), tmp_path / run, 1, fn=rec or Recorder(),
+    out: Path = execute_archived(GEN, _fake_final(), tmp_path / run, 1, fn=rec or Recorder(),
                             report_fn=_stub_report, registry=tmp_path / "registry",
                             evidence_root=tmp_path, expect_manifest=pp.protocol_digest(),
                             expect_code=pp.protocol_code_digest())
@@ -229,7 +231,7 @@ def test_a14_refuses_unlisted_or_altered_final_ledgers(tmp_path: Path,
     assert rec.calls == [] and not (tmp_path / "m11-p8-final-a14").exists()
 
 
-def test_historical_final_attempts_are_consumed_and_candidate_is_unreserved() -> None:
+def test_historical_final_attempts_remain_consumed() -> None:
     """Check committed failure and reservation metadata without attempting a reservation."""
     histories = {
         "final": ("m11-p8-final",
@@ -244,7 +246,7 @@ def test_historical_final_attempts_are_consumed_and_candidate_is_unreserved() ->
         path.stem for path in reg.root.glob("*.json")
         if json.loads(path.read_bytes()).get("mode") == "final"
     }
-    assert final_keys == histories.keys()
+    assert histories.keys() <= final_keys
     for key, (directory, expected_hash) in histories.items():
         assert logged.count(key) == 1
         reservation = (reg.root / f"{key}.json").read_bytes()
@@ -256,15 +258,39 @@ def test_historical_final_attempts_are_consumed_and_candidate_is_unreserved() ->
             "final", "failed", "repeated_sampling")
         assert record["reservation"] == key
         assert record["reservation_sha256"] == hashlib.sha256(reservation).hexdigest()
+    assert GEN.authorised_failed_attempts() == {
+        f"{directory}/ledger.json": sha for directory, sha in histories.values()}
+    if "final-a15" in final_keys:
+        # A committed clone can lack the live candidate reservation. When it is present,
+        # registry validation and this count confirm consumption even without a ledger.
+        assert logged.count("final-a15") == 1
 
-    # The configured candidate is separate from both consumed keys.
+
+def test_pre_dispatch_candidate_is_unreserved_in_an_isolated_registry(tmp_path: Path) -> None:
+    """Reconstruct the pinned pre-dispatch state without copying raw results."""
+    evidence = tmp_path / "evidence"
+    live = GEN.AttemptRegistry(GEN.REGISTRY_DIR)
+    reg = GEN.AttemptRegistry(evidence / GEN.REGISTRY_DIR.name)
+    prefix = live.log.read_bytes().splitlines(keepends=True)[:3]
+    pre_dispatch = b"".join(prefix)
+    assert hashlib.sha256(pre_dispatch).hexdigest() == (
+        "52c6031120ff02a58b6b773134f69ad9d48d322a20fb10ce9418c6af58eec2fb")
+    reg.root.mkdir(parents=True)
+    reg.log.write_bytes(pre_dispatch)
+    logged = [json.loads(line)["key"] for line in prefix]
+    for key in logged:
+        name = f"{key}.json"
+        (reg.root / name).write_bytes((live.root / name).read_bytes())
+    for relative in GEN.authorised_failed_attempts():
+        ledger = evidence / relative
+        ledger.parent.mkdir(parents=True)
+        ledger.write_bytes((GEN.EVIDENCE / relative).read_bytes())
+    assert reg.validate() == [] and not reg.lock.exists() and not reg.lock.is_symlink()
     key = GEN.final_attempt_key()
     assert key == "final-a15" and key not in logged
     reservation_path = reg.root / f"{key}.json"
     assert not reservation_path.exists() and not reservation_path.is_symlink()
-    run_dir = GEN.EVIDENCE / f"m11-p8-{key}"
+    run_dir = evidence / f"m11-p8-{key}"
     assert not run_dir.exists() and not run_dir.is_symlink()
-    assert GEN.authorised_failed_attempts() == {
-        f"{directory}/ledger.json": sha for directory, sha in histories.values()}
-    assert GEN.unauthorised_final_attempts(GEN.EVIDENCE) == []
-    GEN.verify_a15_history(GEN.EVIDENCE, reg)
+    assert GEN.unauthorised_final_attempts(evidence) == []
+    GEN.verify_a15_history(evidence, reg)

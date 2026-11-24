@@ -118,7 +118,9 @@ def training_stack(tables: EconomicsTables, cutoff: int, horizon: int, kind: str
         feats = _features(view, landmark, kind, tier, policy)
         labels = _labels(view.transactions, feats.index, landmark, horizon)
         parts.append(feats.join(labels).assign(landmark=landmark).reset_index())
+    del view, feats, labels
     stack = pd.concat(parts, ignore_index=True)
+    del parts
     first = ["customer_id", "landmark"]
     return stack[first + [c for c in stack.columns if c not in first]]
 

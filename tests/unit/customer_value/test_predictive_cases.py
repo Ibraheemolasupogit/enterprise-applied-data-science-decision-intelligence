@@ -45,6 +45,18 @@ def e4() -> btyd.E4Prediction:
 
 
 # --- E4_ACCELERATED_SIMULATION ------------------------------------------------------------------
+def test_e4_customer_blocks_preserve_node_reductions_bit_for_bit(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    params = np.array([[0.6, 8.0, 0.7, 2.5], [0.4, 10.0, 0.1, 3.0]])
+    x = np.repeat([0.0, 3.0, 45.0], 259)
+    tx = np.linspace(0.0, 45.0, x.size)
+    exposure = np.linspace(80.0, 104.0, x.size)
+    blocked = pc.e4_window_purchases(params, x, tx, exposure, 8.7, 60.8)
+    monkeypatch.setattr(pc, "_E4_WINDOW_CUSTOMER_BLOCK", x.size)
+    whole = pc.e4_window_purchases(params, x, tx, exposure, 8.7, 60.8)
+    assert [array.tobytes() for array in blocked] == [array.tobytes() for array in whole]
+
+
 def test_accelerated_and_fallback_rules_match_the_original_per_count_rule() -> None:
     rng = np.random.default_rng(6152)
     params = np.exp(np.column_stack([rng.normal(np.log(0.6), 0.2, 6),
@@ -232,6 +244,7 @@ def test_results_do_not_depend_on_the_number_of_workers() -> None:
         assert a["gate4"] == b["gate4"] and a["task"] == b["task"]
 
 
+@pytest.mark.usefixtures("p8_layout")
 def test_a_failing_draw_aborts_without_a_record(tmp_path: Path,
                                                 monkeypatch: pytest.MonkeyPatch) -> None:
     gen = _script()
@@ -239,10 +252,10 @@ def test_a_failing_draw_aborts_without_a_record(tmp_path: Path,
     def boom(tasks: object, workers: int, fn: object = None) -> list[dict[str, Any]]:
         raise RuntimeError("draw failed")
 
-    monkeypatch.setattr(gen, "run_tasks", boom)
-    run_dir = tmp_path / "dry"
-    assert gen.main(["--mode", "dry-run", "--run-dir", str(run_dir),
-                     "--registry", str(tmp_path / "registry")]) == 1
+    monkeypatch.setattr(gen, "_inline_task", boom)
+    layout = gen.p8_private.open_private_evidence(gen.REPO)
+    run_dir = layout.run_dir(gen.reservation_key(gen.dry_run_plan()))
+    assert gen.main(["--mode", "dry-run"]) == 1
     assert not (run_dir / "record.md").exists()
     assert gen.verify_run(run_dir) != []
     with pytest.raises(RuntimeError,

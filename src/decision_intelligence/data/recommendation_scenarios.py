@@ -51,6 +51,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -215,7 +216,8 @@ class RecommendationTruth:
         delta = pd.to_datetime(timestamp) - self.start
         if isinstance(delta, pd.Series):
             return np.asarray(delta.dt.total_seconds().to_numpy() / 86_400.0, dtype=np.float64)
-        return np.asarray([pd.Timedelta(delta).total_seconds() / 86_400.0], dtype=np.float64)
+        duration = pd.Timedelta(cast(pd.Timedelta, delta))
+        return np.asarray([duration.total_seconds() / 86_400.0], dtype=np.float64)
 
     def utility(self, users: IntArray, times: FloatArray) -> FloatArray:
         """``s_ui(t) = b_i + u_u(t) . v_i`` for each requested (user, time) row, all items."""

@@ -19,3 +19,6 @@ htmlcov/
 
 # M11 P8 raw pickled results (hashes are kept in each run ledger)
 docs/evidence/m11-p8-*/raw/
+# Keep legacy, untracked final metadata and any stray final output out of public staging.
+/docs/evidence/m11-p8-final*/
+/docs/evidence/m11-p8-attempts/final*.json

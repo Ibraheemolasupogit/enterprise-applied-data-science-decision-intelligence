@@ -19,13 +19,34 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install package with dev dependencies
-        run: python -m pip install -e ".[dev]" --config-settings editable_mode=compat
+        run: >-
+          python -m pip install -e ".[dev]" --config-settings editable_mode=compat
+          "numpy==2.4.6" "pandas-stubs==3.1.0.261029"
 
       - name: Lint (ruff)
         run: ruff check .
 
       - name: Type-check (mypy)
-        run: mypy src
+        run: mypy --python-version ${{ matrix.python-version }} src scripts/generate_m11_evidence.py
 
       - name: Test (pytest)
-        run: pytest
+        run: python -m pytest
+
+  p8-native-fixtures:
+    runs-on: macos-15
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install fixture dependencies
+        run: >-
+          python -m pip install -e ".[dev]" --config-settings editable_mode=compat
+          "numpy==2.4.6" "pandas-stubs==3.1.0.261029"
+      - name: Exercise native development fixtures
+        run: >-
+          python -m pytest tests/unit/customer_value/test_p8_governance.py
+          tests/unit/customer_value/test_p8_resource_supervision.py

@@ -140,6 +140,7 @@ def build_design(frame: pd.DataFrame, kind: str, tier: str, exclude: Sequence[st
     raw = probe.raw(frame)
     std = Standardiser.fit(raw, raw_cols)
     z = std.transform(raw, raw_cols)
+    del raw
     cols: list[str] = []
     dups: list[str] = []
     kept_z: list[np.ndarray] = []
@@ -182,13 +183,15 @@ def fit_parts(stack: pd.DataFrame, kind: str, tier: str, penalty: float,
                                   penalised=_mask(X1.shape[1]),
                                   gradient_tolerance=rules.gradient_tolerance,
                                   relative_change_tolerance=rules.relative_change_tolerance)
-    ev1 = int(min(pos.sum(), (~pos).sum()))
+    ev1 = min(int(pos.sum()), int((~pos).sum()))
     diag1 = FitDiagnostics(has_data=len(r) > 0 and ev1 > 0, converged=res1.converged,
                            finite_likelihood=math.isfinite(res1.log_likelihood),
                            separated_without_penalty=res1.separated,
                            hessian_positive_definite=res1.hessian_positive_definite,
                            n_events=ev1, n_parameters=X1.shape[1])
     s1, why1 = classify_fit(diag1)
+    # The logistic fit stores coefficients and covariance, not its training matrix.
+    del X1
     rows2 = stack.loc[pos]
     d2 = build_design(rows2, kind, tier, exclude)
     X2 = d2.matrix(rows2)
@@ -257,6 +260,7 @@ def _fit_at_validation(tables: EconomicsTables, cutoff: int, horizon: int, kind:
     stack = training_stack(tables, lv, horizon, kind, tier, policy,
                            landmarks=pp.tuning_landmarks(cutoff, horizon))
     p1, p2 = fit_parts(stack, kind, tier, penalty)
+    del stack
     feats = _features(view_at(tables, lv), lv, kind, tier, policy)
     p, m = _predict_parts(p1, p2, feats)
     labels = training_stack(tables, cutoff, horizon, kind, tier, policy,
@@ -387,10 +391,15 @@ def fit_s2(tables: EconomicsTables, cutoff: int, horizon: int, kind: str, tier: 
     half = E5Model(kind, tier, cutoff, horizon, lam, "S2 training half", (), p1, p2,
                    tuple(int(v) for v in np.unique(train["landmark"])), policy,
                    int((r_train < 0).sum()), float(np.mean(np.minimum(r_train, 0.0))))
+    n_training = int(np.unique(train["customer_id"]).size)
+    del train, r_train
     calib = stack.loc[cal].sort_values(["customer_id", "landmark"]).groupby(
         "customer_id").tail(1)  # one landmark per calibration customer: the latest
+    del stack, ids
     p, m = _predict_parts(p1, p2, calib)
     scores = np.abs(calib["realised"].to_numpy(np.float64) - p * m)
+    n_calibration = len(calib)
+    del calib, p, m
     feats = _features(tables, cutoff, kind, tier, policy)
     pc, mc = _predict_parts(p1, p2, feats)
     centre = pc * mc
@@ -401,5 +410,4 @@ def fit_s2(tables: EconomicsTables, cutoff: int, horizon: int, kind: str, tier: 
         quantiles[level] = q
         frame[f"lower_{level}"] = centre - q
         frame[f"upper_{level}"] = centre + q
-    return S2Intervals(cutoff, lam, int(np.unique(train["customer_id"]).size), len(calib),
-                       quantiles, frame, half)
+    return S2Intervals(cutoff, lam, n_training, n_calibration, quantiles, frame, half)

@@ -42,6 +42,12 @@ from scripts import generate_m11_evidence as gen
 def draw(task):
     if mode in {"worker", "worker_without_registry"} and task.study == "R2":
         os._exit(41)
+    if mode == "hybrid_memory" and task.study == "R2" and task.seed == 6411:
+        memory = bytearray(350_000_000)
+        for page in range(0, len(memory), 16384):
+            memory[page] = 1
+        (root_for_worker / "growing").touch()
+        time.sleep(30)
     return {"study": task.study}
 
 
@@ -58,7 +64,7 @@ def serializing_draw(task):
 
 def report(plan, results, perf, run_dir, output):
     (root / "reporting").touch()
-    if mode == "report":
+    if mode in {"report", "hybrid_report"}:
         time.sleep(30)
     record = run_dir / "record.md"
     record.write_text("development fixture")
@@ -70,7 +76,8 @@ if __name__ == "__main__":
     resources = await_supervisor()
     if mode in {"memory", "monitor", "interrupt"}:
         child = subprocess.Popen([sys.executable, "-c",
-            "import pathlib,sys,time; b=bytearray(80_000_000); "
+            "import pathlib,sys,time; b=bytearray(200_000_000); "
+            "b[::16384] = b'\\x01' * len(b[::16384]); "
             "pathlib.Path(sys.argv[1]).touch(); time.sleep(30); "
             "pathlib.Path(sys.argv[2]).touch()",
             str(root / "grandchild_ready"), str(root / "grandchild_survived")])
@@ -88,11 +95,16 @@ if __name__ == "__main__":
     else:
         # Make arguments available in spawn workers without running the main block there.
         os.environ["TEST_P8_MODE"] = mode
-        gen.execute(gen.dry_run_plan(1, 1), root / "run", 3 if mode == "worker" else 1,
+        os.environ["TEST_P8_ROOT"] = str(root)
+        root_for_worker = root
+        hybrid = mode.startswith("hybrid")
+        plan = gen.rehearsal_plan(2, 2) if hybrid else gen.dry_run_plan(1, 1)
+        gen.execute(plan, root / "run", 3 if hybrid or mode == "worker" else 1,
                     registry=root / "registry", evidence_root=root, resources=resources,
                     fn=serializing_draw if mode == "serialize" else draw, report_fn=report)
 else:
     mode = os.environ.get("TEST_P8_MODE")
+    root_for_worker = Path(os.environ.get("TEST_P8_ROOT", "."))
 """
 
 
@@ -100,7 +112,8 @@ else:
 def command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     script = tmp_path / "fixture.py"
     script.write_text(FIXTURE)
-    monkeypatch.setenv("PYTHONPATH", os.pathsep.join((str(REPO), str(REPO / "src"))))
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join((str(REPO), str(REPO / "src"))),
+                       prepend=os.pathsep)
     return lambda mode: [sys.executable, str(script), mode, str(tmp_path)]
 
 
@@ -330,6 +343,31 @@ def test_watchdog_stops_tree_if_rss_probe_stalls(tmp_path, command):
     result = supervise(command("monitor"), timeout_s=15, memory_bytes=4_000_000_000, sample=sample)
     assert result.status == "monitor_failure"
     _assert_grandchild_stopped(tmp_path)
+
+
+@HOST
+def test_native_hybrid_stops_on_memory_and_report_deadline(tmp_path, command):
+    for label in ("success", "memory", "report"):
+        (tmp_path / label).mkdir()
+    launch = command("hybrid_success")
+    baseline = supervise([*launch[:-1], str(tmp_path / "success")],
+                         timeout_s=30, memory_bytes=4_000_000_000)
+    assert baseline.status == "complete"
+    baseline_root = tmp_path / "success" / "run"
+    assert json.loads((baseline_root / "ledger.json").read_text())["status"] == (
+        "supervision_pending")
+    memory_command = command("hybrid_memory")
+    memory = supervise([*memory_command[:-1], str(tmp_path / "memory")],
+                       timeout_s=30, memory_bytes=baseline.peak_bytes + 70_000_000)
+    assert memory.status == "memory_limit"
+    assert not (tmp_path / "memory" / "run" / "raw" / "repeated_sampling.pkl").exists()
+    assert not (tmp_path / "memory" / "reporting").exists()
+    report_command = command("hybrid_report")
+    expired = supervise([*report_command[:-1], str(tmp_path / "report")],
+                        timeout_s=baseline.elapsed_s + 5, memory_bytes=4_000_000_000)
+    assert expired.status == "time_limit"
+    assert (tmp_path / "report" / "reporting").exists()
+    assert not (tmp_path / "report" / "run" / "record.md").exists()
 
 
 @pytest.mark.parametrize("status", ["complete", "memory_limit"])

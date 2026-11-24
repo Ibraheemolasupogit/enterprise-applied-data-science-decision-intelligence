@@ -23,6 +23,8 @@ from scipy import stats
 from decision_intelligence.customer_value import predictive_cases as pc
 from decision_intelligence.customer_value import predictive_protocol as pp
 
+from .p8_legacy_fixture import execute_archived
+
 REPO = Path(__file__).resolve().parents[3]
 
 
@@ -289,13 +291,13 @@ def test_final_plan_maps_studies_to_their_reserved_blocks(monkeypatch: pytest.Mo
     assert len(GEN.study_tasks(plan)) == 1000 + 500 + 3 * 200 + 200
 
 
-def test_interrupted_cli_exit_code(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.usefixtures("p8_layout")
+def test_interrupted_cli_exit_code(monkeypatch: pytest.MonkeyPatch) -> None:
     def interrupted(*args: object, **kwargs: object) -> None:
         raise KeyboardInterrupt
 
     monkeypatch.setattr(GEN, "execute", interrupted)
-    assert GEN.main(["--mode", "rehearsal", "--run-dir", str(tmp_path / "cli"),
-                     "--registry", str(tmp_path / "registry")]) == 130
+    assert GEN.main(["--mode", "rehearsal"]) == 130
 
 
 # --- draw-level coverage rule -------------------------------------------------------------
@@ -333,7 +335,7 @@ def _fake_final() -> Any:
 
 
 def _final(tmp_path: Path, run: str = "final", fn: Any = None) -> Path:
-    out: Path = GEN.execute(_fake_final(), tmp_path / run, 1, fn=fn or Recorder(),
+    out: Path = execute_archived(GEN, _fake_final(), tmp_path / run, 1, fn=fn or Recorder(),
                             report_fn=_stub_report, registry=tmp_path / "registry",
                             evidence_root=tmp_path, expect_manifest=pp.protocol_digest(),
                             expect_code=pp.protocol_code_digest())
@@ -392,7 +394,7 @@ def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
         _final(tmp_path, run="third")
 
 
-def test_missing_launch_approval_refuses_before_supervision_and_reservation(
+def test_consumed_candidate_refuses_before_supervision_and_reservation(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
 ) -> None:
     assert pp.PENDING_BEFORE_MAIN == ()
@@ -416,8 +418,8 @@ def test_missing_launch_approval_refuses_before_supervision_and_reservation(
             "--expect-manifest", pp.protocol_digest(), "--expect-code", pp.protocol_code_digest()]
     for extra in ([], ["--_supervised-child"]):
         assert GEN.main([*args, *extra]) == 2
-        assert "owner" in capsys.readouterr().err
-    with pytest.raises(pp.ProtocolNotReady, match="owner"):
+        assert "permanently consumed" in capsys.readouterr().err
+    with pytest.raises(pp.ProtocolNotReady, match="permanently consumed"):
         _final(tmp_path, run=run, fn=rec)
     assert rec.calls == [] and cli_rec.calls == []
     assert not (tmp_path / "registry").exists() and not (tmp_path / run).exists()
@@ -450,7 +452,7 @@ def candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 
 def _candidate(paths: tuple[Path, Path, Path], rec: Recorder) -> Path:
     root, registry, run = paths
-    out: Path = GEN.execute(_fake_final(), run, 1, fn=rec, report_fn=_stub_report,
+    out: Path = execute_archived(GEN, _fake_final(), run, 1, fn=rec, report_fn=_stub_report,
                             registry=registry, evidence_root=root,
                             expect_manifest=pp.protocol_digest(),
                             expect_code=pp.protocol_code_digest())

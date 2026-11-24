@@ -105,6 +105,7 @@ def purchase_data(tables: EconomicsTables, cutoff: int, horizon: int) -> Purchas
     cust = obs.customers.set_index("customer_id")
     cust = cust.loc[cust["acquisition_month"] <= through]
     tx = obs.transactions.drop_duplicates("transaction_id")
+    del obs
     tx = tx.loc[(tx["billing_month"] <= through) & tx["customer_id"].isin(cust.index)]
     unit = NONCONTRACTUAL_TIME_UNIT_DAYS * 86400.0
     acq = cust["acquisition_date"]
@@ -443,8 +444,11 @@ def bgnbd_conditional(params: tuple[float, ...], x: FloatArray, t_x: FloatArray,
         p = pn[None, :, None]
         A = np.exp(-power * np.log1p(p * edges[None, None, :] / rate))
         a_e[sel] = np.einsum("j,cjm->cm", w, A)
+        # Both node tensors are large; the survival reduction is complete here.
+        del A
         step = purchase_window(p, power, rate, edges[None, None, :-1], edges[None, None, 1:])
         purchases[sel] = p_alive[sel, None] * np.einsum("j,cjm->cm", w, step)
+        del step
     return Conditional(np.asarray(p_alive, dtype=np.float64),
                        np.asarray(p_alive * a_e[:, 0], dtype=np.float64),
                        np.asarray(purchases, dtype=np.float64))

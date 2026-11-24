@@ -194,14 +194,16 @@ def _stop_tree(proc: subprocess.Popen[bytes], grace_s: float, native: DarwinRSS 
     except PermissionError:
         # Darwin can report EPERM when the watchdog has already killed the group and
         # only unreaped processes remain. Suppress it only after verifying that state.
-        if native is None or any(not native._exited(pid, proc.pid)
+        deadline = time.monotonic() + _POLL_S
+        if native is None or any(not native._exited(pid, proc.pid, retry_until=deadline)
                                  for pid in native._members(proc.pid)):
             raise
     proc.wait(timeout=_STOP_GRACE_S)
 
 
 def supervise(command: Sequence[str], *, timeout_s: float, memory_bytes: int,
-              sample: Callable[[int, bool], tuple[int, bool]] | None = None
+              sample: Callable[[int, bool], tuple[int, bool]] | None = None,
+              credentials: tuple[int, int] | None = None,
               ) -> SupervisionResult:
     """Start one isolated runner, with no retries and no child output in diagnostics."""
     start = time.monotonic()
@@ -223,15 +225,21 @@ def supervise(command: Sequence[str], *, timeout_s: float, memory_bytes: int,
         native = DarwinRSS() if sys.platform == "darwin" or sample is None else None
         monitor = sample if sample is not None else native
         assert monitor is not None
-        with tempfile.TemporaryFile() as stats:
+        with (tempfile.TemporaryDirectory() as temp,
+              open(os.path.join(temp, "rss"), "x+b") as stats,
+              open(stats.name, "rb") as read_stats):
             fd = stats.fileno()
+            read_fd = read_stats.fileno()
             proc = subprocess.Popen(
                 command, start_new_session=True, stdin=subprocess.PIPE,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                env={**os.environ, _PEAK_FD: str(fd)}, pass_fds=(fd,))
+                env={**os.environ, _PEAK_FD: str(read_fd)}, pass_fds=(read_fd,),
+                user=credentials[0] if credentials else None,
+                group=credentials[1] if credentials else None,
+                extra_groups=() if credentials else None, umask=0o077 if credentials else -1)
             assert proc.stdin is not None
             watchdog = subprocess.Popen(
-                [sys.executable, "-S", "-c", _WATCHDOG, str(proc.pid),
+                [sys.executable, "-I", "-B", "-S", "-c", _WATCHDOG, str(proc.pid),
                  str(start + timeout_s), str(_HEARTBEAT_S)],
                 start_new_session=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL)

@@ -53,8 +53,10 @@ def _unique_fields(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _live_binding(repo: Path, *, attempt: str, manifest: str, code: str,
-                  require_clean: bool) -> dict[str, str]:
+                  require_clean: bool, successor: bool = False) -> dict[str, str]:
     git = ["/usr/bin/git", "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false"]
+    if successor:
+        git.extend(["-c", f"safe.directory={repo}", "-c", "core.hooksPath=/dev/null"])
     host = subprocess.run(["/usr/sbin/ioreg", "-rd1", "-c", "IOPlatformExpertDevice"],
                           capture_output=True, check=True, text=True, timeout=5,
                           env=_COMMAND_ENV).stdout

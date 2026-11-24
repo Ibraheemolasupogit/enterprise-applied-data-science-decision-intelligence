@@ -93,7 +93,8 @@ def unpenalised_separation(X: FloatArray, y: FloatArray, weights: FloatArray,
     if not free.any():
         return False
     rows = weights > 0
-    pairs = np.unique(np.column_stack([X[rows][:, free], y[rows]]), axis=0)
+    # Select both axes together so penalised columns never enter the row copy.
+    pairs = np.unique(np.column_stack([X[np.ix_(rows, free)], y[rows]]), axis=0)
     return bool(is_separated(pairs[:, :-1], pairs[:, -1]))
 
 

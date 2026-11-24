@@ -48,11 +48,9 @@ from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
 from typing import Any
 
+from decision_intelligence.customer_value import p8_candidate
 from decision_intelligence.customer_value import protocol as m10
-from decision_intelligence.customer_value.launch_approval import (
-    LaunchApprovalError,
-    require_owner_approval,
-)
+from decision_intelligence.customer_value.launch_approval import LaunchApprovalError
 
 PROTOCOL_ID = "M11-predictive-ltv"
 PROTOCOL_STAGE = "P8-amended"
@@ -1252,9 +1250,13 @@ class ProtocolNotReady(RuntimeError):
 def require_launch_approval(*, require_clean: bool = True) -> None:
     """Verify approval against the release containing this protocol."""
     try:
-        require_owner_approval(Path(__file__).resolve().parents[3], attempt=P8_FINAL_ATTEMPT_KEY,
-                               manifest=protocol_digest(), code=protocol_code_digest(),
-                               require_clean=require_clean)
+        repo = Path(__file__).resolve().parents[3]
+        approval_sha256 = p8_candidate.require_owner_approval(
+            repo, attempt=P8_FINAL_ATTEMPT_KEY,
+            manifest=protocol_digest(), code=protocol_code_digest(), require_clean=require_clean)
+        p8_candidate.require_active_claim(repo, attempt=P8_FINAL_ATTEMPT_KEY,
+                                          manifest=protocol_digest(), code=protocol_code_digest(),
+                                          approval_sha256=approval_sha256)
     except LaunchApprovalError as exc:
         raise ProtocolNotReady(str(exc)) from exc
 
@@ -1277,8 +1279,8 @@ def authorise_seed(purpose: str, *, confirm_single_final_run: bool = False) -> i
         raise ProtocolNotReady("outcome-blindness confirmation is required")
     if purpose == "fresh" and not confirm_single_final_run:
         raise ProtocolNotReady("the fresh seed is evaluated once, last; confirm explicitly")
-    # The fresh phase runs after the approved reservation has changed the working tree.
-    require_launch_approval(require_clean=purpose == "main")
+    # All governed writes are private. The source tree remains clean through fresh.
+    require_launch_approval()
     return MAIN_SEED if purpose == "main" else FRESH_SEED
 
 
