@@ -21,10 +21,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "c930e20b123a52d6b14ad58309f6bc5ac690ba10ec18a7f6aa3b2c83a09b0999"
+FROZEN_DIGEST = "49f3cd6f9e4895daecb9e80727696661a3a0af843feddf1d380041af2f547ce1"
 """SHA-256 of the protocol manifest (P0 as amended through A19). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-CANDIDATE_CODE_DIGEST = "66b1c18c6cd2346f9232d236b5aac93aa0796f857f20b4ee7f57406e74dd9abb"
+CANDIDATE_CODE_DIGEST = "6120b81ebb2d9f0d19967266bb4b60905cc172b78f9d49b971e77a87a1f72e2d"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -692,7 +692,7 @@ def test_p8_amendment_a14_records_the_failure_fixes_e4_and_authorises_one_retry(
     ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
     assert ids[:18] == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11",
                         "A12", "A13", "A14", "A15", "A16", "A17", "A18"]
-    assert ids[18:] == (["A19"] if pp.P8_FINAL_ATTEMPT_KEY == "final-a19" else [])
+    assert ids[18:] == (["A19", "A20"] if pp.P8_FINAL_ATTEMPT_KEY == "final-a20" else ["A19"])
     a14 = next(a for a in pp.PROTOCOL_AMENDMENTS if a.id == "A14")
     # A14 followed the failed attempt's main-seed computation but preceded any inspection
     assert (a14.stage, a14.date) == ("P8", "2026-11-20")
@@ -756,7 +756,7 @@ def test_amendment_timing_is_recorded_truthfully() -> None:
     """A14 followed the first main computation. A15 through A18 followed both."""
     timing = {a.id: (a.before_main_seed, a.before_outcome_inspection)
               for a in pp.PROTOCOL_AMENDMENTS}
-    end = 20 if pp.P8_FINAL_ATTEMPT_KEY == "final-a19" else 19
+    end = 21 if pp.P8_FINAL_ATTEMPT_KEY == "final-a20" else 20
     assert timing == {**{f"A{i}": (True, True) for i in range(1, 14)},
                       **{f"A{i}": (False, True) for i in range(14, end)}}
     assert pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION == tuple(f"A{i}" for i in range(14, end))

@@ -15,7 +15,8 @@ from types import SimpleNamespace
 
 import pytest
 from scripts import generate_m11_evidence as runner
-from scripts import prepare_m11_p8_a19 as adoption
+from scripts import prepare_m11_p8_a19 as renderer
+from scripts import prepare_m11_p8_a20 as adoption
 
 from decision_intelligence.customer_value import (
     launch_approval,
@@ -162,18 +163,18 @@ def test_truncated_journal_fails_closed(tmp_path):
         os.close(fd)
 
 
-def test_a19_identity_alone_does_not_activate_successor(monkeypatch):
-    assert p8_candidate.A19_ATTEMPT == "final-a19"
-    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", pp.PROTOCOL_AMENDMENTS[:18])
+def test_a20_identity_alone_does_not_activate_successor(monkeypatch):
+    assert p8_candidate.A20_ATTEMPT == "final-a20"
+    monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", pp.PROTOCOL_AMENDMENTS[:19])
     monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION",
-                        pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION[:5])
-    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", p8_candidate.A19_ATTEMPT)
+                        pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION[:6])
+    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", p8_candidate.A20_ATTEMPT)
     with pytest.raises(pp.ProtocolNotReady, match="has not been adopted"):
         pp.require_successor_amendment()
-    draft = replace(pp.PROTOCOL_AMENDMENTS[-1], id="A19", before_outcome_inspection=None)
+    draft = replace(pp.PROTOCOL_AMENDMENTS[-1], id="A20", before_outcome_inspection=None)
     monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", (*pp.PROTOCOL_AMENDMENTS, draft))
     monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION",
-                        (*pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION, "A19"))
+                        (*pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION, "A20"))
     with pytest.raises(pp.ProtocolNotReady, match="has not been adopted"):
         pp.require_successor_amendment()
     adopted = replace(draft, before_outcome_inspection=True)
@@ -181,16 +182,15 @@ def test_a19_identity_alone_does_not_activate_successor(monkeypatch):
     pp.require_successor_amendment()
 
 
-def test_a19_adoption_patch_preserves_frozen_science_and_projects_both_pins(tmp_path):
-    runbook = adoption.REPO / "docs/milestones/m11-p8-a19-owner-runbook.md"
+def test_a20_adoption_patch_preserves_frozen_science_and_projects_both_pins(tmp_path):
+    runbook = renderer.REPO / "docs/milestones/m11-p8-a20-owner-runbook.md"
     text = runbook.read_text()
     assert f"**Change.** {adoption.CHANGE}" in text
     assert f"**Reason.** {adoption.REASON}" in text
-    if pp.P8_FINAL_ATTEMPT_KEY == "final-a19":
-        assert pp.PROTOCOL_AMENDMENTS[-1].date == "2026-11-24"
+    if pp.P8_FINAL_ATTEMPT_KEY == "final-a20":
         assert pp.PROTOCOL_AMENDMENTS[-1].change == adoption.CHANGE
         assert pp.PROTOCOL_AMENDMENTS[-1].reason == adoption.REASON
-        with pytest.raises(ValueError, match="held A18"):
+        with pytest.raises(ValueError, match="held A19"):
             adoption.prepare_patch("2099-12-31")
         return
 
@@ -198,13 +198,13 @@ def test_a19_adoption_patch_preserves_frozen_science_and_projects_both_pins(tmp_
         adoption.prepare_patch("2020-01-01")
     with pytest.raises(pp.ProtocolNotReady, match="permanently consumed"):
         pp.require_successor_amendment()
-    paths = [adoption.PROTOCOL_PATH.with_name(name) for name in pp.PROTOCOL_CODE_FILES]
-    for path in (*paths, adoption.TEST_PATH):
+    paths = [renderer.PROTOCOL_PATH.with_name(name) for name in pp.PROTOCOL_CODE_FILES]
+    for path in (*paths, renderer.TEST_PATH):
         (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(adoption.REPO / path, tmp_path / path)
+        shutil.copyfile(renderer.REPO / path, tmp_path / path)
     patch = adoption.prepare_patch("2099-12-31")
     subprocess.run(["git", "apply"], cwd=tmp_path, input=patch, text=True, check=True)
-    fixture = runpy.run_path(str(tmp_path / adoption.PROTOCOL_PATH))
+    fixture = runpy.run_path(str(tmp_path / renderer.PROTOCOL_PATH))
     assert fixture["validate_protocol"]() == []
     fixture["require_successor_amendment"]()
     before, after = pp.protocol_manifest(), fixture["protocol_manifest"]()
@@ -212,14 +212,20 @@ def test_a19_adoption_patch_preserves_frozen_science_and_projects_both_pins(tmp_
         "P8_FINAL_ATTEMPT_KEY", "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", "PROTOCOL_AMENDMENTS",
     }
     assert after["PROTOCOL_AMENDMENTS"][:-1] == before["PROTOCOL_AMENDMENTS"]
-    assert after["P8_FINAL_ATTEMPT_KEY"] == "final-a19"
-    pins = (tmp_path / adoption.TEST_PATH).read_text()
+    assert after["P8_FINAL_ATTEMPT_KEY"] == "final-a20"
+    pins = (tmp_path / renderer.TEST_PATH).read_text()
     for constant, digest in (("FROZEN_DIGEST", "protocol_digest"),
                              ("CANDIDATE_CODE_DIGEST", "protocol_code_digest")):
         assert re.search(rf'^{constant} = "{fixture[digest]()}"$', pins, re.MULTILINE)
 
 
-def test_adopted_a19_still_requires_separate_signed_approval(tmp_path, monkeypatch):
+def test_adopted_a20_still_requires_separate_signed_approval(tmp_path, monkeypatch):
+    if pp.P8_FINAL_ATTEMPT_KEY != "final-a20":
+        record = replace(pp.PROTOCOL_AMENDMENTS[-1], id="A20")
+        monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", "final-a20")
+        monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS", (*pp.PROTOCOL_AMENDMENTS, record))
+        monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION",
+                            (*pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION, "A20"))
     pp.require_successor_amendment()
     monkeypatch.setattr(p8_candidate.sys, "platform", "darwin")
     monkeypatch.setattr(launch_approval, "_APPROVAL_DIR", tmp_path)
@@ -229,6 +235,112 @@ def test_adopted_a19_still_requires_separate_signed_approval(tmp_path, monkeypat
     with pytest.raises(pp.ProtocolNotReady, match="owner approval is missing"):
         pp.require_launch_approval()
     assert list(tmp_path.iterdir()) == []
+
+
+def test_a20_pins_a19_startup_failure_and_refuses_a_used_successor(tmp_path, monkeypatch):
+    attempt = p8_candidate.A19_ATTEMPT
+    private = SimpleNamespace(history_manifest=lambda: ({}, "history-pin"),
+                              run_dir=lambda key: tmp_path / key)
+    rows = [
+        {"attempt": attempt, "state": "consumed", "payload": {
+            "manifest_digest": p8_candidate._A19_MANIFEST,
+            "code_digest": p8_candidate._A19_CODE,
+            "approval_sha256": "a" * 64, "history_manifest_sha256": "history-pin",
+            "run_dir": str(private.run_dir(attempt)),
+        }},
+        {"attempt": attempt, "state": "terminal", "sha256": "b" * 64,
+         "payload": {"status": "child_failure", "returncode": 2}},
+    ]
+
+    @contextmanager
+    def read_only(_path):
+        yield SimpleNamespace(records=lambda: rows)
+
+    monkeypatch.setattr(p8_journal, "open_journal", read_only)
+    assert p8_candidate.verify_a19_consumption(private, require_unused=True) == "b" * 64
+    rows[1]["payload"]["returncode"] = 1
+    with pytest.raises(launch_approval.LaunchApprovalError, match="startup-failure"):
+        p8_candidate.verify_a19_consumption(private)
+    rows[1]["payload"]["returncode"] = 2
+    rows.append({"attempt": p8_candidate.A20_ATTEMPT, "state": "consumed"})
+    with pytest.raises(launch_approval.LaunchApprovalError, match="already consumed"):
+        p8_candidate.verify_a19_consumption(private, require_unused=True)
+    assert p8_candidate.verify_a19_consumption(private) == "b" * 64
+
+
+_SIGNED_PROBE = """
+import os, sys
+from pathlib import Path
+from types import SimpleNamespace
+from scripts import generate_m11_evidence as runner
+
+root, scenario = Path(sys.argv[1]), sys.argv[2]
+attempt = "final-fixture-preflight"
+runner.REPO = root
+runner.pp.require_successor_amendment = lambda: None
+runner.final_attempt_key = lambda: attempt
+runner.p8_private.open_private_evidence = lambda repo: SimpleNamespace(
+    root=SimpleNamespace(lstat=lambda: SimpleNamespace(
+        st_uid=os.geteuid(), st_gid=os.getegid() + (scenario == "identity"))),
+    run_dir=lambda key: root / key)
+runner._require_private_available = lambda layout, path: None
+runner.verify_successor_history = lambda private: "fixture-history"
+runner.p8_candidate.verify_a19_consumption = lambda *a, **kw: "fixture-tip"
+runner.launch_approval._APPROVAL_DIR = root
+runner.launch_approval._trusted_path = lambda *a, **kw: None
+runner.p8_candidate.release_binding = lambda *a, **kw: {"attempt": attempt}
+
+def verify_git_index(repo):
+    if scenario == "index":
+        raise PermissionError("private fixture error")
+
+def forbidden(*args, **kwargs):
+    os._exit(97)
+
+runner.p8_immutable.verify_git_index = verify_git_index
+runner.p8_journal.open_journal = forbidden
+runner.p8_candidate.require_active_claim = forbidden
+runner.final_plan = forbidden
+runner._reserve = forbidden
+raise SystemExit(runner._preflight_child())
+"""
+
+
+@pytest.mark.skipif(sys.platform != "darwin" or not shutil.which("ssh-keygen"),
+                    reason="requires native Darwin supervision and OpenSSH")
+def test_native_signed_pre_dispatch_is_read_only(tmp_path, monkeypatch):
+    root = Path(runner.__file__).resolve().parents[1]
+    extra = os.environ.get("PYTHONPATH", "")
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join((str(root), str(root / "src"), extra)))
+    key = tmp_path / "probe-fixture.key"
+    subprocess.run(["/usr/bin/ssh-keygen", "-t", "ed25519", "-N", "", "-q", "-f", str(key)],
+                   check=True)
+    principal = launch_approval._PRINCIPAL
+    (tmp_path / "allowed_signers").write_text(
+        f"{principal} {Path(str(key) + '.pub').read_text().strip()}\n")
+    record = tmp_path / "final-fixture-preflight.json"
+    record.write_text(json.dumps({"attempt": "final-fixture-preflight", "ci_run_id": "123",
+                                  "host_preflight_passed": True}))
+    subprocess.run(["/usr/bin/ssh-keygen", "-Y", "sign", "-f", str(key),
+                    "-n", "m11-p8-final-fixture-preflight", str(record)],
+                   check=True, capture_output=True)
+    script = tmp_path / "worker.py"
+    script.write_text(_SIGNED_PROBE)
+    before = set(tmp_path.iterdir())
+
+    def run(scenario):
+        return runner.supervise([sys.executable, "-B", str(script), str(tmp_path), scenario],
+                                timeout_s=25, memory_bytes=4_000_000_000)
+
+    expected = {"complete": ("complete", 0), "index": ("child_failure", 23),
+                "identity": ("child_failure", 22)}
+    for scenario, pair in expected.items():
+        result = run(scenario)
+        assert (result.status, result.returncode) == pair
+    record.write_bytes(record.read_bytes() + b" ")
+    result = run("signature")
+    assert (result.status, result.returncode) == ("child_failure", 25)
+    assert set(tmp_path.iterdir()) == before
 
 
 def test_successor_cannot_hide_its_missing_receipt_by_changing_staging_mode(tmp_path):
@@ -260,7 +372,7 @@ def test_real_fixture_signature_rejects_payload_and_namespace_replay(tmp_path):
     p8_candidate._verify_signature(tmp_path, original, payload.read_bytes())
     with pytest.raises(subprocess.CalledProcessError):
         p8_candidate._verify_signature(tmp_path, original, payload.read_bytes() + b" ")
-    replay = p8_candidate.A19_ATTEMPT
+    replay = p8_candidate.A20_ATTEMPT
     shutil.copyfile(tmp_path / f"{original}.json.sig", tmp_path / f"{replay}.json.sig")
     with pytest.raises(subprocess.CalledProcessError):
         p8_candidate._verify_signature(tmp_path, replay, payload.read_bytes())

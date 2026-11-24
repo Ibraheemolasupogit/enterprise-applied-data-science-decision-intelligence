@@ -13,6 +13,9 @@ from . import launch_approval as legacy
 from . import p8_immutable, p8_journal, p8_private
 
 A19_ATTEMPT = "final-a19"
+A20_ATTEMPT = "final-a20"
+_A19_MANIFEST = "c930e20b123a52d6b14ad58309f6bc5ac690ba10ec18a7f6aa3b2c83a09b0999"
+_A19_CODE = "66b1c18c6cd2346f9232d236b5aac93aa0796f857f20b4ee7f57406e74dd9abb"
 HISTORICAL_PINS = {
     "final": (
         "cd7c8391347df2f9a2cf802161f35a0cb6a9a889b29c8fce3825a22ebe5902a9",
@@ -29,10 +32,11 @@ HISTORICAL_PINS = {
 }
 HISTORY_CHAIN_SHA256 = "5dbcc3a8f3ee527cd75d50fcfb099f967968119b57d19985df7d197611259c2a"
 HISTORY_PREFIX_SHA256 = "52c6031120ff02a58b6b773134f69ad9d48d322a20fb10ce9418c6af58eec2fb"
+CONSUMED_IDENTITIES = frozenset((*HISTORICAL_PINS, A19_ATTEMPT))
 
 
 def require_new_identity(attempt: str) -> None:
-    if attempt in HISTORICAL_PINS:
+    if attempt in CONSUMED_IDENTITIES:
         raise legacy.LaunchApprovalError(f"attempt {attempt} is permanently consumed")
     if len(attempt) > 64 or re.fullmatch(r"final-[a-z0-9]+(?:-[a-z0-9]+)*", attempt) is None:
         raise legacy.LaunchApprovalError("a distinct canonical attempt identity is required")
@@ -45,6 +49,32 @@ def _verify_signature(directory: Path, attempt: str, payload: bytes) -> None:
          "-s", str(directory / f"{attempt}.json.sig")],
         input=payload, capture_output=True, check=True, timeout=5, env=legacy._COMMAND_ENV,
     )
+
+
+def verify_a19_consumption(private: p8_private.PrivateEvidence, *,
+                           require_unused: bool = False) -> str:
+    """Verify the protected A19 prefix and return its terminal chain digest."""
+    _, history_pin = private.history_manifest()
+    with p8_journal.open_journal(legacy._APPROVAL_DIR / "consumption.jsonl") as journal:
+        rows = journal.records()
+    if ([(r["attempt"], r["state"]) for r in rows[:2]]
+            != [(A19_ATTEMPT, "consumed"), (A19_ATTEMPT, "terminal")]
+            or any(r["attempt"] != A20_ATTEMPT for r in rows[2:])):
+        raise legacy.LaunchApprovalError("protected A19 journal history is missing or unexpected")
+    claim, terminal = rows[:2]
+    a19_dir = private.run_dir(A19_ATTEMPT)
+    expected = {"manifest_digest": _A19_MANIFEST, "code_digest": _A19_CODE,
+                "history_manifest_sha256": history_pin, "run_dir": str(a19_dir)}
+    approval = claim["payload"].get("approval_sha256")
+    if (any(claim["payload"].get(k) != v for k, v in expected.items())
+            or not isinstance(approval, str) or re.fullmatch(r"[0-9a-f]{64}", approval) is None
+            or terminal["payload"].get("status") != "child_failure"
+            or terminal["payload"].get("returncode") != 2
+            or a19_dir.exists()):
+        raise legacy.LaunchApprovalError("protected A19 startup-failure evidence does not match")
+    if require_unused and len(rows) != 2:
+        raise legacy.LaunchApprovalError("final-a20 is already consumed")
+    return str(terminal["sha256"])
 
 
 def require_active_claim(repo: Path, *, attempt: str, manifest: str, code: str,
@@ -77,6 +107,8 @@ def release_binding(repo: Path, *, attempt: str, manifest: str, code: str,
                    history_sha256=history_sha256, worker_uid=str(worker.st_uid),
                    worker_gid=str(worker.st_gid))
     binding.update(immutable)
+    if attempt == A20_ATTEMPT:
+        binding["a19_journal_tip_sha256"] = verify_a19_consumption(private)
     source = repo / "src" / "decision_intelligence" / "customer_value"
     for name in ("p8_scheduler", "p8_candidate", "p8_private", "p8_journal", "p8_immutable"):
         module = source / f"{name}.py"

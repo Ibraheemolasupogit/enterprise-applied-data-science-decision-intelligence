@@ -53,41 +53,43 @@ def _literal_lines(text: str) -> str:
     )
 
 
-def prepare_patch(decision_date: str) -> str:
-    """Compute the exact date-bound protocol and test pin diff."""
+def render_patch(decision_date: str, *, prior: tuple[str, str], successor: tuple[str, str],
+                 change: str, reason: str, old_doc: str, new_doc: str) -> str:
+    """Compute a date-bound amendment and its integrity pins."""
+    prior_id, prior_attempt = prior
+    amendment_id, attempt = successor
     approved = date.fromisoformat(decision_date)
     previous = protocol.PROTOCOL_AMENDMENTS[-1]
-    if (protocol.P8_FINAL_ATTEMPT_KEY != "final-a15" or previous.id != "A18"
-            or protocol.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION[-1] != "A18"):
-        raise ValueError("expected the held A18 protocol")
+    if (protocol.P8_FINAL_ATTEMPT_KEY != prior_attempt or previous.id != prior_id
+            or protocol.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION[-1] != prior_id):
+        raise ValueError(f"expected the held {prior_id} protocol")
     if approved.isoformat() != decision_date or approved < date.fromisoformat(previous.date):
-        raise ValueError("decision date must be YYYY-MM-DD and follow or equal the A18 date")
+        raise ValueError(
+            f"decision date must be YYYY-MM-DD and follow or equal the {prior_id} date")
     protocol_file = REPO / PROTOCOL_PATH
     if protocol.__file__ is None or Path(protocol.__file__).resolve() != protocol_file:
         raise ValueError("import the protocol from the checkout using PYTHONPATH=src")
     amendment = protocol.Amendment(
-        "A19", "P8", decision_date, False, CHANGE, REASON, before_outcome_inspection=True)
+        amendment_id, "P8", decision_date, False, change, reason, before_outcome_inspection=True)
     source = protocol_file.read_text(encoding="utf-8")
     revised = _replace_once(
-        source, 'P8_FINAL_ATTEMPT_KEY = "final-a15"\n'
-        '"""The historical A16 key. The draft A19 successor requires owner adoption."""',
-        f'P8_FINAL_ATTEMPT_KEY = "{p8_candidate.A19_ATTEMPT}"\n'
-        '"""The A19 successor. Execution requires separate signed owner approval."""')
+        source, f'P8_FINAL_ATTEMPT_KEY = "{prior_attempt}"\n"""{old_doc}"""',
+        f'P8_FINAL_ATTEMPT_KEY = "{attempt}"\n"""{new_doc}"""')
     timing = tuple(protocol.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION)
     timing_line = 'AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("' + '", "'.join(timing)
-    revised = _replace_once(revised, timing_line + '")', timing_line + '", "A19")')
+    revised = _replace_once(revised, timing_line + '")', timing_line + f'", "{amendment_id}")')
     marker = '\n)\n"""Protocol changes since P0'
     record = (
-        f'\n    Amendment("A19", "P8", "{decision_date}", False,\n'
-        + _literal_lines(CHANGE)
-        + _literal_lines(REASON)
+        f'\n    Amendment("{amendment_id}", "P8", "{decision_date}", False,\n'
+        + _literal_lines(change)
+        + _literal_lines(reason)
         + '              before_outcome_inspection=True),'
     )
     revised = _replace_once(revised, marker, record + marker)
 
     manifest = protocol.protocol_manifest()
-    manifest["P8_FINAL_ATTEMPT_KEY"] = p8_candidate.A19_ATTEMPT
-    manifest["AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION"].append("A19")
+    manifest["P8_FINAL_ATTEMPT_KEY"] = attempt
+    manifest["AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION"].append(amendment_id)
     manifest["PROTOCOL_AMENDMENTS"].append(asdict(amendment))
     canonical = json.dumps(manifest, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
     manifest_digest = hashlib.sha256(canonical.encode("ascii")).hexdigest()
@@ -113,6 +115,14 @@ def prepare_patch(decision_date: str) -> str:
             before.splitlines(keepends=True), after.splitlines(keepends=True),
             fromfile=f"a/{path}", tofile=f"b/{path}")
     )
+
+
+def prepare_patch(decision_date: str) -> str:
+    return render_patch(
+        decision_date, prior=("A18", "final-a15"), successor=("A19", p8_candidate.A19_ATTEMPT),
+        change=CHANGE, reason=REASON,
+        old_doc="The historical A16 key. The draft A19 successor requires owner adoption.",
+        new_doc="The A19 successor. Execution requires separate signed owner approval.")
 
 
 def main() -> None:

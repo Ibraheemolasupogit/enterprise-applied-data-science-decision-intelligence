@@ -1230,6 +1230,73 @@ def _require_private_available(layout: p8_private.PrivateEvidence, run_dir: Path
         raise RunRefused("private registry is invalid or a successor already exists")
 
 
+_PREFLIGHT_ERRORS = {
+    21: "native supervisor handshake failed",
+    22: "dedicated worker identity or private staging check failed",
+    23: "worker cannot verify .git/index; restore root-owned worker-readable permissions",
+    24: "worker could not verify the pinned historical records or unused A20 journal state",
+    25: "worker rejected the immutable release, Git status or signed launch binding",
+}
+
+
+def _preflight_child() -> int:
+    """Read-only check on the real supervisor boundary, without a live claim."""
+    stage = 21
+    try:
+        await_supervisor()
+        stage = 22
+        pp.require_successor_amendment()
+        private = p8_private.open_private_evidence(REPO)
+        worker = private.root.lstat()
+        if os.geteuid() == 0 or (os.geteuid(), os.getegid()) != (worker.st_uid, worker.st_gid):
+            return stage
+        attempt = final_attempt_key()
+        _require_private_available(private, private.run_dir(attempt))
+        stage = 23
+        p8_immutable.verify_git_index(REPO)
+        stage = 24
+        verify_successor_history(private)
+        p8_candidate.verify_a19_consumption(private, require_unused=True)
+        stage = 25
+        p8_candidate.require_owner_approval(
+            REPO, attempt=attempt, manifest=pp.protocol_digest(), code=pp.protocol_code_digest(),
+            require_clean=True)
+    except (OSError, ValueError, RunRefused, MonitorUnavailable, pp.ProtocolNotReady,
+            p8_journal.JournalError, p8_private.PrivateEvidenceError,
+            launch_approval.LaunchApprovalError):
+        return stage
+    return 0
+
+
+def _require_pre_dispatch(private: p8_private.PrivateEvidence, uid: int, gid: int) -> None:
+    if os.geteuid() != 0 or uid == 0:
+        raise RunRefused("signed preflight requires root and a dedicated unprivileged worker")
+    _require_private_available(private, private.run_dir(final_attempt_key()))
+    p8_candidate.verify_a19_consumption(private, require_unused=True)
+    result = supervise([sys.executable, "-I", "-B", str(Path(__file__).resolve()),
+                        "--_preflight-child"], timeout_s=120,
+                       memory_bytes=int(pp.BUDGETS.evidence_memory_gb * 1e9),
+                       credentials=(uid, gid))
+    if result.status != "complete" or result.returncode != 0:
+        detail = _PREFLIGHT_ERRORS.get(result.returncode or 0, result.status)
+        if result.status == "child_failure" and result.returncode == 1:
+            detail = "worker could not start the probe; check checkout traversal and imports"
+        raise RunRefused(f"pre-dispatch check failed before consumption: {detail}")
+
+
+def _signed_preflight() -> None:
+    pp.require_successor_amendment()
+    if os.geteuid() != 0:
+        raise RunRefused("signed preflight requires the privileged supervisor")
+    worker = p8_private._ROOT.lstat()
+    private = p8_private.open_private_evidence(REPO, owner=worker.st_uid)
+    verify_successor_history(private)
+    p8_candidate.require_owner_approval(
+        REPO, attempt=final_attempt_key(), manifest=pp.protocol_digest(),
+        code=pp.protocol_code_digest(), require_clean=True, supervisor_uid=worker.st_uid)
+    _require_pre_dispatch(private, worker.st_uid, worker.st_gid)
+
+
 def _run_successor(args: argparse.Namespace, argv: Sequence[str]) -> int:
     """The only governed entry. No supplied plans, draws or reporting callbacks."""
     refuse_real_final_under_test("final", pc.run_task)
@@ -1256,6 +1323,7 @@ def _run_successor(args: argparse.Namespace, argv: Sequence[str]) -> int:
     if run_dir.exists() or run_dir.is_symlink():
         raise RunRefused("private run directory already exists and cannot be reused")
     if not args._supervised_child:
+        _require_pre_dispatch(private, uid, gid)
         with p8_journal.open_journal(_journal_path(), writable=True) as journal:
             return _consume_and_supervise(
                 journal, attempt, [sys.executable, "-I", "-B", str(Path(__file__).resolve()),
@@ -1279,6 +1347,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--_supervised-child", action="store_true", help=argparse.SUPPRESS)
+    ap.add_argument("--_preflight-child", action="store_true", help=argparse.SUPPRESS)
+    ap.add_argument("--preflight", action="store_true",
+                    help="verify the signed launch read-only before consumption")
     ap.add_argument("--mode", choices=("dry-run", "rehearsal", "final"))
     ap.add_argument("--workers", type=int, default=pp.P8_EXECUTION.workers)
     ap.add_argument("--run-dir", type=Path, default=None)
@@ -1296,6 +1367,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--no-raw", action="store_true",
                     help="with --verify: accept a clone without the raw (Git-ignored) results")
     args = ap.parse_args(argv)
+    if args.preflight or args._preflight_child:
+        if (args.preflight and args._preflight_child
+                or any((args.mode, args.verify, args.export_reviewed, args._supervised_child,
+                        args.run_dir, args.registry, args.output))):
+            ap.error("preflight is separate from execution, verification and export")
+        if args._preflight_child:
+            return _preflight_child()
+        try:
+            _signed_preflight()
+        except (OSError, ValueError, RunRefused, pp.ProtocolNotReady,
+                p8_journal.JournalError, p8_private.PrivateEvidenceError,
+                launch_approval.LaunchApprovalError) as exc:
+            print(f"preflight refused: {type(exc).__name__}" if isinstance(exc, OSError)
+                  else f"preflight refused: {exc}", file=sys.stderr)
+            return 2
+        print("Signed pre-dispatch check passed. No claim was created.")
+        return 0
     if args.export_reviewed is not None:
         if any((args.mode, args.verify, args.run_dir, args.registry, args.output,
                 args._supervised_child)):

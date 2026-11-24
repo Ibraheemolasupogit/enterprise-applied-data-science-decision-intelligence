@@ -871,8 +871,8 @@ E4_ACCELERATED_SMALL_A = (
     "and changed no customer's coverage; only R2's E4 interval coverage (reported, never "
     "asserted) uses it, never a point prediction, primary comparison, selection or gate")
 """Amendment A14."""
-P8_FINAL_ATTEMPT_KEY = "final-a19"
-"""The A19 successor. Execution requires separate signed owner approval."""
+P8_FINAL_ATTEMPT_KEY = "final-a20"
+"""The A20 successor. Execution requires separate signed owner approval."""
 P8_RETRY_RULE = (
     "Exactly one new final attempt: reservation final-a14 in docs/evidence/"
     "m11-p8-attempts and run directory docs/evidence/m11-p8-final-a14, on the same seed plan as "
@@ -1057,7 +1057,7 @@ class Amendment:
     None denoted a pending confirmation in the held A16 configuration."""
 
 
-AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14", "A15", "A16", "A17", "A18", "A19")
+AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION = ("A14", "A15", "A16", "A17", "A18", "A19", "A20")
 """A14 followed the first main computation. A15 through A18 followed both."""
 
 
@@ -1258,6 +1258,26 @@ PROTOCOL_AMENDMENTS = (
               'signed owner approval is required after green CI on the exact amended '
               'release and a passing immediate host preflight.',
               before_outcome_inspection=True),
+    Amendment("A20", "P8", "2026-11-24", False,
+              'Configure final-a20 for at most one independently authorised confirmatory '
+              'dispatch. Keep final, final-a14, final-a15 and final-a19 permanently '
+              'consumed. Preserve the protected A19 startup-failure record and bind '
+              'approval to its journal chain tip. Require the dedicated worker to verify '
+              'the immutable checkout, including the Git index, the signed release and the '
+              'private history under native supervision before consumption. Preserve all '
+              'frozen estimands, numerical and inference methods, seeds, RNG sequences, '
+              'simulation counts and scales, acceptance thresholds, reporting semantics and '
+              'fresh-last ordering. Keep the qualified hybrid schedule and the '
+              '4,000,000,000-byte aggregate sampled RSS and 10,800-second limits.',
+              'The final-a19 attempt on release 493fd0b was consumed by a child failure '
+              'with exit code 2 after 1.657 seconds. The dedicated worker could not read '
+              'the root-owned Git index and stopped before an execution ledger was created. '
+              'The index permissions were repaired and worker Git status and complete '
+              'signed-release verification passed. The owner confirmed continued outcome '
+              'blindness. A20 adoption grants no launch authority. A separate '
+              'attempt-specific signed approval requires green CI on the exact amended '
+              'release and a passing immediate host preflight.',
+              before_outcome_inspection=True),
 )
 """Protocol changes since P0 (82e3ebd), with their relation to computation and inspection."""
 
@@ -1267,23 +1287,23 @@ class ProtocolNotReady(RuntimeError):
 
 
 def require_successor_amendment() -> None:
-    """Refuse a successor until the owner adopts A19 and records outcome blindness."""
-    if P8_FINAL_ATTEMPT_KEY in p8_candidate.HISTORICAL_PINS:
+    """Refuse a successor until the owner adopts A20 and records outcome blindness."""
+    if P8_FINAL_ATTEMPT_KEY in p8_candidate.CONSUMED_IDENTITIES:
         raise ProtocolNotReady(f"attempt {P8_FINAL_ATTEMPT_KEY} is permanently consumed")
     amendment = PROTOCOL_AMENDMENTS[-1]
-    if (P8_FINAL_ATTEMPT_KEY != p8_candidate.A19_ATTEMPT
-            or (amendment.id, amendment.stage) != ("A19", "P8")
+    if (P8_FINAL_ATTEMPT_KEY != p8_candidate.A20_ATTEMPT
+            or (amendment.id, amendment.stage) != ("A20", "P8")
             or amendment.before_main_seed is not False
             or amendment.before_outcome_inspection is not True
-            or AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION[-1] != "A19"):
-        raise ProtocolNotReady("the A19 successor amendment has not been adopted")
+            or AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION[-1] != "A20"):
+        raise ProtocolNotReady("the A20 successor amendment has not been adopted")
     try:
         adopted = date.fromisoformat(amendment.date)
     except ValueError as exc:
-        raise ProtocolNotReady("the A19 owner decision date is invalid") from exc
+        raise ProtocolNotReady("the A20 owner decision date is invalid") from exc
     if adopted.isoformat() != amendment.date or adopted < date.fromisoformat(
             PROTOCOL_AMENDMENTS[-2].date):
-        raise ProtocolNotReady("the A19 owner decision date is invalid")
+        raise ProtocolNotReady("the A20 owner decision date is invalid")
 
 
 def require_launch_approval(*, require_clean: bool = True) -> None:

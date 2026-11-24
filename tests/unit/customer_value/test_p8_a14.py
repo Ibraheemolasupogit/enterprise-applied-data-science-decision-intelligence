@@ -154,7 +154,7 @@ def failed_attempt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Pat
     monkeypatch.setattr(pp, "require_launch_approval", lambda: None)
     monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS",
                         tuple(a for a in pp.PROTOCOL_AMENDMENTS if a.id not in (
-                            "A15", "A16", "A17", "A18", "A19")))
+                            "A15", "A16", "A17", "A18", "A19", "A20")))
     monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", ("A14",))
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # historical fake A14 only
     ledger = tmp_path / "m11-p8-final" / "ledger.json"

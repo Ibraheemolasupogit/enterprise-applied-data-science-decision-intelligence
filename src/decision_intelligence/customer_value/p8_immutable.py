@@ -13,6 +13,23 @@ _THREAD_ENV = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
                "VECLIB_MAXIMUM_THREADS", "NUMEXPR_NUM_THREADS")
 
 
+def verify_git_index(repo: Path) -> None:
+    """Check the index under the same effective identity that will run Git."""
+    index = repo / ".git" / "index"
+    try:
+        info = index.lstat()
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022
+                or (os.geteuid() != 0 and os.access(index, os.W_OK))):
+            raise LaunchApprovalError("Git index must be a root-controlled read-only file")
+        with index.open("rb") as stream:
+            if stream.read(4) != b"DIRC":
+                raise LaunchApprovalError("Git index header is invalid")
+    except OSError as exc:
+        raise LaunchApprovalError(
+            "cannot read .git/index; grant the dedicated worker read-only checkout access"
+        ) from exc
+
+
 def tree_digest(root: Path) -> str:
     """Hash a protected directory tree, including internal link targets by name."""
     if root.resolve() != root:
@@ -69,6 +86,7 @@ def binding(repo: Path) -> dict[str, str]:
         raise LaunchApprovalError("governed Python must use its approved self-contained runtime")
     _trusted_path(repo / ".git", directory=True)
     _trusted_path(repo / ".git" / "config")
+    verify_git_index(repo)
     build = subprocess.run(["/usr/bin/sw_vers", "-buildVersion"], check=True,
                            capture_output=True, text=True, timeout=5,
                            env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"}).stdout.strip()
