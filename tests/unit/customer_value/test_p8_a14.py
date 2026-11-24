@@ -154,7 +154,7 @@ def failed_attempt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Pat
     monkeypatch.setattr(pp, "require_launch_approval", lambda: None)
     monkeypatch.setattr(pp, "PROTOCOL_AMENDMENTS",
                         tuple(a for a in pp.PROTOCOL_AMENDMENTS if a.id not in (
-                            "A15", "A16", "A17", "A18")))
+                            "A15", "A16", "A17", "A18", "A19")))
     monkeypatch.setattr(pp, "AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION", ("A14",))
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ())  # historical fake A14 only
     ledger = tmp_path / "m11-p8-final" / "ledger.json"
@@ -286,8 +286,8 @@ def test_pre_dispatch_candidate_is_unreserved_in_an_isolated_registry(tmp_path: 
         ledger.parent.mkdir(parents=True)
         ledger.write_bytes((GEN.EVIDENCE / relative).read_bytes())
     assert reg.validate() == [] and not reg.lock.exists() and not reg.lock.is_symlink()
-    key = GEN.final_attempt_key()
-    assert key == "final-a15" and key not in logged
+    key = GEN.A15_ATTEMPT_KEY
+    assert key not in logged
     reservation_path = reg.root / f"{key}.json"
     assert not reservation_path.exists() and not reservation_path.is_symlink()
     run_dir = evidence / f"m11-p8-{key}"

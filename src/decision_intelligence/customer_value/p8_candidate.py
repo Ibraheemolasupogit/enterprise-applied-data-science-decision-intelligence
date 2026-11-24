@@ -12,6 +12,7 @@ from typing import Any
 from . import launch_approval as legacy
 from . import p8_immutable, p8_journal, p8_private
 
+A19_ATTEMPT = "final-a19"
 HISTORICAL_PINS = {
     "final": (
         "cd7c8391347df2f9a2cf802161f35a0cb6a9a889b29c8fce3825a22ebe5902a9",
@@ -62,6 +63,29 @@ def require_active_claim(repo: Path, *, attempt: str, manifest: str, code: str,
     return claims[0]
 
 
+def release_binding(repo: Path, *, attempt: str, manifest: str, code: str,
+                    require_clean: bool = True, worker_uid: int | None = None) -> dict[str, str]:
+    """Measure exact approval fields without signing or reserving anything."""
+    require_new_identity(attempt)
+    immutable = p8_immutable.binding(repo)
+    binding = legacy._live_binding(repo, attempt=attempt, manifest=manifest, code=code,
+                                   require_clean=require_clean, successor=True)
+    private = p8_private.open_private_evidence(repo, owner=worker_uid)
+    _, history_sha256 = private.history_manifest()
+    worker = private.root.lstat()
+    binding.update(registry=str(private.registry), output=str(private.run_dir(attempt)),
+                   history_sha256=history_sha256, worker_uid=str(worker.st_uid),
+                   worker_gid=str(worker.st_gid))
+    binding.update(immutable)
+    source = repo / "src" / "decision_intelligence" / "customer_value"
+    for name in ("p8_scheduler", "p8_candidate", "p8_private", "p8_journal", "p8_immutable"):
+        module = source / f"{name}.py"
+        if module.resolve() != module:
+            raise legacy.LaunchApprovalError("release bindings require canonical source paths")
+        binding[f"{name}_sha256"] = hashlib.sha256(module.read_bytes()).hexdigest()
+    return binding
+
+
 def require_owner_approval(repo: Path, *, attempt: str, manifest: str, code: str,
                            require_clean: bool, supervisor_uid: int | None = None) -> str:
     """Require an attempt-specific signature and an exact release binding."""
@@ -85,22 +109,8 @@ def require_owner_approval(repo: Path, *, attempt: str, manifest: str, code: str
             raise legacy.LaunchApprovalError("owner approval must identify the green CI run")
         if record.pop("host_preflight_passed", None) is not True:
             raise legacy.LaunchApprovalError("owner approval must confirm immediate host preflight")
-        immutable = p8_immutable.binding(repo)
-        binding = legacy._live_binding(repo, attempt=attempt, manifest=manifest, code=code,
-                                       require_clean=require_clean, successor=True)
-        private = p8_private.open_private_evidence(repo, owner=supervisor_uid)
-        _, history_sha256 = private.history_manifest()
-        binding.update(registry=str(private.registry), output=str(private.run_dir(attempt)),
-                       history_sha256=history_sha256,
-                       worker_uid=str(private.root.lstat().st_uid),
-                       worker_gid=str(private.root.lstat().st_gid))
-        binding.update(immutable)
-        source = repo / "src" / "decision_intelligence" / "customer_value"
-        for name in ("p8_scheduler", "p8_candidate", "p8_private", "p8_journal", "p8_immutable"):
-            module = source / f"{name}.py"
-            if module.resolve() != module:
-                raise legacy.LaunchApprovalError("release bindings require canonical source paths")
-            binding[f"{name}_sha256"] = hashlib.sha256(module.read_bytes()).hexdigest()
+        binding = release_binding(repo, attempt=attempt, manifest=manifest, code=code,
+                                  require_clean=require_clean, worker_uid=supervisor_uid)
         if record != binding:
             raise legacy.LaunchApprovalError("owner approval does not match the release binding")
         return hashlib.sha256(payload).hexdigest()

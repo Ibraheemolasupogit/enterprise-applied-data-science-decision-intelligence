@@ -39,22 +39,20 @@ class Journal:
             raise JournalError("journal is oversized or contains a partial record")
         rows: list[dict[str, Any]] = []
         prior = "0" * 64
-        states: dict[str, tuple[str, str]] = {}
+        states: dict[str, dict[str, Any]] = {}
         try:
             for line in data.splitlines():
                 row = json.loads(line, object_pairs_hook=trust._unique_fields)
                 digest = row.pop("sha256")
                 key, state = row["attempt"], row["state"]
-                previous = states.get(key)
-                valid = (state == "consumed" and previous is None
-                         or state == "terminal" and previous is not None
-                         and previous == ("consumed", row["payload"]["claim_sha256"]))
                 if (type(key) is not str or row["previous"] != prior
-                        or digest != self._digest(row) or not valid):
+                        or digest != self._digest(row)
+                        or not self._extends(states.get(key), state, row["payload"])):
                     raise JournalError("journal chain or attempt sequence is invalid")
-                states[key] = (state, digest)
+                row["sha256"] = digest
+                states[key] = row
                 prior = digest
-                rows.append({**row, "sha256": digest})
+                rows.append(row)
         except (TypeError, ValueError, KeyError, AttributeError, trust.LaunchApprovalError) as exc:
             raise JournalError("journal contains invalid records") from exc
         return rows
@@ -63,21 +61,31 @@ class Journal:
     def _digest(row: dict[str, Any]) -> str:
         return hashlib.sha256(json.dumps(row, sort_keys=True, allow_nan=False).encode()).hexdigest()
 
+    @staticmethod
+    def _extends(prior: dict[str, Any] | None, state: str, payload: dict[str, Any]) -> bool:
+        if prior is None:
+            return state == "consumed"
+        if state == "terminal":
+            return bool(prior["state"] == "consumed"
+                        and payload.get("claim_sha256") == prior["sha256"])
+        return bool(state == "certified" and prior["state"] == "terminal"
+                    and prior["payload"].get("status") == "supervision_complete"
+                    and payload.get("terminal_sha256") == prior["sha256"])
+
     def records(self) -> list[dict[str, Any]]:
         with self._locked():
             return self._read()
 
     def append(self, attempt: str, state: str, payload: dict[str, Any]) -> str:
-        if state not in ("consumed", "terminal"):
+        if state not in ("consumed", "terminal", "certified"):
             raise JournalError("invalid attempt state")
         with self._locked():
             rows = self._read()
             matches = [row for row in rows if row["attempt"] == attempt]
             if state == "consumed" and matches:
                 raise JournalError("attempt is permanently consumed")
-            if state == "terminal" and (len(matches) != 1
-                    or payload.get("claim_sha256") != matches[0]["sha256"]):
-                raise JournalError("terminal receipt does not match an active claim")
+            if not self._extends(matches[-1] if matches else None, state, payload):
+                raise JournalError("receipt does not match the preceding attempt record")
             row = {"attempt": attempt, "state": state, "payload": payload,
                    "previous": rows[-1]["sha256"] if rows else "0" * 64}
             digest = self._digest(row)

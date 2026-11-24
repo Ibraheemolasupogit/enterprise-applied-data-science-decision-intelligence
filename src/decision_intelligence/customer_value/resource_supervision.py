@@ -204,9 +204,13 @@ def _stop_tree(proc: subprocess.Popen[bytes], grace_s: float, native: DarwinRSS 
 def supervise(command: Sequence[str], *, timeout_s: float, memory_bytes: int,
               sample: Callable[[int, bool], tuple[int, bool]] | None = None,
               credentials: tuple[int, int] | None = None,
+              deadline: float | None = None,
               ) -> SupervisionResult:
     """Start one isolated runner, with no retries and no child output in diagnostics."""
     start = time.monotonic()
+    expires = min(start + timeout_s, deadline) if deadline is not None else start + timeout_s
+    if expires <= start:
+        return SupervisionResult("time_limit", None, 0.0, 0)
     peak = 0
     proc = None
     watchdog = None
@@ -240,7 +244,7 @@ def supervise(command: Sequence[str], *, timeout_s: float, memory_bytes: int,
             assert proc.stdin is not None
             watchdog = subprocess.Popen(
                 [sys.executable, "-I", "-B", "-S", "-c", _WATCHDOG, str(proc.pid),
-                 str(start + timeout_s), str(_HEARTBEAT_S)],
+                 str(expires), str(_HEARTBEAT_S)],
                 start_new_session=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL)
             assert watchdog.stdin is not None and watchdog.stdout is not None
@@ -251,7 +255,7 @@ def supervise(command: Sequence[str], *, timeout_s: float, memory_bytes: int,
                     if interrupted:
                         status = "interrupted"
                         break
-                    if time.monotonic() - start >= timeout_s:
+                    if time.monotonic() >= expires:
                         status = "time_limit"
                         break
                     returncode = proc.poll()
@@ -273,7 +277,7 @@ def supervise(command: Sequence[str], *, timeout_s: float, memory_bytes: int,
                     if peak > memory_bytes:
                         status = "memory_limit"
                         break
-                    if time.monotonic() - start >= timeout_s:
+                    if time.monotonic() >= expires:
                         status = "time_limit"
                         break
                     if interrupted:
@@ -298,7 +302,7 @@ def supervise(command: Sequence[str], *, timeout_s: float, memory_bytes: int,
                             if interrupted:
                                 status = "interrupted"
                             else:
-                                status = ("time_limit" if time.monotonic() - start >= timeout_s
+                                status = ("time_limit" if time.monotonic() >= expires
                                           else "complete")
                         else:
                             status = "child_failure"
@@ -309,11 +313,11 @@ def supervise(command: Sequence[str], *, timeout_s: float, memory_bytes: int,
                         started = True
                     time.sleep(_POLL_S)
     except (OSError, MonitorUnavailable, ValueError, subprocess.TimeoutExpired):
-        status = "time_limit" if time.monotonic() - start >= timeout_s else "monitor_failure"
+        status = "time_limit" if time.monotonic() >= expires else "monitor_failure"
     finally:
         try:
             if proc is not None and not execution_exited:
-                grace_s = min(_STOP_GRACE_S, timeout_s - (time.monotonic() - start))
+                grace_s = min(_STOP_GRACE_S, expires - time.monotonic())
                 try:
                     _stop_tree(proc, grace_s if status == "interrupted" else 0, native)
                 except (OSError, MonitorUnavailable, subprocess.TimeoutExpired):

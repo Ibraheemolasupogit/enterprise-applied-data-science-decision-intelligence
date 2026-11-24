@@ -21,10 +21,10 @@ REPO = Path(__file__).resolve().parents[3]
 PROTOCOL_FILE = "src/decision_intelligence/customer_value/predictive_protocol.py"
 SEED_NAMES = ("MAIN_SEED", "PILOT_SEED", "FRESH_SEED")
 
-FROZEN_DIGEST = "32504d5e16150720e67b240bb6a48c635f452253492306025881e591f6876697"
-"""SHA-256 of the protocol manifest (P0 as amended through A18). Any protocol change must update
+FROZEN_DIGEST = "c930e20b123a52d6b14ad58309f6bc5ac690ba10ec18a7f6aa3b2c83a09b0999"
+"""SHA-256 of the protocol manifest (P0 as amended through A19). Any protocol change must update
 this value in the same reviewed diff and be disclosed in the M11 evidence."""
-CANDIDATE_CODE_DIGEST = "035452c1b00bb0531d913c7aa9ea65778b4b18abdcb303055663250cdefb8d87"
+CANDIDATE_CODE_DIGEST = "66b1c18c6cd2346f9232d236b5aac93aa0796f857f20b4ee7f57406e74dd9abb"
 """SHA-256 of the exact bytes of ``PROTOCOL_CODE_FILES`` (decision logic, not only values)."""
 
 
@@ -690,8 +690,9 @@ def test_p8_amendment_a14_records_the_failure_fixes_e4_and_authorises_one_retry(
 
     from decision_intelligence.customer_value import predictive_cases as pc
     ids = [a.id for a in pp.PROTOCOL_AMENDMENTS]
-    assert ids == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12",
-                   "A13", "A14", "A15", "A16", "A17", "A18"]
+    assert ids[:18] == ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11",
+                        "A12", "A13", "A14", "A15", "A16", "A17", "A18"]
+    assert ids[18:] == (["A19"] if pp.P8_FINAL_ATTEMPT_KEY == "final-a19" else [])
     a14 = next(a for a in pp.PROTOCOL_AMENDMENTS if a.id == "A14")
     # A14 followed the failed attempt's main-seed computation but preceded any inspection
     assert (a14.stage, a14.date) == ("P8", "2026-11-20")
@@ -755,9 +756,10 @@ def test_amendment_timing_is_recorded_truthfully() -> None:
     """A14 followed the first main computation. A15 through A18 followed both."""
     timing = {a.id: (a.before_main_seed, a.before_outcome_inspection)
               for a in pp.PROTOCOL_AMENDMENTS}
+    end = 20 if pp.P8_FINAL_ATTEMPT_KEY == "final-a19" else 19
     assert timing == {**{f"A{i}": (True, True) for i in range(1, 14)},
-                      **{f"A{i}": (False, True) for i in range(14, 19)}}
-    assert pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION == ("A14", "A15", "A16", "A17", "A18")
+                      **{f"A{i}": (False, True) for i in range(14, end)}}
+    assert pp.AMENDMENTS_AFTER_MAIN_SEED_COMPUTATION == tuple(f"A{i}" for i in range(14, end))
     assert pp.validate_protocol() == []
 
 
@@ -777,7 +779,7 @@ def test_a18_requires_separate_launch_approval(
     from decision_intelligence.customer_value import launch_approval
 
     monkeypatch.setattr(launch_approval, "_APPROVAL_DIR", tmp_path / "missing-approval")
-    a16, a17, a18 = pp.PROTOCOL_AMENDMENTS[-3:]
+    a16, a17, a18 = pp.PROTOCOL_AMENDMENTS[15:18]
     assert (a16.id, a16.stage, a16.date) == ("A16", "P8", "2026-11-21")
     assert "Retain the execution hold." in a16.change
     assert "was pending at A16 and recorded under A17" in a16.reason
@@ -788,11 +790,11 @@ def test_a18_requires_separate_launch_approval(
     assert "a passing final host preflight" in a17.reason
     assert "separate explicit owner authorisation for a single launch" in a17.reason
     assert "docs/evidence/m11-p8-final-a15/" in a17.change
-    assert pp.P8_FINAL_ATTEMPT_KEY == "final-a15"
     assert (a18.id, a18.stage, a18.date) == ("A18", "P8", "2026-11-22")
     assert "release preparation only" in a18.reason
     assert pp.PENDING_BEFORE_MAIN == ()
     assert pp.validate_protocol() == []
+    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", "final-a15")
     with pytest.raises(pp.ProtocolNotReady, match="permanently consumed"):
         pp.authorise_seed("main")
     with pytest.raises(pp.ProtocolNotReady, match="permanently consumed"):

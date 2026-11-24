@@ -233,6 +233,7 @@ def test_raw_results_are_ignored_by_git() -> None:
 def test_digest_mismatch_and_final_requirements_refuse_before_any_reservation(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # never depend on the live protocol state: a test must not be able to start a final run
+    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", "final-a15")
     monkeypatch.setattr(pp, "PENDING_BEFORE_MAIN", ("test: final runs are never executed",))
     with pytest.raises(GEN.RunRefused, match="manifest digest"):
         _run(tmp_path, expect_manifest="0" * 64)
@@ -271,6 +272,7 @@ def test_development_plans_never_touch_reserved_seeds() -> None:
 @pytest.fixture
 def synthetic_launch_approval(monkeypatch: pytest.MonkeyPatch) -> None:
     """Stub approval verification in temporary fixtures with fake draws."""
+    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", "final-a15")
     monkeypatch.setattr(pp, "require_launch_approval", lambda **kwargs: None)
 
 
@@ -397,6 +399,7 @@ def test_the_final_sequence_runs_once_with_fake_draws(tmp_path: Path,
 def test_consumed_candidate_refuses_before_supervision_and_reservation(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
 ) -> None:
+    monkeypatch.setattr(pp, "P8_FINAL_ATTEMPT_KEY", "final-a15")
     assert pp.PENDING_BEFORE_MAIN == ()
     monkeypatch.setattr(GEN, "git_dirty_paths", lambda repo=None: [])
     monkeypatch.setattr(GEN, "refuse_real_final_under_test", lambda *a: None)

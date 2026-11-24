@@ -70,7 +70,9 @@ from decision_intelligence.customer_value import (  # noqa: E402
 from decision_intelligence.customer_value import predictive_cases as pc  # noqa: E402
 from decision_intelligence.customer_value import predictive_protocol as pp  # noqa: E402
 from decision_intelligence.customer_value.resource_supervision import (  # noqa: E402
+    MonitorUnavailable,
     SupervisedChild,
+    SupervisionResult,
     await_supervisor,
     supervise,
 )
@@ -812,6 +814,15 @@ def _journal_path() -> Path:
     return launch_approval._APPROVAL_DIR / "consumption.jsonl"
 
 
+def _certified(rows: list[dict[str, Any]], attempt: str) -> bool:
+    if len(rows) != 3 or rows[-1]["attempt"] != attempt or rows[-1]["state"] != "certified":
+        return False
+    elapsed = rows[-1]["payload"].get("elapsed_s")
+    peak = rows[-1]["payload"].get("peak_bytes")
+    return (type(elapsed) in (float, int) and 0 <= elapsed < pp.BUDGETS.evidence_ceiling_min * 60
+            and type(peak) is int and 0 < peak <= int(pp.BUDGETS.evidence_memory_gb * 1e9))
+
+
 def verify_run(run_dir: Path, *, require_raw: bool = True) -> list[str]:
     """Problems with a run: incomplete status or phases, altered or missing files, and a
     reservation that is missing or differs from the ledger. ``require_raw=False`` accepts a
@@ -833,13 +844,11 @@ def verify_run(run_dir: Path, *, require_raw: bool = True) -> list[str]:
     if governed or led.get("claim_sha256"):
         try:
             with p8_journal.open_journal(_journal_path()) as journal:
-                confirmed = any(
-                    row["state"] == "terminal"
-                    and row["attempt"] == led["reservation"]
-                    and row["payload"]["status"] == "complete"
-                    and row["payload"]["claim_sha256"] == led["claim_sha256"]
-                    and row["payload"]["phase_sha256"] == _phase_digest(led)
-                    for row in journal.records())
+                rows = [row for row in journal.records() if row["attempt"] == led["reservation"]]
+            confirmed = (_certified(rows, led["reservation"])
+                         and rows[0]["payload"]["run_dir"] == str(run_dir.resolve())
+                         and rows[0]["sha256"] == led["claim_sha256"]
+                         and rows[1]["payload"]["phase_sha256"] == _phase_digest(led))
         except (OSError, p8_journal.JournalError, launch_approval.LaunchApprovalError,
                 TypeError, KeyError):
             confirmed = False
@@ -1154,16 +1163,20 @@ def _consume_and_supervise(journal: p8_journal.Journal, attempt: str, command: S
                            memory_bytes: int, approval_sha256: str,
                            credentials: tuple[int, int] | None = None) -> int:
     """Commit a claim before dispatch and a terminal receipt before certification."""
+    start = time.monotonic()
+    deadline = start + timeout_s
     claim = journal.append(attempt, "consumed", {
         "supervisor_pid": os.getpid(), "run_dir": str(run_dir),
         "manifest_digest": pp.protocol_digest(), "code_digest": pp.protocol_code_digest(),
         "history_manifest_sha256": history_pin, "approval_sha256": approval_sha256,
         "started_at": _now(),
     })
-    deadline = time.monotonic() + timeout_s
     try:
-        result = supervise(command, timeout_s=timeout_s, memory_bytes=memory_bytes,
-                           credentials=credentials)
+        if time.monotonic() >= deadline:
+            result = SupervisionResult("time_limit", None, time.monotonic() - start, 0)
+        else:
+            result = supervise(command, timeout_s=timeout_s, memory_bytes=memory_bytes,
+                               credentials=credentials, deadline=deadline)
         receipt = asdict(result)
         if result.status == "complete":
             candidate = _pending_ledger(run_dir, credentials[0] if credentials else os.geteuid())
@@ -1172,10 +1185,10 @@ def _consume_and_supervise(journal: p8_journal.Journal, attempt: str, command: S
                     or candidate.get("reservation") != attempt
                     or candidate.get("claim_sha256") != claim
                     or not phase_sequence_ok(candidate)
-                    or result.peak_bytes > memory_bytes or result.elapsed_s > timeout_s
-                    or time.monotonic() >= deadline):
+                    or result.returncode != 0):
                 raise RunRefused("governed completion could not be verified")
             receipt["phase_sha256"] = _phase_digest(candidate)
+            receipt["status"] = "supervision_complete"
     except KeyboardInterrupt:
         journal.append(attempt, "terminal", {"claim_sha256": claim,
                        "status": "interrupted", "reported_at": _now()})
@@ -1186,12 +1199,27 @@ def _consume_and_supervise(journal: p8_journal.Journal, attempt: str, command: S
                        "status": "certification_failure", "reported_at": _now(),
                        "error": type(exc).__name__})
         raise
-    journal.append(attempt, "terminal", {
+    terminal = journal.append(attempt, "terminal", {
         **receipt, "claim_sha256": claim, "reported_at": _now(),
     })
-    print(f"supervision {result.status}, elapsed {result.elapsed_s:.3f} s, "
-          f"sampled peak RSS {result.peak_bytes} bytes")
-    return 130 if result.status == "interrupted" else (0 if result.status == "complete" else 1)
+    status, peak = result.status, result.peak_bytes
+    if status == "complete":
+        try:
+            peak = max(peak, resource_supervision.DarwinRSS()._rss(os.getpid()))
+        except (OSError, MonitorUnavailable):
+            status = "monitor_failure"
+        if status == "complete" and peak > memory_bytes:
+            status = "memory_limit"
+    elapsed = time.monotonic() - start
+    if status == "complete":
+        if elapsed >= timeout_s:
+            status = "time_limit"
+        else:
+            # The elapsed value includes durable receipt I/O. This row publishes the decision.
+            journal.append(attempt, "certified", {"terminal_sha256": terminal,
+                           "elapsed_s": elapsed, "peak_bytes": peak, "reported_at": _now()})
+    print(f"supervision {status}, elapsed {elapsed:.3f} s, sampled peak RSS {peak} bytes")
+    return 130 if status == "interrupted" else (0 if status == "complete" else 1)
 
 
 def _require_private_available(layout: p8_private.PrivateEvidence, run_dir: Path) -> None:
@@ -1207,6 +1235,7 @@ def _run_successor(args: argparse.Namespace, argv: Sequence[str]) -> int:
     refuse_real_final_under_test("final", pc.run_task)
     attempt = final_attempt_key()
     require_successor_identity(attempt)
+    pp.require_successor_amendment()
     if (os.geteuid() == 0) == args._supervised_child:
         raise RunRefused("governed execution requires a privileged supervisor and isolated worker")
     metadata = p8_private._ROOT.lstat()
@@ -1301,13 +1330,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:
-        print("interrupted: recorded in the ledger; the run will not be resumed",
+        print("interrupted: inspect the private journal and staging before any further action"
+              if args.mode == "final"
+              else "interrupted: recorded in the ledger; the run will not be resumed",
               file=sys.stderr)
         return 130
     except Exception as exc:  # noqa: BLE001 - any failed phase aborts the run
         error = str(exc) if isinstance(exc, TracedTaskError) else type(exc).__name__
-        print(f"failed: {error}; recorded in the ledger; no record "
-              "written", file=sys.stderr)
+        print(f"failed: {error}; inspect the private journal and staging"
+              if args.mode == "final"
+              else f"failed: {error}; recorded in the ledger; no record written", file=sys.stderr)
         return 1
     print(f"wrote {out}")
     return 0
